@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import type { Component } from 'vue';
-import { Palette, HardDrive, Sparkles, Database, Server } from 'lucide-vue-next';
+import { Palette, HardDrive, Sparkles, Database, Server, Brain } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 import AppConfig from './_components/app-config/index.vue';
+import DataConfig from './_components/data-config/index.vue';
+import McpService from './_components/mcp-service/index.vue';
 import ModelConfig from './_components/model-config/index.vue';
 
 interface SettingMenu {
@@ -43,9 +45,15 @@ const menus: SettingMenu[] = [
     key: 'mcp-service',
     icon: Server,
   },
+  {
+    title: 'Skills',
+    key: 'skills',
+    icon: Brain,
+  },
 ];
 
 const activeKey = ref('model-config');
+const activeMenu = computed(() => menus.find(menu => menu.key === activeKey.value));
 
 function handleClick(key: string) {
   activeKey.value = key;
@@ -84,15 +92,22 @@ function handleClick(key: string) {
 
     <!-- 主内容区 -->
     <main class="mx-auto flex max-w-7xl flex-1 flex-col overflow-hidden p-6">
-      <div class="mb-6">
-        <h1 class="text-2xl font-bold">
-          {{ menus.find(m => m.key === activeKey)?.title }}
-        </h1>
+      <div
+        v-if="activeKey !== 'mcp-service'"
+        class="mb-6"
+      >
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-bold">
+            {{ activeMenu?.title }}
+          </h1>
+        </div>
       </div>
 
       <div class="min-h-0 flex-1">
         <ModelConfig v-if="activeKey === 'model-config'" />
         <AppConfig v-if="activeKey === 'app-config'" />
+        <DataConfig v-if="activeKey === 'data'" />
+        <McpService v-if="activeKey === 'mcp-service'" />
       </div>
     </main>
   </div>
