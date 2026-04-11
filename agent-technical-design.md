@@ -2,7 +2,7 @@
 
 ## 1. 文档目标
 
-本文档用于定义 `sco-code-app` 内置代码分析 Agent 的落地方案。
+本文档用于定义 `Eidolon` 内置代码分析 Agent 的落地方案。
 
 本版本基于当前项目实际情况做了一个关键调整：
 
@@ -477,7 +477,7 @@ pub struct AgentEventPayload {
 
 ### 6.6 Memory 存储
 
-记忆不再放在固定 `~/.sco-code-app/memory/`，而是遵循 Tauri 目录体系。
+记忆不再放在固定 `~/.Eidolon/memory/`，而是遵循 Tauri 目录体系。
 
 推荐路径：
 

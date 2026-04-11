@@ -20,6 +20,11 @@ pub fn run() {
             commands::codegen::generate_go_crud,
         ])
         .setup(|app| {
+            // 窗口启动时自动最大化
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.maximize();
+            }
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()

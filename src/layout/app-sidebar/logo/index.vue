@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { GalleryVerticalEnd } from 'lucide-vue-next';
 </script>
 
 <template>
@@ -8,11 +7,11 @@ import { GalleryVerticalEnd } from 'lucide-vue-next';
       size="lg"
       class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
     >
-      <div class="flex items-center justify-center rounded-lg aspect-square size-8 bg-sidebar-primary text-sidebar-primary-foreground">
-        <component :is="GalleryVerticalEnd" class="size-4" />
+      <div class="flex items-center justify-center rounded-lg aspect-square size-8">
+        <img src="/src/assets/logo.svg" alt="logo" class="size-6" />
       </div>
       <div class="grid flex-1 text-sm leading-tight text-left">
-        <span class="font-semibold truncate">sco-code-app</span>
+        <span class="font-semibold truncate">Eidolon</span>
       </div>
     </SidebarMenuButton>
   </SidebarHeader>

@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "sco-code-app",
+  "productName": "Eidolon",
   "version": "0.1.0",
   "identifier": "com.tauri.dev",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "sco-code-app",
+        "title": "Eidolon",
         "width": 800,
         "height": 600,
         "resizable": true,

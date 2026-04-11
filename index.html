@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 
@@ -23,121 +24,140 @@
       transition: opacity 0.3s ease-out;
     }
 
-    @media (prefers-color-scheme: dark) {
-      #initial-loader {
-        background-color: #0a0a0a;
-        color: #ffffff;
-      }
-    }
-
-    .loader-spinner {
-      width: 48px;
-      height: 48px;
-      border: 4px solid #e5e7eb;
-      border-top: 4px solid #3b82f6;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 24px;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .loader-spinner {
-        border-color: #374151;
-        border-top-color: #60a5fa;
-      }
-    }
-
-    .loader-text {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 18px;
-      font-weight: 600;
-      color: #1f2937;
-      margin-bottom: 8px;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .loader-text {
-        color: #f9fafb;
-      }
-    }
-
-    .loader-subtitle {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      font-size: 14px;
-      color: #6b7280;
-      animation: pulse 2s ease-in-out infinite;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .loader-subtitle {
-        color: #9ca3af;
-      }
-    }
-
-    .loader-progress {
+    /* From Uiverse.io by Sourcesketch */
+    .container {
       width: 200px;
-      height: 4px;
-      background-color: #e5e7eb;
-      border-radius: 2px;
-      overflow: hidden;
-      margin-top: 24px;
+      height: 200px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      margin: auto;
+      filter: url("#goo");
+      animation: rotate-move 2s ease-in-out infinite;
     }
 
-    @media (prefers-color-scheme: dark) {
-      .loader-progress {
-        background-color: #374151;
+    .dot {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background-color: #000;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: auto;
+    }
+
+    .dot-3 {
+      background-color: #ff1717;
+      animation: dot-3-move 2s ease infinite, index 6s ease infinite;
+    }
+
+    .dot-2 {
+      background-color: #0051ff;
+      animation: dot-2-move 2s ease infinite, index 6s -4s ease infinite;
+    }
+
+    .dot-1 {
+      background-color: #ffc400;
+      animation: dot-1-move 2s ease infinite, index 6s -2s ease infinite;
+    }
+
+    @keyframes dot-3-move {
+      20% {
+        transform: scale(1);
       }
-    }
 
-    .loader-progress-bar {
-      height: 100%;
-      background-color: #3b82f6;
-      border-radius: 2px;
-      animation: progress 2s ease-in-out infinite;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      .loader-progress-bar {
-        background-color: #60a5fa;
+      45% {
+        transform: translateY(-18px) scale(0.45);
       }
-    }
 
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
+      60% {
+        transform: translateY(-90px) scale(0.45);
+      }
+
+      80% {
+        transform: translateY(-90px) scale(0.45);
       }
 
       100% {
-        transform: rotate(360deg);
+        transform: translateY(0px) scale(1);
       }
     }
 
-    @keyframes pulse {
+    @keyframes dot-2-move {
+      20% {
+        transform: scale(1);
+      }
+
+      45% {
+        transform: translate(-16px, 12px) scale(0.45);
+      }
+
+      60% {
+        transform: translate(-80px, 60px) scale(0.45);
+      }
+
+      80% {
+        transform: translate(-80px, 60px) scale(0.45);
+      }
+
+      100% {
+        transform: translateY(0px) scale(1);
+      }
+    }
+
+    @keyframes dot-1-move {
+      20% {
+        transform: scale(1);
+      }
+
+      45% {
+        transform: translate(16px, 12px) scale(0.45);
+      }
+
+      60% {
+        transform: translate(80px, 60px) scale(0.45);
+      }
+
+      80% {
+        transform: translate(80px, 60px) scale(0.45);
+      }
+
+      100% {
+        transform: translateY(0px) scale(1);
+      }
+    }
+
+    @keyframes rotate-move {
+      55% {
+        transform: translate(-50%, -50%) rotate(0deg);
+      }
+
+      80% {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+
+      100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+    }
+
+    @keyframes index {
 
       0%,
       100% {
-        opacity: 1;
+        z-index: 3;
       }
 
-      50% {
-        opacity: 0.5;
-      }
-    }
-
-    @keyframes progress {
-      0% {
-        width: 0%;
-        transform: translateX(-100%);
+      33.3% {
+        z-index: 2;
       }
 
-      50% {
-        width: 100%;
-        transform: translateX(0%);
-      }
-
-      100% {
-        width: 100%;
-        transform: translateX(100%);
+      66.6% {
+        z-index: 1;
       }
     }
 
@@ -152,12 +172,21 @@
 <body>
   <!-- 初始加载动画 -->
   <div id="initial-loader">
-    <div class="loader-spinner"></div>
-    <div class="loader-text">sco-code-app</div>
-    <div class="loader-subtitle">正在初始化应用...</div>
-    <div class="loader-progress">
-      <div class="loader-progress-bar"></div>
+    <div class="container">
+      <div class="dot dot-1"></div>
+      <div class="dot dot-2"></div>
+      <div class="dot dot-3"></div>
     </div>
+
+    <svg version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="goo">
+          <feGaussianBlur result="blur" stdDeviation="10" in="SourceGraphic"></feGaussianBlur>
+          <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 21 -7" mode="matrix" in="blur"></feColorMatrix>
+        </filter>
+      </defs>
+    </svg>
+
   </div>
 
   <!-- Vue应用挂载点 -->

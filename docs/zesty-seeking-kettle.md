@@ -7,7 +7,7 @@
 **Architecture:** Rust backend parses Go source files (regex-based, no full parser), uses Tera templates (compile-time嵌入 via `include_str!`) to generate TypeScript/React code, exposed via Tauri commands called from Vue frontend.
 
 **Tech Stack:**
-- **本项目 (sco-code-app):** Tauri 2.x, Rust (regex, tera crates), Vue 3, TypeScript
+- **本项目 (Eidolon):** Tauri 2.x, Rust (regex, tera crates), Vue 3, TypeScript
 - **生成目标 (smp-web):** React, TypeScript, `@vef-framework-react/components`
 
 > **注意:** 本工具的前端 UI 用 Vue 3 编写（与本项目一致），但**生成的代码**是 React TSX，输出到外部 smp-web 项目。
