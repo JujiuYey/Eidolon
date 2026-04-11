@@ -1,0 +1,25 @@
+import type { {{ entity_name }}Search } from "~apis";
+
+import { useFormContext } from "@vef-framework-react/components";
+
+export function BasicSearch() {
+  const form = useFormContext<{{ entity_name }}Search>();
+  const { AppField } = form;
+
+  return (
+    <>
+{%- for field in search_fields %}
+      <AppField name="{{ field.json_name }}">
+        {
+          field => (
+            <field.Input
+              noWrapper
+              placeholder="{{ field.placeholder }}"
+            />
+          )
+        }
+      </AppField>
+{%- endfor %}
+    </>
+  );
+}

@@ -1,0 +1,12 @@
+import type { CrudBasicSceneFormValues } from "@vef-framework-react/components";
+import type { {{ entity_name }}, {{ entity_name }}Params, {{ entity_name }}Search } from "~apis";
+
+import { createCrudKit } from "@vef-framework-react/components";
+
+export const {
+  useCrudStore: {{ crud_store_name }},
+  useSearchValues: {{ search_values_name }},
+  useSelectedRows: {{ selected_rows_name }},
+  OperationButtonGroup: {{ operation_button_group_name }},
+  ActionButtonGroup: {{ action_button_group_name }}
+} = createCrudKit<{{ entity_name }}, {{ entity_name }}Search, CrudBasicSceneFormValues<{{ entity_name }}Params, {{ entity_name }}Params>>();

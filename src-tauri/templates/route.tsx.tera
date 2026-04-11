@@ -1,0 +1,137 @@
+import type { TableColumn } from "@vef-framework-react/components";
+import type { {{ entity_name }} } from "~apis";
+
+import { createFileRoute } from "@tanstack/react-router";
+import { ActionButton, CrudPage, Icon, OperationButton, Tag, Text } from "@vef-framework-react/components";
+import { alwaysFalse } from "@vef-framework-react/shared";
+import { EditIcon, PlusIcon, TrashIcon } from "lucide-react";
+import { create{{ entity_name }}, delete{{ entity_name }}, find{{ entity_name }}Page, update{{ entity_name }} } from "~apis";
+
+import { BasicSearch } from "./components/basic-search";
+import { Form } from "./components/form";
+import { {{ action_button_group_name }}, {{ operation_button_group_name }} } from "./helpers";
+
+export const Route = createFileRoute("{{ entity_route_path }}")({
+  component: RouteComponent
+});
+
+function getTextStyle(maxWidth: number) {
+  return { maxWidth };
+}
+
+function getEllipsisProps(value: string | undefined) {
+  return { tooltip: value };
+}
+
+const tableColumns: Array<TableColumn<{{ entity_name }}>> = [
+{%- for field in route_fields %}
+  {
+    title: "{{ field.label }}",
+    dataIndex: "{{ field.json_name }}",
+    width: {{ field.width }}{% if field.align %},
+    align: "{{ field.align }}"{% endif %}{% if field.should_cell_update %},
+    shouldCellUpdate: alwaysFalse{% endif %}{% if field.render_kind == "bool" %},
+    render(value) {
+      return value
+        ? <Tag color="success">{{ field.true_label }}</Tag>
+        : <Tag color="default">{{ field.false_label }}</Tag>;
+    }{% elif field.render_kind == "json" %},
+    render(value) {
+      const content = value ? JSON.stringify(value) : "-";
+      return <Text ellipsis={getEllipsisProps(content)} style={getTextStyle({{ field.width }})}>{content}</Text>;
+    }{% elif field.render_kind == "text" %},
+    render(value) {
+      return <Text ellipsis={getEllipsisProps(value)} style={getTextStyle({{ field.width }})}>{value || "-"}</Text>;
+    }{% endif %}
+  }{% if not loop.last %},{% endif %}
+{%- endfor %}
+];
+
+const formMutationFns = {
+  create: create{{ entity_name }},
+  update: update{{ entity_name }}
+};
+
+const operationColumn = {
+  render(row: {{ entity_name }}) {
+    return (
+      <{{ operation_button_group_name }} selector={state => [state.openForm, state.delete, state.refetchQuery] as const}>
+        {
+          ([openForm, deleteRow, refetchQuery]) => (
+            <>
+              <OperationButton
+                color="primary"
+                icon={<Icon component={EditIcon} />}
+                onClick={() => {
+                  openForm({
+                    scene: "update",
+                    values: row
+                  });
+                }}
+              >
+                编辑
+              </OperationButton>
+
+              <OperationButton
+                confirmable
+                color="danger"
+                confirmDescription="确定要删除吗？"
+                icon={<Icon component={TrashIcon} />}
+                onClick={async () => {
+                  try {
+                    await deleteRow(row);
+                    refetchQuery();
+                  } catch {}
+                }}
+              >
+                删除
+              </OperationButton>
+            </>
+          )
+        }
+      </{{ operation_button_group_name }}>
+    );
+  }
+};
+
+const toolbarActions = (
+  <{{ action_button_group_name }} selector={state => state.openForm}>
+    {
+      openForm => (
+        <ActionButton
+          icon={<Icon component={PlusIcon} />}
+          type="primary"
+          onClick={() => {
+            openForm({
+              scene: "create"
+            });
+          }}
+        >
+          新增
+        </ActionButton>
+      )
+    }
+  </{{ action_button_group_name }}>
+);
+{%- if scene_default_form_values %}
+const sceneDefaultFormValues = {
+  create: {{ scene_default_form_values }}
+};
+{%- endif %}
+
+function RouteComponent() {
+  return (
+    <CrudPage
+      basicSearch={<BasicSearch />}
+      deleteMutationFn={delete{{ entity_name }}}
+      formMutationFns={formMutationFns}
+      operationColumn={operationColumn}
+      queryFn={find{{ entity_name }}Page}
+      renderForm={() => <Form />}
+      rowKey="id"
+{% if scene_default_form_values %}      sceneDefaultFormValues={sceneDefaultFormValues}
+{% endif %}      tableColumns={tableColumns}
+      toolbarActions={toolbarActions}
+    />
+  );
+}

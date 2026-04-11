@@ -1,0 +1,82 @@
+import type { PaginatedQueryParams } from "@vef-framework-react/components";
+import type { PaginationResult } from "@vef-framework-react/core";
+import type { MaybeNull } from "@vef-framework-react/shared";
+import type { FullAuditedEntity } from "@vef-framework-react/starter";
+
+import { extractQueryParams } from "@vef-framework-react/starter";
+import { API_PATH, apiClient, createApiRequest } from "~api";
+
+export interface {{ entity_name }} extends FullAuditedEntity {
+{%- for field in interface_fields %}
+  {{ field.json_name }}{% if field.is_optional %}?{% endif %}: {{ field.ts_type }};
+{%- endfor %}
+}
+
+export interface {{ entity_name }}Search {
+{%- if search_interface_fields | length > 0 %}
+{%- for field in search_interface_fields %}
+  {{ field.json_name }}{% if field.is_optional or not field.required %}?{% endif %}: {{ field.ts_type }};
+{%- endfor %}
+{%- else %}
+  keyword?: string;
+{%- endif %}
+}
+
+export interface {{ entity_name }}Params extends Omit<{{ entity_name }}, {{ param_omit_union }}> {
+}
+
+export const find{{ entity_name }}Page = apiClient.createQueryFn(
+  "find_{{ entity_key_name }}_page",
+  ({ post }) => async (queryParams: PaginatedQueryParams<{{ entity_name }}Search>) => {
+    const { params, pagination } = extractQueryParams(queryParams);
+    const result = await post<PaginationResult<{{ entity_name }}>>(
+      API_PATH,
+      { data: createApiRequest("{{ rpc_path }}", "find_page", params, pagination) }
+    );
+    return result.data;
+  }
+);
+
+export const create{{ entity_name }} = apiClient.createMutationFn(
+  "create_{{ entity_key_name }}",
+  ({ post }) => async (params: {{ entity_name }}Params) => {
+    const result = await post(
+      API_PATH,
+      { data: createApiRequest("{{ rpc_path }}", "create", params) }
+    );
+    return result;
+  }
+);
+
+export const update{{ entity_name }} = apiClient.createMutationFn(
+  "update_{{ entity_key_name }}",
+  ({ post }) => async (params: {{ entity_name }}Params) => {
+    const result = await post(
+      API_PATH,
+      { data: createApiRequest("{{ rpc_path }}", "update", params) }
+    );
+    return result;
+  }
+);
+
+export const delete{{ entity_name }} = apiClient.createMutationFn(
+  "delete_{{ entity_key_name }}",
+  ({ post }) => async (row: {{ entity_name }}) => {
+    const result = await post(
+      API_PATH,
+      { data: createApiRequest("{{ rpc_path }}", "delete", { id: row.id }) }
+    );
+    return result;
+  }
+);
+
+export const deleteMany{{ entity_name }} = apiClient.createMutationFn(
+  "delete_many_{{ entity_key_name }}",
+  ({ post }) => async (rows: {{ entity_name }}[]) => {
+    const result = await post(
+      API_PATH,
+      { data: createApiRequest("{{ rpc_path }}", "delete_many", { pks: rows.map(row => row.id) }) }
+    );
+    return result;
+  }
+);

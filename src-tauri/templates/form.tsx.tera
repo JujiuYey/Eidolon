@@ -1,0 +1,61 @@
+import type { {{ entity_name }}Params } from "~apis";
+
+import { Grid, useFormContext } from "@vef-framework-react/components";
+import { z } from "@vef-framework-react/shared";
+
+const textAreaAutoSize = { minRows: 3, maxRows: 6 };
+const validators = {
+{%- for field in form_fields %}
+  {{ field.json_name }}:{% if field.validator_mode and field.validator_expr %} {
+    {{ field.validator_mode }}: {{ field.validator_expr }}
+  }{% else %} undefined{% endif %}{% if not loop.last %},{% endif %}
+{%- endfor %}
+} as const;
+
+export function Form() {
+  const { AppField } = useFormContext<{{ entity_name }}Params>();
+
+  return (
+    <Grid columnGap="small">
+{% for field in form_fields %}
+      <Grid.Item span={Number("{{ field.span }}"){% raw %}}{% endraw %}>
+        <AppField
+          name="{{ field.json_name }}"
+          validators={validators.{{ field.json_name }}}
+        >
+          {
+            field => (
+{%- if field.component_kind == "bool" %}
+              <field.Bool
+{% if field.required %}                required
+{% endif %}                falseLabel="{{ field.false_label }}"
+                label="{{ field.label }}"
+                trueLabel="{{ field.true_label }}"
+                variant="radio"
+              />
+{%- elif field.component_kind == "number" %}
+              <field.InputNumber
+{% if field.required %}                required
+{% endif %}                label="{{ field.label }}"
+              />
+{%- elif field.component_kind == "textarea" %}
+              <field.TextArea
+{% if field.required %}                required
+{% endif %}                autoSize={textAreaAutoSize}
+                label="{{ field.label }}"
+              />
+{%- else %}
+              <field.Input
+{% if field.required %}                required
+{% endif %}                label="{{ field.label }}"
+              />
+{%- endif %}
+            )
+          }
+        </AppField>
+      </Grid.Item>
+
+{% endfor %}
+    </Grid>
+  );
+}
