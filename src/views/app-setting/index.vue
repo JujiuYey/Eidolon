@@ -5,7 +5,7 @@ import { Palette, HardDrive, Sparkles, Database, Server } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
-import AppConfig from './_components/app-config.vue';
+import AppConfig from './_components/app-config/index.vue';
 import ModelConfig from './_components/model-config/index.vue';
 
 interface SettingMenu {
