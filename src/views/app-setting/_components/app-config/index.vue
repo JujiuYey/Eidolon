@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import ThemeColorToggle from './theme-color-toggle.vue';
 import ThemeToggle from './theme-toggle.vue';
 </script>
 
 <template>
-  <Card class="h-full">
+  <Card>
     <CardHeader>
       <CardTitle class="text-lg">
         应用设置
@@ -38,8 +37,6 @@ import ThemeToggle from './theme-toggle.vue';
           </div>
           <ThemeColorToggle />
         </div>
-
-        <Separator />
       </CardContent>
     </ScrollArea>
   </Card>

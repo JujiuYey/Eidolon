@@ -1,5 +1,5 @@
 export type Theme = 'light' | 'dark' | 'system';
-export type ThemeColor = 'emerald' | 'rose' | 'teal' | 'indigo' | 'violet' | 'pink' | 'blue' | 'amber' | 'purple' | 'sky';
+export type ThemeColor = 'rose' | 'pink' | 'amber' | 'orange' | 'yellow' | 'emerald' | 'teal' | 'blue' | 'indigo' | 'purple';
 
 // 应用设置接口
 export interface AppSettings {
