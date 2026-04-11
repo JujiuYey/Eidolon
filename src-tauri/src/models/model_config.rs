@@ -1,4 +1,4 @@
-use mongodb::bson::DateTime;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// 固定的平台标识。
@@ -127,9 +127,9 @@ pub struct ModelProviderSettingDoc {
 
     /// 文档创建时间。
     #[serde(default)]
-    pub created_at: Option<DateTime>,
+    pub created_at: Option<DateTime<Utc>>,
 
     /// 文档最后更新时间。
     #[serde(default)]
-    pub updated_at: Option<DateTime>,
+    pub updated_at: Option<DateTime<Utc>>,
 }

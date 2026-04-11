@@ -2,6 +2,7 @@ mod commands;
 mod db;
 pub mod models;
 pub mod services;
+use db::LocalJsonStore;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -33,12 +34,19 @@ pub fn run() {
                 )?;
             }
 
-            let mongo = tauri::async_runtime::block_on(async {
-                db::mongodb::AppMongoDb::open().await
-            })
-            .map_err(std::io::Error::other)?;
+            // 获取应用数据目录
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
+                .map_err(|error| std::io::Error::other(error.to_string()))?;
 
-            app.manage(mongo);
+            // 创建本地 JSON 存储
+            let store = LocalJsonStore::new(app_data_dir)
+                .map_err(|error| std::io::Error::other(error))?;
+
+            log::info!("数据存储位置: {}", store.data_dir().display());
+
+            app.manage(store);
 
             Ok(())
         })
