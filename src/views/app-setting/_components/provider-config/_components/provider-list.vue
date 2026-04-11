@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import type { ModelConfig } from '@/services/model_config';
+// import { Badge } from '@/components/ui/badge';
 import deepseekIcon from '@/assets/model-icon/deepseek.svg';
 import minimaxIcon from '@/assets/model-icon/minimax.svg';
 import ollamaIcon from '@/assets/model-icon/ollama.svg';
@@ -10,45 +9,45 @@ interface StaticProviderItem {
   id: string;
   name: string;
   icon: string;
-  enabled: boolean;
+  website?: string;
+  apiUrl?: string;
 }
 
-defineProps<{
-  modelConfigList: ModelConfig[];
-  selectedConfigId: string | null;
-}>();
+const selectedProviderId = defineModel<string | null>('selectedProviderId');
 
 const staticProviders: StaticProviderItem[] = [
-  {
-    id: 'volcengine',
-    name: '火山引擎',
-    icon: volcengineIcon,
-    enabled: true,
-  },
   {
     id: 'minimax',
     name: 'MiniMax',
     icon: minimaxIcon,
-    enabled: true,
+    website: 'https://platform.minimaxi.com/',
+    apiUrl: 'https://api.minimaxi.com/v1',
+  },
+  {
+    id: 'volcengine',
+    name: '火山引擎',
+    icon: volcengineIcon,
+    website: 'https://www.volcengine.com/',
+    apiUrl: 'https://ark.cn-beijing.volces.com/api/v3',
   },
   {
     id: 'deepseek',
     name: 'DeepSeek',
     icon: deepseekIcon,
-    enabled: true,
+    website: 'https://www.deepseek.com/',
+    apiUrl: 'https://api.deepseek.com',
   },
   {
     id: 'ollama',
     name: 'Ollama',
     icon: ollamaIcon,
-    enabled: true,
+    website: '127.0.0.1:11434',
+    apiUrl: 'http://127.0.0.1:11434/api',
   },
 ];
 
-const localSelectedId = ref('minimax');
-
 function handleSelect(id: string) {
-  localSelectedId.value = id;
+  selectedProviderId.value = id;
 }
 </script>
 
@@ -60,7 +59,7 @@ function handleSelect(id: string) {
         :key="provider.id"
         type="button"
         class="flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors"
-        :class="localSelectedId === provider.id
+        :class="selectedProviderId === provider.id
           ? 'border-border bg-background shadow-xs'
           : 'border-transparent hover:bg-background/70'"
         @click="handleSelect(provider.id)"
@@ -79,12 +78,11 @@ function handleSelect(id: string) {
           </p>
         </div>
 
-        <span
-          v-if="provider.enabled"
-          class="inline-flex shrink-0 items-center rounded-full border border-lime-200 bg-lime-50 px-2 py-0.5 text-[10px] font-medium tracking-[0.08em] text-lime-700"
-        >
+        <!--
+          <Badge v-if="provider.enabled">
           ON
-        </span>
+          </Badge>
+        -->
       </button>
     </nav>
   </aside>

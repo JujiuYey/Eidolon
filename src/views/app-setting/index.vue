@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import AppConfig from './_components/app-config/index.vue';
 import DataConfig from './_components/data-config/index.vue';
 import McpService from './_components/mcp-service/index.vue';
-import ModelConfig from './_components/model-config/index.vue';
+import ProviderConfig from './_components/provider-config/index.vue';
 
 interface SettingMenu {
   title: string;
@@ -20,7 +20,7 @@ interface SettingMenu {
 const menus: SettingMenu[] = [
   {
     title: '模型服务',
-    key: 'model-config',
+    key: 'provider-config',
     icon: Palette,
   },
   {
@@ -52,7 +52,7 @@ const menus: SettingMenu[] = [
   },
 ];
 
-const activeKey = ref('model-config');
+const activeKey = ref('provider-config');
 const activeMenu = computed(() => menus.find(menu => menu.key === activeKey.value));
 
 function handleClick(key: string) {
@@ -104,7 +104,7 @@ function handleClick(key: string) {
       </div>
 
       <div class="min-h-0 flex-1">
-        <ModelConfig v-if="activeKey === 'model-config'" />
+        <ProviderConfig v-if="activeKey === 'provider-config'" />
         <AppConfig v-if="activeKey === 'app-config'" />
         <DataConfig v-if="activeKey === 'data'" />
         <McpService v-if="activeKey === 'mcp-service'" />

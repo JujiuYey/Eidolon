@@ -20,6 +20,7 @@ import {
 } from 'lucide-vue-next';
 import type { AcceptableValue } from 'reka-ui';
 import { toast } from 'vue-sonner';
+import minimaxIcon from '@/assets/model-icon/minimax.svg';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,24 +32,50 @@ import SagSelect from '@/components/sag/sag-select/index.vue';
 import {
   createModelConfig,
   deleteModelConfig,
-  setDefaultModel,
   testAiConnection,
   updateModelConfig,
 } from '@/services/model_config';
 import type { ModelConfig } from '@/services/model_config';
 import { getErrorMessage } from '@/utils/helpers';
-import { AI_PROVIDERS, CUSTOM_VENDOR_ID } from './_shared/const';
-import { buildModelGroups, resolveProviderPresentation } from './_shared/provider-presentation';
+import { AI_PROVIDERS, CUSTOM_VENDOR_ID } from '../_shared/const';
 
 const props = defineProps<{
-  modelConfigList: ModelConfig[];
-  selectedConfigId: string | null;
+  selectedProviderId: string;
 }>();
 
 const emit = defineEmits<{
-  (e: 'update:selectedConfigId', value: string | null): void;
   (e: 'refresh'): void;
 }>();
+
+interface PanelProviderPresentation {
+  name: string;
+  initials: string;
+  icon?: string;
+  iconFallbackClass: string;
+}
+
+interface PanelModelGroup {
+  title: string;
+  models: string[];
+}
+
+const MOCK_PROVIDER_PRESENTATION: PanelProviderPresentation = {
+  name: 'MiniMax',
+  initials: 'MM',
+  icon: minimaxIcon,
+  iconFallbackClass: 'bg-rose-50 text-rose-500',
+};
+
+const MOCK_MODEL_GROUPS: PanelModelGroup[] = [
+  {
+    title: '推荐模型',
+    models: ['MiniMax-M2.7', 'MiniMax-M2.7-highspeed'],
+  },
+  {
+    title: '示例模型',
+    models: ['MiniMax-Text-01', 'MiniMax-VL-01'],
+  },
+];
 
 function createEmptyFormData(): ModelConfig {
   return {
@@ -65,6 +92,17 @@ function createEmptyFormData(): ModelConfig {
     is_default: false,
     created_at: '',
     updated_at: '',
+  };
+}
+
+function createMockFormData(id: string): ModelConfig {
+  return {
+    ...createEmptyFormData(),
+    id,
+    name: 'MiniMax 默认配置',
+    base_url: 'https://api.minimaxi.com/v1',
+    model: MOCK_MODEL_GROUPS[0]?.models[0] ?? '',
+    is_active: true,
   };
 }
 
@@ -95,7 +133,7 @@ const formData = ref<ModelConfig>(createEmptyFormData());
 const deleteConfirmOpen = ref(false);
 const showApiKey = ref(false);
 const testingConnection = ref(false);
-const defaultSetting = ref(false);
+const isMockProviderPanel = computed(() => Boolean(props.selectedProviderId));
 
 const vendorOptions = computed(() => {
   const presetOptions = AI_PROVIDERS.map(provider => ({
@@ -113,49 +151,26 @@ const vendorOptions = computed(() => {
 });
 
 const providerPresentation = computed(() => {
-  return resolveProviderPresentation({
-    vendorId: vendorId.value,
-    name: formData.value.name,
-    base_url: formData.value.base_url,
-    model: formData.value.model,
-  });
+  return MOCK_PROVIDER_PRESENTATION;
 });
 
 const panelTitle = computed(() => {
-  return providerPresentation.value.name || formData.value.name || '模型平台';
-});
-
-const panelSubtitle = computed(() => {
-  if (!props.selectedConfigId) {
-    return '先把样式搭出来，后续你再把保存与同步逻辑接上。';
+  if (isMockProviderPanel.value) {
+    return providerPresentation.value.name;
   }
 
-  if (formData.value.name && formData.value.name !== providerPresentation.value.name) {
-    return formData.value.name;
-  }
-
-  return '在这里配置 API Key、API 地址和可用模型。';
+  return formData.value.name || '模型平台';
 });
 
 const isFormValid = computed(() => {
   return Boolean(formData.value.name && formData.value.api_key && formData.value.base_url && formData.value.model);
 });
 
-const maxTokensModel = computed({
-  get: () => formData.value.max_tokens ?? undefined,
-  set: (value: number) => {
-    formData.value.max_tokens = value ?? null;
-  },
-});
-
-const topKModel = computed({
-  get: () => formData.value.top_k ?? undefined,
-  set: (value: number) => {
-    formData.value.top_k = value ?? null;
-  },
-});
-
 const availableModels = computed(() => {
+  if (isMockProviderPanel.value) {
+    return MOCK_MODEL_GROUPS.flatMap(group => group.models);
+  }
+
   const models = new Set<string>();
 
   modelSelectOptions.value.forEach(option => models.add(option.value));
@@ -167,7 +182,22 @@ const availableModels = computed(() => {
   return Array.from(models);
 });
 
-const modelGroups = computed(() => buildModelGroups(availableModels.value));
+const modelGroups = computed<PanelModelGroup[]>(() => {
+  if (isMockProviderPanel.value) {
+    return MOCK_MODEL_GROUPS;
+  }
+
+  if (availableModels.value.length === 0) {
+    return [];
+  }
+
+  return [
+    {
+      title: '模型列表',
+      models: availableModels.value,
+    },
+  ];
+});
 
 const endpointPreview = computed(() => {
   const baseUrl = formData.value.base_url.trim();
@@ -188,43 +218,6 @@ const canRestoreBaseUrl = computed(() => {
   return Boolean(vendor && vendor.base_url !== formData.value.base_url);
 });
 
-function syncPresetState(config: ModelConfig) {
-  const vendor = AI_PROVIDERS.find(provider => {
-    const currentBaseUrl = normalizeProviderKey(config.base_url);
-    const currentName = normalizeProviderKey(config.name);
-    const currentModel = normalizeProviderKey(config.model);
-
-    return [
-      provider.id,
-      provider.name,
-      provider.base_url,
-    ].some(candidate => {
-      const normalizedCandidate = normalizeProviderKey(candidate);
-      return [
-        currentBaseUrl,
-        currentName,
-        currentModel,
-      ]
-        .filter(Boolean)
-        .some(currentValue => currentValue.includes(normalizedCandidate) || normalizedCandidate.includes(currentValue));
-    });
-  });
-
-  if (!vendor) {
-    vendorId.value = CUSTOM_VENDOR_ID;
-    isPresetVendor.value = false;
-    modelSelectOptions.value = [];
-    return;
-  }
-
-  vendorId.value = vendor.id;
-  isPresetVendor.value = true;
-  modelSelectOptions.value = vendor.models.map(model => ({
-    label: model,
-    value: model,
-  }));
-}
-
 function hydrateForm(id: string | null) {
   if (!id) {
     formData.value = createEmptyFormData();
@@ -234,30 +227,18 @@ function hydrateForm(id: string | null) {
     return;
   }
 
-  const currentConfig = props.modelConfigList.find(item => item.id === id);
-
-  if (!currentConfig) {
-    return;
-  }
-
-  formData.value = { ...currentConfig };
-  syncPresetState(currentConfig);
+  formData.value = createMockFormData(id);
+  vendorId.value = 'MiniMax';
+  isPresetVendor.value = true;
+  modelSelectOptions.value = [];
 }
 
 watch(
-  () => props.selectedConfigId,
+  () => props.selectedProviderId,
   id => {
     hydrateForm(id);
   },
   { immediate: true },
-);
-
-watch(
-  () => props.modelConfigList,
-  () => {
-    hydrateForm(props.selectedConfigId);
-  },
-  { deep: true },
 );
 
 function onVendorChange(value: AcceptableValue) {
@@ -270,7 +251,7 @@ function onVendorChange(value: AcceptableValue) {
     isPresetVendor.value = false;
     modelSelectOptions.value = [];
 
-    if (!props.selectedConfigId) {
+    if (!props.selectedProviderId) {
       formData.value.base_url = '';
       formData.value.model = '';
     }
@@ -306,8 +287,12 @@ function restorePresetBaseUrl() {
 }
 
 async function saveConfig() {
+  if (isMockProviderPanel.value) {
+    return;
+  }
+
   try {
-    if (props.selectedConfigId) {
+    if (props.selectedProviderId) {
       await updateModelConfig(formData.value);
     } else {
       await createModelConfig(formData.value);
@@ -321,7 +306,7 @@ async function saveConfig() {
 }
 
 function deleteConfig() {
-  if (!props.selectedConfigId) {
+  if (!props.selectedProviderId || isMockProviderPanel.value) {
     return;
   }
 
@@ -329,14 +314,13 @@ function deleteConfig() {
 }
 
 async function deleteConfirm() {
-  if (!props.selectedConfigId) {
+  if (!props.selectedProviderId || isMockProviderPanel.value) {
     return;
   }
 
   try {
-    await deleteModelConfig(props.selectedConfigId);
+    await deleteModelConfig(props.selectedProviderId);
     emit('refresh');
-    emit('update:selectedConfigId', null);
     deleteConfirmOpen.value = false;
     toast.success('删除成功');
   } catch (error) {
@@ -345,6 +329,10 @@ async function deleteConfirm() {
 }
 
 async function testConnection() {
+  if (isMockProviderPanel.value) {
+    return;
+  }
+
   testingConnection.value = true;
 
   try {
@@ -358,30 +346,6 @@ async function testConnection() {
     toast.error(getErrorMessage(error, '测试连接失败'));
   } finally {
     testingConnection.value = false;
-  }
-}
-
-async function setDefault() {
-  if (!props.selectedConfigId) {
-    return;
-  }
-
-  defaultSetting.value = true;
-
-  try {
-    const currentConfig = props.modelConfigList.find(item => item.id === props.selectedConfigId);
-
-    if (!currentConfig || currentConfig.is_default) {
-      return;
-    }
-
-    await setDefaultModel(props.selectedConfigId);
-    toast.success('设置成功');
-    emit('refresh');
-  } catch (error) {
-    toast.error(getErrorMessage(error, '设置失败'));
-  } finally {
-    defaultSetting.value = false;
   }
 }
 
@@ -462,14 +426,11 @@ defineExpose({
                 <ExternalLink class="h-4 w-4" />
               </Button>
             </div>
-            <p class="truncate text-sm text-muted-foreground">
-              {{ panelSubtitle }}
-            </p>
           </div>
         </div>
 
         <div
-          v-if="!props.selectedConfigId"
+          v-if="!props.selectedProviderId"
           class="grid gap-3 md:grid-cols-[240px_minmax(0,240px)]"
         >
           <SagSelect
@@ -707,73 +668,6 @@ defineExpose({
           </div>
         </section>
 
-        <section class="rounded-2xl border bg-muted/10 p-5">
-          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h3 class="text-base font-semibold text-foreground">
-                高级参数
-              </h3>
-              <p class="text-sm text-muted-foreground">
-                先保留现有字段，布局压成更接近截图的轻量两列样式。
-              </p>
-            </div>
-            <Badge
-              variant="outline"
-              class="rounded-full"
-            >
-              样式预留
-            </Badge>
-          </div>
-
-          <div class="grid gap-4 md:grid-cols-2">
-            <div class="space-y-2">
-              <Label>Temperature</Label>
-              <Input
-                v-model.number="formData.temperature"
-                type="number"
-                min="0"
-                max="2"
-                step="0.1"
-                class="h-11 rounded-xl"
-              />
-            </div>
-
-            <div class="space-y-2">
-              <Label>Top P</Label>
-              <Input
-                v-model.number="formData.top_p"
-                type="number"
-                min="0"
-                max="1"
-                step="0.05"
-                class="h-11 rounded-xl"
-              />
-            </div>
-
-            <div class="space-y-2">
-              <Label>Max Tokens</Label>
-              <Input
-                v-model.number="maxTokensModel"
-                type="number"
-                min="1"
-                placeholder="不限制"
-                class="h-11 rounded-xl"
-              />
-            </div>
-
-            <div class="space-y-2">
-              <Label>Top K</Label>
-              <Input
-                v-model.number="topKModel"
-                type="number"
-                min="1"
-                placeholder="不限制"
-                class="h-11 rounded-xl"
-              />
-            </div>
-          </div>
-        </section>
-
         <p class="text-sm text-muted-foreground">
           查看
           <button
@@ -799,7 +693,7 @@ defineExpose({
         type="button"
         variant="outline"
         class="h-10 rounded-xl"
-        :disabled="!isFormValid || testingConnection"
+        :disabled="!isFormValid || testingConnection || isMockProviderPanel"
         @click="testConnection"
       >
         <Loader2
@@ -816,20 +710,9 @@ defineExpose({
       <div class="flex flex-wrap gap-3">
         <Button
           type="button"
-          variant="outline"
-          class="h-10 rounded-xl"
-          :disabled="defaultSetting || !props.selectedConfigId || formData.is_default"
-          @click="setDefault"
-        >
-          <Settings2 class="mr-2 h-4 w-4" />
-          设为默认
-        </Button>
-
-        <Button
-          type="button"
           variant="destructive"
           class="h-10 rounded-xl"
-          :disabled="!props.selectedConfigId"
+          :disabled="!props.selectedProviderId || isMockProviderPanel"
           @click="deleteConfig"
         >
           <Trash2 class="mr-2 h-4 w-4" />
@@ -839,7 +722,7 @@ defineExpose({
         <Button
           type="button"
           class="h-10 rounded-xl px-5"
-          :disabled="!isFormValid"
+          :disabled="!isFormValid || isMockProviderPanel"
           @click="saveConfig"
         >
           <Check class="mr-2 h-4 w-4" />
