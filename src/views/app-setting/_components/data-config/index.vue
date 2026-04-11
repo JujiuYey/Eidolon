@@ -6,6 +6,7 @@ import {
   FileOutput,
   FolderOpen,
   FolderUp,
+  Loader2,
   Wifi,
 } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { useAppPaths } from '@/composables/use-app-paths';
 
 interface RowAction {
   label: string;
@@ -30,9 +32,7 @@ interface DirectoryRow {
 }
 
 const compactBackup = ref(false);
-
-const appDataPath = '/Users/jujiuyey/Library/Application Support/Eidolon';
-const appLogPath = `${appDataPath}/logs`;
+const { appDataPath, appLogPath, isLoading, openDirectory } = useAppPaths();
 
 const dangerOutlineClass = 'border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive/50';
 
@@ -68,10 +68,10 @@ const exportActions: Array<{ title: string; action: RowAction }> = [
   },
 ];
 
-const directoryRows: DirectoryRow[] = [
+const directoryRows = computed<DirectoryRow[]>(() => [
   {
     title: '应用数据',
-    value: appDataPath,
+    value: appDataPath.value,
     valueIcon: FolderOpen,
     action: {
       label: '打开目录',
@@ -80,7 +80,7 @@ const directoryRows: DirectoryRow[] = [
   },
   {
     title: '应用日志',
-    value: appLogPath,
+    value: appLogPath.value,
     action: {
       label: '打开日志',
       variant: 'outline',
@@ -109,13 +109,19 @@ const directoryRows: DirectoryRow[] = [
       class: dangerOutlineClass,
     },
   },
-];
+]);
+
+function handleOpenDirectory(path: string) {
+  if (path) {
+    openDirectory(path);
+  }
+}
 </script>
 
 <template>
   <ScrollArea class="h-full pr-3">
     <div class="space-y-5 pb-6">
-      <Card class="gap-0 overflow-hidden rounded-[1.75rem] border-border/70 py-0 shadow-sm">
+      <Card class="gap-0 overflow-hidden border-border/70 py-0 shadow-sm">
         <CardHeader class="px-5 pb-2 pt-5">
           <CardTitle class="text-lg">
             数据设置
@@ -160,7 +166,7 @@ const directoryRows: DirectoryRow[] = [
         </CardContent>
       </Card>
 
-      <Card class="gap-0 overflow-hidden rounded-[1.75rem] border-border/70 py-0 shadow-sm">
+      <Card class="gap-0 overflow-hidden border-border/70 py-0 shadow-sm">
         <CardHeader class="px-5 pb-2 pt-5">
           <CardTitle class="text-lg">
             导出至手机
@@ -191,7 +197,7 @@ const directoryRows: DirectoryRow[] = [
         </CardContent>
       </Card>
 
-      <Card class="gap-0 overflow-hidden rounded-[1.75rem] border-border/70 py-0 shadow-sm">
+      <Card class="gap-0 overflow-hidden border-border/70 py-0 shadow-sm">
         <CardHeader class="px-5 pb-2 pt-5">
           <CardTitle class="text-lg">
             数据目录
@@ -199,8 +205,12 @@ const directoryRows: DirectoryRow[] = [
         </CardHeader>
 
         <CardContent class="px-5 pb-2 pt-0">
+          <div v-if="isLoading" class="flex items-center justify-center py-8">
+            <Loader2 class="size-6 animate-spin text-muted-foreground" />
+          </div>
           <template
             v-for="(item, index) of directoryRows"
+            v-else
             :key="item.title"
           >
             <div class="grid gap-3 py-4 sm:grid-cols-[minmax(0,180px)_1fr_auto] sm:items-center sm:gap-6">
@@ -236,6 +246,8 @@ const directoryRows: DirectoryRow[] = [
                 :class="item.action.class"
                 size="sm"
                 class="justify-self-start sm:justify-self-end"
+                :disabled="!item.value && item.title !== '知识库文件'"
+                @click="item.value ? handleOpenDirectory(item.value) : undefined"
               >
                 {{ item.action.label }}
               </Button>

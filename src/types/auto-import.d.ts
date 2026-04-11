@@ -53,6 +53,7 @@ declare global {
   const toValue: typeof import('vue')['toValue']
   const triggerRef: typeof import('vue')['triggerRef']
   const unref: typeof import('vue')['unref']
+  const useAppPaths: typeof import('../composables/use-app-paths')['useAppPaths']
   const useAttrs: typeof import('vue')['useAttrs']
   const useComm: typeof import('../composables/user-commits')['useComm']
   const useCommitTheme: typeof import('../composables/user-commits')['useCommitTheme']
@@ -79,4 +80,7 @@ declare global {
   // @ts-ignore
   export type { Component, Slot, Slots, ComponentPublicInstance, ComputedRef, DirectiveBinding, ExtractDefaultPropTypes, ExtractPropTypes, ExtractPublicPropTypes, InjectionKey, PropType, Ref, MaybeRef, MaybeRefOrGetter, VNode, WritableComputedRef } from 'vue'
   import('vue')
+  // @ts-ignore
+  export type { AppPaths } from '../composables/use-app-paths'
+  import('../composables/use-app-paths')
 }

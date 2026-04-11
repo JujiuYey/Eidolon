@@ -10,6 +10,8 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            commands::app_paths::get_app_paths,
+            commands::app_paths::open_directory,
             commands::model_config::list_model_configs,
             commands::model_config::create_model_config,
             commands::model_config::update_model_config,
