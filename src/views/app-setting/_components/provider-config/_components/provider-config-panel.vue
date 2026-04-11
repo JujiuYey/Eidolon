@@ -1,27 +1,18 @@
 <script setup lang="ts">
 import {
   Check,
-  ChevronDown,
-  CircleHelp,
   ExternalLink,
   Eye,
   EyeOff,
-  Loader2,
   Minus,
   Plus,
-  RefreshCw,
   RotateCcw,
-  Search,
   Settings2,
-  Sparkles,
   Trash2,
-  Wrench,
-  PlugZap,
 } from 'lucide-vue-next';
 import type { AcceptableValue } from 'reka-ui';
 import { toast } from 'vue-sonner';
 import minimaxIcon from '@/assets/model-icon/minimax.svg';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,7 +23,7 @@ import SagSelect from '@/components/sag/sag-select/index.vue';
 import {
   createModelConfig,
   deleteModelConfig,
-  testAiConnection,
+  // testAiConnection,
   updateModelConfig,
 } from '@/services/model_config';
 import type { ModelConfig } from '@/services/model_config';
@@ -54,11 +45,6 @@ interface PanelProviderPresentation {
   iconFallbackClass: string;
 }
 
-interface PanelModelGroup {
-  title: string;
-  models: string[];
-}
-
 const MOCK_PROVIDER_PRESENTATION: PanelProviderPresentation = {
   name: 'MiniMax',
   initials: 'MM',
@@ -66,15 +52,11 @@ const MOCK_PROVIDER_PRESENTATION: PanelProviderPresentation = {
   iconFallbackClass: 'bg-rose-50 text-rose-500',
 };
 
-const MOCK_MODEL_GROUPS: PanelModelGroup[] = [
-  {
-    title: '推荐模型',
-    models: ['MiniMax-M2.7', 'MiniMax-M2.7-highspeed'],
-  },
-  {
-    title: '示例模型',
-    models: ['MiniMax-Text-01', 'MiniMax-VL-01'],
-  },
+const MOCK_MODELS: string[] = [
+  'MiniMax-M2.7',
+  'MiniMax-M2.7-highspeed',
+  'MiniMax-Text-01',
+  'MiniMax-VL-01',
 ];
 
 function createEmptyFormData(): ModelConfig {
@@ -101,7 +83,7 @@ function createMockFormData(id: string): ModelConfig {
     id,
     name: 'MiniMax 默认配置',
     base_url: 'https://api.minimaxi.com/v1',
-    model: MOCK_MODEL_GROUPS[0]?.models[0] ?? '',
+    model: MOCK_MODELS[0] ?? '',
     is_active: true,
   };
 }
@@ -132,7 +114,7 @@ const vendorId = ref<string>(CUSTOM_VENDOR_ID);
 const formData = ref<ModelConfig>(createEmptyFormData());
 const deleteConfirmOpen = ref(false);
 const showApiKey = ref(false);
-const testingConnection = ref(false);
+// const testingConnection = ref(false);
 const isMockProviderPanel = computed(() => Boolean(props.selectedProviderId));
 
 const vendorOptions = computed(() => {
@@ -168,7 +150,7 @@ const isFormValid = computed(() => {
 
 const availableModels = computed(() => {
   if (isMockProviderPanel.value) {
-    return MOCK_MODEL_GROUPS.flatMap(group => group.models);
+    return MOCK_MODELS;
   }
 
   const models = new Set<string>();
@@ -180,33 +162,6 @@ const availableModels = computed(() => {
   }
 
   return Array.from(models);
-});
-
-const modelGroups = computed<PanelModelGroup[]>(() => {
-  if (isMockProviderPanel.value) {
-    return MOCK_MODEL_GROUPS;
-  }
-
-  if (availableModels.value.length === 0) {
-    return [];
-  }
-
-  return [
-    {
-      title: '模型列表',
-      models: availableModels.value,
-    },
-  ];
-});
-
-const endpointPreview = computed(() => {
-  const baseUrl = formData.value.base_url.trim();
-
-  if (!baseUrl) {
-    return '预览：填写 API 地址后将在这里显示完整请求路径';
-  }
-
-  return `预览：${baseUrl.replace(/\/$/, '')}/chat/completions`;
 });
 
 const canRestoreBaseUrl = computed(() => {
@@ -328,48 +283,26 @@ async function deleteConfirm() {
   }
 }
 
-async function testConnection() {
-  if (isMockProviderPanel.value) {
-    return;
-  }
+// async function testConnection() {
+//   if (isMockProviderPanel.value) {
+//     return;
+//   }
 
-  testingConnection.value = true;
+//   testingConnection.value = true;
 
-  try {
-    await testAiConnection({
-      api_key: formData.value.api_key,
-      base_url: formData.value.base_url,
-      model: formData.value.model,
-    });
-    toast.success('连接成功');
-  } catch (error) {
-    toast.error(getErrorMessage(error, '测试连接失败'));
-  } finally {
-    testingConnection.value = false;
-  }
-}
-
-function getModelCapsules(model: string) {
-  const normalized = model.toLowerCase();
-
-  const capsules = [
-    {
-      key: 'ability',
-      icon: Sparkles,
-      class: 'bg-sky-50 text-sky-500',
-    },
-  ];
-
-  if (!normalized.includes('embedding')) {
-    capsules.push({
-      key: 'tools',
-      icon: Wrench,
-      class: 'bg-orange-50 text-orange-500',
-    });
-  }
-
-  return capsules;
-}
+//   try {
+//     await testAiConnection({
+//       api_key: formData.value.api_key,
+//       base_url: formData.value.base_url,
+//       model: formData.value.model,
+//     });
+//     toast.success('连接成功');
+//   } catch (error) {
+//     toast.error(getErrorMessage(error, '测试连接失败'));
+//   } finally {
+//     testingConnection.value = false;
+//   }
+// }
 
 defineExpose({
   formData,
@@ -384,6 +317,7 @@ defineExpose({
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col bg-background">
+    <!-- 顶部标题栏 -->
     <div class="flex items-start justify-between gap-4 border-b px-8 py-6">
       <div class="min-w-0 space-y-3">
         <div class="flex items-center gap-3">
@@ -410,13 +344,6 @@ defineExpose({
               <h2 class="truncate text-2xl font-semibold tracking-tight text-foreground">
                 {{ panelTitle }}
               </h2>
-              <Badge
-                v-if="formData.is_default"
-                variant="secondary"
-                class="rounded-full px-2.5"
-              >
-                默认
-              </Badge>
               <Button
                 type="button"
                 variant="ghost"
@@ -455,22 +382,36 @@ defineExpose({
       </div>
     </div>
 
+    <!-- 内容区域 -->
     <ScrollArea class="min-h-0 flex-1">
       <div class="space-y-8 px-8 py-6">
+        <!-- API 地址 -->
         <section class="space-y-3">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
-              <Label class="text-base font-semibold text-foreground">API 密钥</Label>
-            </div>
+          <Label class="text-base font-semibold text-foreground">API 地址</Label>
+
+          <div class="flex flex-col gap-3 md:flex-row">
+            <Input
+              v-model="formData.base_url"
+              type="text"
+              placeholder="例如: https://api.openai.com/v1"
+              class="h-11 rounded-xl"
+            />
             <Button
               type="button"
-              variant="ghost"
-              size="icon-sm"
-              class="h-8 w-8 rounded-full text-muted-foreground"
+              variant="outline"
+              class="h-11 rounded-xl px-4 text-red-500 hover:text-red-500"
+              :disabled="!canRestoreBaseUrl"
+              @click="restorePresetBaseUrl"
             >
-              <Settings2 class="h-4 w-4" />
+              <RotateCcw class="h-4 w-4" />
+              重置
             </Button>
           </div>
+        </section>
+
+        <!-- API 密钥 -->
+        <section class="space-y-3">
+          <Label class="text-base font-semibold text-foreground">API 密钥</Label>
 
           <div class="relative">
             <Input
@@ -494,58 +435,9 @@ defineExpose({
               />
             </button>
           </div>
-
-          <div class="flex flex-wrap items-center justify-between gap-3 text-xs">
-            <button
-              type="button"
-              class="text-[#4080ff] transition hover:underline"
-            >
-              点击这里获取密钥
-            </button>
-            <span class="text-muted-foreground">多个密钥使用逗号分隔</span>
-          </div>
         </section>
 
-        <section class="space-y-3">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
-              <Label class="text-base font-semibold text-foreground">API 地址</Label>
-              <CircleHelp class="h-4 w-4 text-muted-foreground" />
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              class="h-8 w-8 rounded-full text-muted-foreground"
-            >
-              <Settings2 class="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div class="flex flex-col gap-3 md:flex-row">
-            <Input
-              v-model="formData.base_url"
-              type="text"
-              placeholder="例如: https://api.openai.com/v1"
-              class="h-11 rounded-xl"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              class="h-11 rounded-xl px-4 text-red-500 hover:text-red-500"
-              :disabled="!canRestoreBaseUrl"
-              @click="restorePresetBaseUrl"
-            >
-              <RotateCcw class="h-4 w-4" />
-              重置
-            </Button>
-          </div>
-
-          <p class="text-xs text-muted-foreground">
-            {{ endpointPreview }}
-          </p>
-        </section>
-
+        <!-- 模型 -->
         <section class="space-y-4">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">
@@ -553,20 +445,9 @@ defineExpose({
               <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                 {{ availableModels.length }}
               </span>
-              <Sparkles class="h-4 w-4 text-muted-foreground" />
-              <Search class="h-4 w-4 text-muted-foreground" />
             </div>
 
             <div class="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                class="h-10 rounded-xl px-4"
-              >
-                <RefreshCw class="h-4 w-4" />
-                获取模型列表
-              </Button>
               <Button
                 type="button"
                 variant="outline"
@@ -594,70 +475,46 @@ defineExpose({
           </div>
 
           <div
-            v-if="modelGroups.length > 0"
+            v-if="availableModels.length > 0"
             class="space-y-3"
           >
-            <div
-              v-for="group of modelGroups"
-              :key="group.title"
-              class="overflow-hidden rounded-2xl border bg-background"
+            <button
+              v-for="model of availableModels"
+              :key="model"
+              type="button"
+              class="flex w-full items-center justify-between gap-4 rounded-2xl border bg-background px-5 py-4 text-left transition hover:bg-muted/20"
+              :class="formData.model === model ? 'bg-accent/40' : ''"
+              @click="selectModel(model)"
             >
-              <div class="flex items-center gap-3 border-b bg-muted/20 px-5 py-3 text-sm font-semibold text-foreground">
-                <ChevronDown class="h-4 w-4 text-muted-foreground" />
-                <span>{{ group.title }}</span>
-              </div>
-
-              <div>
-                <button
-                  v-for="model of group.models"
-                  :key="model"
-                  type="button"
-                  class="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition hover:bg-muted/20"
-                  :class="formData.model === model ? 'bg-accent/40' : ''"
-                  @click="selectModel(model)"
+              <div class="flex min-w-0 items-center gap-3">
+                <div
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5"
+                  :class="!providerPresentation.icon ? providerPresentation.iconFallbackClass : ''"
                 >
-                  <div class="flex min-w-0 items-center gap-3">
-                    <div
-                      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5"
-                      :class="!providerPresentation.icon ? providerPresentation.iconFallbackClass : ''"
-                    >
-                      <img
-                        v-if="providerPresentation.icon"
-                        :src="providerPresentation.icon"
-                        :alt="providerPresentation.name"
-                        class="h-5 w-5 object-contain"
-                      />
-                      <span
-                        v-else
-                        class="text-[10px] font-semibold"
-                      >
-                        {{ providerPresentation.initials }}
-                      </span>
-                    </div>
+                  <img
+                    v-if="providerPresentation.icon"
+                    :src="providerPresentation.icon"
+                    :alt="providerPresentation.name"
+                    class="h-5 w-5 object-contain"
+                  />
+                  <span
+                    v-else
+                    class="text-[10px] font-semibold"
+                  >
+                    {{ providerPresentation.initials }}
+                  </span>
+                </div>
 
-                    <span class="truncate text-[15px] font-medium text-foreground">
-                      {{ model }}
-                    </span>
-                  </div>
-
-                  <div class="flex shrink-0 items-center gap-2 text-muted-foreground">
-                    <span
-                      v-for="capsule of getModelCapsules(model)"
-                      :key="capsule.key"
-                      class="inline-flex h-7 w-7 items-center justify-center rounded-full"
-                      :class="capsule.class"
-                    >
-                      <component
-                        :is="capsule.icon"
-                        class="h-3.5 w-3.5"
-                      />
-                    </span>
-                    <Settings2 class="h-4 w-4" />
-                    <Minus class="h-4 w-4" />
-                  </div>
-                </button>
+                <span class="truncate text-[15px] font-medium text-foreground">
+                  {{ model }}
+                </span>
               </div>
-            </div>
+
+              <div class="flex shrink-0 items-center gap-2 text-muted-foreground">
+                <Settings2 class="h-4 w-4" />
+                <Minus class="h-4 w-4" />
+              </div>
+            </button>
           </div>
 
           <div
@@ -667,68 +524,31 @@ defineExpose({
             选择平台后，这里会展示模型列表样式。
           </div>
         </section>
-
-        <p class="text-sm text-muted-foreground">
-          查看
-          <button
-            type="button"
-            class="px-1 text-[#4080ff] transition hover:underline"
-          >
-            {{ providerPresentation.name }} 文档
-          </button>
-          和
-          <button
-            type="button"
-            class="px-1 text-[#4080ff] transition hover:underline"
-          >
-            模型
-          </button>
-          获取更多详情
-        </p>
       </div>
     </ScrollArea>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 border-t bg-background/95 px-8 py-4 backdrop-blur">
+    <!-- 底部操作栏 -->
+    <div class="flex flex-wrap items-center justify-end gap-3 border-t bg-background/95 px-8 py-4 backdrop-blur">
       <Button
         type="button"
-        variant="outline"
+        variant="destructive"
         class="h-10 rounded-xl"
-        :disabled="!isFormValid || testingConnection || isMockProviderPanel"
-        @click="testConnection"
+        :disabled="!props.selectedProviderId || isMockProviderPanel"
+        @click="deleteConfig"
       >
-        <Loader2
-          v-if="testingConnection"
-          class="mr-2 h-4 w-4 animate-spin"
-        />
-        <PlugZap
-          v-else
-          class="mr-2 h-4 w-4"
-        />
-        {{ testingConnection ? '测试中…' : '测试连接' }}
+        <Trash2 class="mr-2 h-4 w-4" />
+        删除配置
       </Button>
 
-      <div class="flex flex-wrap gap-3">
-        <Button
-          type="button"
-          variant="destructive"
-          class="h-10 rounded-xl"
-          :disabled="!props.selectedProviderId || isMockProviderPanel"
-          @click="deleteConfig"
-        >
-          <Trash2 class="mr-2 h-4 w-4" />
-          删除配置
-        </Button>
-
-        <Button
-          type="button"
-          class="h-10 rounded-xl px-5"
-          :disabled="!isFormValid || isMockProviderPanel"
-          @click="saveConfig"
-        >
-          <Check class="mr-2 h-4 w-4" />
-          保存配置
-        </Button>
-      </div>
+      <Button
+        type="button"
+        class="h-10 rounded-xl px-5"
+        :disabled="!isFormValid || isMockProviderPanel"
+        @click="saveConfig"
+      >
+        <Check class="mr-2 h-4 w-4" />
+        保存配置
+      </Button>
     </div>
   </div>
 

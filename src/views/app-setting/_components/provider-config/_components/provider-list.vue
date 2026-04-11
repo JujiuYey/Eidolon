@@ -60,8 +60,8 @@ function handleSelect(id: string) {
         type="button"
         class="flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors"
         :class="selectedProviderId === provider.id
-          ? 'border-border bg-background shadow-xs'
-          : 'border-transparent hover:bg-background/70'"
+          ? 'border-primary bg-primary/50 shadow-xs'
+          : 'border-transparent hover:bg-primary/10'"
         @click="handleSelect(provider.id)"
       >
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background ring-1 ring-black/5">
