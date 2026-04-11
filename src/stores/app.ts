@@ -1,31 +1,27 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { AppSettings, Theme } from '@/types';
-import { loadAppSettingsFromRust, saveAppSettingsToRust } from '@/services/app-settings';
-import { applyTheme } from '@/utils/theme';
+import type { AppSettings, Theme, ThemeColor } from '@/types';
+import { applyTheme, applyThemeColor, DEFAULT_THEME_COLOR, isThemeColor } from '@/utils/theme';
 
 function createDefaultSettings(): AppSettings {
   return {
-    autoSave: true,
     theme: 'system',
-    projectPath: null,
-    storageDir: null,
-    projectFilesExtensions: '.ts,.tsx,.js,.jsx,.vue',
-    projectFilesIgnoreDirs: 'node_modules,.git,dist',
-    projectFilesMaxFileContentLength: 15000,
+    themeColor: DEFAULT_THEME_COLOR,
   };
 }
 
-function normalizeSettings(settings: AppSettings): AppSettings {
+function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
   return {
-    autoSave: settings.autoSave,
-    theme: settings.theme,
-    projectPath: settings.projectPath ?? null,
-    storageDir: settings.storageDir ?? null,
-    projectFilesExtensions: settings.projectFilesExtensions?.trim() || '.ts,.tsx,.js,.jsx,.vue',
-    projectFilesIgnoreDirs: settings.projectFilesIgnoreDirs?.trim() || 'node_modules,.git,dist',
-    projectFilesMaxFileContentLength: Math.max(1, Number(settings.projectFilesMaxFileContentLength) || 15000),
+    theme: settings.theme === 'light' || settings.theme === 'dark' || settings.theme === 'system'
+      ? settings.theme
+      : 'system',
+    themeColor: isThemeColor(settings.themeColor) ? settings.themeColor : DEFAULT_THEME_COLOR,
   };
+}
+
+function applyAppearance(settings: AppSettings) {
+  applyTheme(settings.theme);
+  applyThemeColor(settings.themeColor);
 }
 
 export const useAppStore = defineStore('app', () => {
@@ -39,49 +35,35 @@ export const useAppStore = defineStore('app', () => {
       ...partialSettings,
     });
 
-    if (partialSettings.theme) {
-      applyTheme(partialSettings.theme);
-    }
+    applyAppearance(settings.value);
   };
 
   const setTheme = (theme: Theme) => {
     updateSettings({ theme });
   };
 
-  const resetSettings = () => {
-    settings.value = createDefaultSettings();
-    applyTheme(settings.value.theme);
+  const setThemeColor = (themeColor: ThemeColor) => {
+    updateSettings({ themeColor });
   };
 
-  const init = async () => {
+  const init = () => {
     if (isInitialized.value) {
       return;
     }
 
-    try {
-      settings.value = normalizeSettings(await loadAppSettingsFromRust());
-    } catch (error) {
-      console.error('加载应用设置失败:', error);
-      settings.value = createDefaultSettings();
-    } finally {
-      applyTheme(settings.value.theme);
-      isInitialized.value = true;
-    }
-  };
-
-  const saveToRust = async () => {
-    settings.value = normalizeSettings(await saveAppSettingsToRust(settings.value));
-    applyTheme(settings.value.theme);
+    applyAppearance(settings.value);
+    isInitialized.value = true;
   };
 
   return {
-    // 状态
     settings,
-    isInitialized,
-    updateSettings,
     setTheme,
-    resetSettings,
+    setThemeColor,
     init,
-    saveToRust,
   };
+}, {
+  persist: {
+    key: 'eidolon-app-settings',
+    pick: ['settings'],
+  },
 });

@@ -1,24 +1,9 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Save, RotateCcw } from 'lucide-vue-next';
+import ThemeColorToggle from './theme-color-toggle.vue';
 import ThemeToggle from './theme-toggle.vue';
-import { useAppStore } from '@/stores/app';
-import { toast } from 'vue-sonner';
-
-const appStore = useAppStore();
-const { resetSettings, saveToRust } = appStore;
-
-async function save() {
-  await saveToRust();
-  toast.success('应用设置已保存');
-}
-
-function reset() {
-  resetSettings();
-}
 </script>
 
 <template>
@@ -44,19 +29,18 @@ function reset() {
           <ThemeToggle />
         </div>
 
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="space-y-0.5">
+            <Label>主题颜色</Label>
+            <p class="text-sm text-muted-foreground">
+              为按钮、高亮和聚焦态选择一套主色
+            </p>
+          </div>
+          <ThemeColorToggle />
+        </div>
+
         <Separator />
       </CardContent>
     </ScrollArea>
-
-    <CardFooter class="flex justify-between">
-      <Button variant="outline" @click="reset">
-        <RotateCcw class="h-4 w-4 mr-2" />
-        重置默认
-      </Button>
-      <Button @click="save">
-        <Save class="h-4 w-4 mr-2" />
-        保存设置
-      </Button>
-    </CardFooter>
   </Card>
 </template>

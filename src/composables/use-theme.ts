@@ -1,6 +1,6 @@
 import { computed } from 'vue';
 import { useAppStore } from '@/stores/app';
-import type { Theme } from '@/types';
+import type { Theme, ThemeColor } from '@/types';
 
 export function useTheme() {
   const appStore = useAppStore();
@@ -9,8 +9,14 @@ export function useTheme() {
     appStore.setTheme(newTheme);
   };
 
+  const setThemeColor = (newThemeColor: ThemeColor) => {
+    appStore.setThemeColor(newThemeColor);
+  };
+
   return {
     theme: computed(() => appStore.settings.theme),
+    themeColor: computed(() => appStore.settings.themeColor),
     setTheme,
+    setThemeColor,
   };
 }

@@ -1,14 +1,10 @@
 export type Theme = 'light' | 'dark' | 'system';
+export type ThemeColor = 'emerald' | 'rose' | 'teal' | 'indigo' | 'violet' | 'pink' | 'blue' | 'amber' | 'purple' | 'sky';
 
 // 应用设置接口
 export interface AppSettings {
-  autoSave: boolean;
   theme: Theme;
-  projectPath: string | null;
-  storageDir: string | null;
-  projectFilesExtensions: string;
-  projectFilesIgnoreDirs: string;
-  projectFilesMaxFileContentLength: number;
+  themeColor: ThemeColor;
 }
 
 export interface GitConfig {

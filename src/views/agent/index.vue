@@ -7,11 +7,9 @@ import ProjectFileTree from './components/ProjectFileTree.vue';
 import type { AgentMessage } from '@/types';
 import type { ProjectFileEntry, ProjectFilesSettings } from '@/types/project-files';
 import { readProjectFile, scanProjectFiles } from '@/services/project-files';
-import { useAppStore } from '@/stores/app';
 import { getErrorMessage } from '@/utils/helpers';
 import { CircleAlert } from 'lucide-vue-next';
 
-const appStore = useAppStore();
 const files = ref<ProjectFileEntry[]>([]);
 const selectedFilePath = ref<string | null>(null);
 const selectedFileContent = ref('');
@@ -31,11 +29,11 @@ const isAnalyzing = ref(false);
 const isLoadingFiles = ref(false);
 let responseTimer: number | null = null;
 
-const projectPath = computed(() => appStore.settings.projectPath?.trim() || '');
+const projectPath = ref('');
 const projectFilesSettings = computed<ProjectFilesSettings>(() => ({
-  fileExtensions: appStore.settings.projectFilesExtensions,
-  ignoreDirs: appStore.settings.projectFilesIgnoreDirs,
-  maxFileContentLength: appStore.settings.projectFilesMaxFileContentLength,
+  fileExtensions: '.ts,.tsx,.js,.jsx,.vue',
+  ignoreDirs: 'node_modules,.git,dist',
+  maxFileContentLength: 15000,
 }));
 
 function createUserMessage(content: string): AgentMessage {
@@ -201,9 +199,9 @@ onBeforeUnmount(() => {
     <div v-if="!projectPath" class="warning-alert">
       <Alert>
         <CircleAlert class="h-4 w-4" />
-        <AlertTitle>未设置项目文件夹</AlertTitle>
+        <AlertTitle>项目目录设置正在重构</AlertTitle>
         <AlertDescription>
-          请先进入"应用设置"，选择本地项目目录后再使用代码分析页面。
+          代码分析页依赖的项目目录配置已暂时下线，等新的通用设置方案确定后再接回。
         </AlertDescription>
       </Alert>
     </div>
