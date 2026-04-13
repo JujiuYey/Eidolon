@@ -1,12 +1,12 @@
 <script setup lang="ts">
-// import { Badge } from '@/components/ui/badge';
-import deepseekIcon from '@/assets/model-icon/deepseek.svg';
-import minimaxIcon from '@/assets/model-icon/minimax.svg';
-import ollamaIcon from '@/assets/model-icon/ollama.svg';
-import volcengineIcon from '@/assets/model-icon/volcengine.svg';
+import type { ProviderType } from '@/services/model_config';
+import {
+  PROVIDER_ICONS,
+  PROVIDER_NAMES,
+} from '../_shared/provider-icons';
 
 interface StaticProviderItem {
-  id: string;
+  id: ProviderType;
   name: string;
   icon: string;
   website?: string;
@@ -18,29 +18,29 @@ const selectedProviderId = defineModel<string | null>('selectedProviderId');
 const staticProviders: StaticProviderItem[] = [
   {
     id: 'minimax',
-    name: 'MiniMax',
-    icon: minimaxIcon,
+    name: PROVIDER_NAMES.minimax,
+    icon: PROVIDER_ICONS.minimax,
     website: 'https://platform.minimaxi.com/',
     apiUrl: 'https://api.minimaxi.com/v1',
   },
   {
     id: 'volcengine',
-    name: '火山引擎',
-    icon: volcengineIcon,
+    name: PROVIDER_NAMES.volcengine,
+    icon: PROVIDER_ICONS.volcengine,
     website: 'https://www.volcengine.com/',
     apiUrl: 'https://ark.cn-beijing.volces.com/api/v3',
   },
   {
     id: 'deepseek',
-    name: 'DeepSeek',
-    icon: deepseekIcon,
+    name: PROVIDER_NAMES.deepseek,
+    icon: PROVIDER_ICONS.deepseek,
     website: 'https://www.deepseek.com/',
     apiUrl: 'https://api.deepseek.com',
   },
   {
     id: 'ollama',
-    name: 'Ollama',
-    icon: ollamaIcon,
+    name: PROVIDER_NAMES.ollama,
+    icon: PROVIDER_ICONS.ollama,
     website: '127.0.0.1:11434',
     apiUrl: 'http://127.0.0.1:11434/api',
   },
@@ -77,12 +77,6 @@ function handleSelect(id: string) {
             {{ provider.name }}
           </p>
         </div>
-
-        <!--
-          <Badge v-if="provider.enabled">
-          ON
-          </Badge>
-        -->
       </button>
     </nav>
   </aside>

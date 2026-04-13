@@ -12,7 +12,6 @@ import {
 } from 'lucide-vue-next';
 import type { AcceptableValue } from 'reka-ui';
 import { toast } from 'vue-sonner';
-import minimaxIcon from '@/assets/model-icon/minimax.svg';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,12 +22,15 @@ import SagSelect from '@/components/sag/sag-select/index.vue';
 import {
   createModelConfig,
   deleteModelConfig,
-  // testAiConnection,
-  updateModelConfig,
+
 } from '@/services/model_config';
-import type { ModelConfig } from '@/services/model_config';
+import type { ModelConfig, ProviderType } from '@/services/model_config';
 import { getErrorMessage } from '@/utils/helpers';
-import { AI_PROVIDERS, CUSTOM_VENDOR_ID } from '../_shared/const';
+import {
+  PROVIDER_ICONS,
+  PROVIDER_NAMES,
+  PROVIDER_FALLBACK_CLASS,
+} from '../_shared/provider-icons';
 
 const props = defineProps<{
   selectedProviderId: string;
@@ -38,154 +40,141 @@ const emit = defineEmits<{
   (e: 'refresh'): void;
 }>();
 
-interface PanelProviderPresentation {
-  name: string;
-  initials: string;
-  icon?: string;
-  iconFallbackClass: string;
-}
-
-const MOCK_PROVIDER_PRESENTATION: PanelProviderPresentation = {
-  name: 'MiniMax',
-  initials: 'MM',
-  icon: minimaxIcon,
-  iconFallbackClass: 'bg-rose-50 text-rose-500',
-};
-
-const MOCK_MODELS: string[] = [
-  'MiniMax-M2.7',
-  'MiniMax-M2.7-highspeed',
-  'MiniMax-Text-01',
-  'MiniMax-VL-01',
+// 提供商选项
+const providerOptions = [
+  { label: 'MiniMax', value: 'minimax' as ProviderType },
+  { label: '火山引擎', value: 'volcengine' as ProviderType },
+  { label: 'DeepSeek', value: 'deepseek' as ProviderType },
+  { label: 'Ollama', value: 'ollama' as ProviderType },
 ];
 
 function createEmptyFormData(): ModelConfig {
   return {
-    id: '',
-    name: '',
+    provider_type: 'minimax',
+    enabled: true,
     api_key: '',
     base_url: '',
-    model: '',
-    temperature: 0.7,
-    top_p: 1.0,
-    max_tokens: null,
-    top_k: null,
-    is_active: true,
-    is_default: false,
+    selected_model_id: '',
+    catalog: {
+      items: [],
+    },
     created_at: '',
     updated_at: '',
   };
 }
 
-function createMockFormData(id: string): ModelConfig {
+function createProviderFormData(providerType: ProviderType): ModelConfig {
+  const defaultUrls: Record<ProviderType, string> = {
+    minimax: 'https://api.minimaxi.com/v1',
+    volcengine: 'https://ark.cn-beijing.volces.com/api/v3',
+    deepseek: 'https://api.deepseek.com/v1',
+    ollama: 'http://127.0.0.1:11434/api',
+  };
+
+  const defaultModels: Record<ProviderType, string[]> = {
+    minimax: ['MiniMax-M2.7', 'MiniMax-M2.7-highspeed', 'MiniMax-Text-01'],
+    volcengine: ['doubao-pro-32k', 'doubao-lite-32k'],
+    deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+    ollama: ['llama3', 'qwen2', 'mistral'],
+  };
+
   return {
-    ...createEmptyFormData(),
-    id,
-    name: 'MiniMax 默认配置',
-    base_url: 'https://api.minimaxi.com/v1',
-    model: MOCK_MODELS[0] ?? '',
-    is_active: true,
+    provider_type: providerType,
+    enabled: true,
+    api_key: '',
+    base_url: defaultUrls[providerType],
+    selected_model_id: '',
+    catalog: {
+      items: defaultModels[providerType].map(id => ({
+        id,
+        name: id,
+        enabled: true,
+        capabilities: {
+          chat: true,
+          vision: false,
+          tool_call: true,
+          reasoning: id.includes('reasoner'),
+          embedding: false,
+        },
+      })),
+    },
+    created_at: '',
+    updated_at: '',
   };
 }
 
-function normalizeProviderKey(value = '') {
-  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
-
-function findPresetVendor(value?: string | null) {
-  const normalizedValue = normalizeProviderKey(value ?? '');
-
-  if (!normalizedValue) {
-    return undefined;
-  }
-
-  return AI_PROVIDERS.find(provider =>
-    [
-      provider.id,
-      provider.name,
-      provider.base_url,
-    ].some(candidate => normalizeProviderKey(candidate).includes(normalizedValue) || normalizedValue.includes(normalizeProviderKey(candidate))),
-  );
-}
-
-const isPresetVendor = ref(false);
-const modelSelectOptions = ref<Array<{ label: string; value: string }>>([]);
-const vendorId = ref<string>(CUSTOM_VENDOR_ID);
+const isProviderPanel = computed(() => Boolean(props.selectedProviderId));
 const formData = ref<ModelConfig>(createEmptyFormData());
 const deleteConfirmOpen = ref(false);
 const showApiKey = ref(false);
-// const testingConnection = ref(false);
-const isMockProviderPanel = computed(() => Boolean(props.selectedProviderId));
 
-const vendorOptions = computed(() => {
-  const presetOptions = AI_PROVIDERS.map(provider => ({
-    label: provider.name,
-    value: provider.id,
-  }));
-
-  return [
-    ...presetOptions,
-    {
-      label: '自定义',
-      value: CUSTOM_VENDOR_ID,
-    },
-  ];
-});
-
+// 提供商展示信息
 const providerPresentation = computed(() => {
-  return MOCK_PROVIDER_PRESENTATION;
+  if (isProviderPanel.value) {
+    const providerType = props.selectedProviderId as ProviderType;
+    return {
+      name: PROVIDER_NAMES[providerType] || PROVIDER_NAMES.minimax,
+      icon: PROVIDER_ICONS[providerType] || PROVIDER_ICONS.minimax,
+      fallbackClass: PROVIDER_FALLBACK_CLASS[providerType] || PROVIDER_FALLBACK_CLASS.minimax,
+    };
+  }
+
+  const providerType = formData.value.provider_type;
+  return {
+    name: PROVIDER_NAMES[providerType] || '模型平台',
+    icon: PROVIDER_ICONS[providerType],
+    fallbackClass: PROVIDER_FALLBACK_CLASS[providerType] || 'bg-neutral-100 text-neutral-600',
+  };
 });
 
 const panelTitle = computed(() => {
-  if (isMockProviderPanel.value) {
+  if (isProviderPanel.value) {
     return providerPresentation.value.name;
   }
-
-  return formData.value.name || '模型平台';
-});
-
-const isFormValid = computed(() => {
-  return Boolean(formData.value.name && formData.value.api_key && formData.value.base_url && formData.value.model);
+  return PROVIDER_NAMES[formData.value.provider_type] || '模型平台';
 });
 
 const availableModels = computed(() => {
-  if (isMockProviderPanel.value) {
-    return MOCK_MODELS;
+  if (isProviderPanel.value) {
+    const providerType = props.selectedProviderId as ProviderType;
+    const defaultModels: Record<ProviderType, string[]> = {
+      minimax: ['MiniMax-M2.7', 'MiniMax-M2.7-highspeed', 'MiniMax-Text-01'],
+      volcengine: ['doubao-pro-32k', 'doubao-lite-32k'],
+      deepseek: ['deepseek-chat', 'deepseek-reasoner'],
+      ollama: ['llama3', 'qwen2', 'mistral'],
+    };
+    return defaultModels[providerType] || [];
   }
 
-  const models = new Set<string>();
+  return formData.value.catalog.items.map(item => item.id);
+});
 
-  modelSelectOptions.value.forEach(option => models.add(option.value));
-
-  if (formData.value.model) {
-    models.add(formData.value.model);
-  }
-
-  return Array.from(models);
+const isFormValid = computed(() => {
+  return Boolean(
+    formData.value.api_key
+    && formData.value.base_url
+    && formData.value.selected_model_id,
+  );
 });
 
 const canRestoreBaseUrl = computed(() => {
-  if (!isPresetVendor.value) {
-    return false;
-  }
-
-  const vendor = findPresetVendor(vendorId.value);
-  return Boolean(vendor && vendor.base_url !== formData.value.base_url);
+  const defaultUrls: Record<ProviderType, string> = {
+    minimax: 'https://api.minimaxi.com/v1',
+    volcengine: 'https://ark.cn-beijing.volces.com/api/v3',
+    deepseek: 'https://api.deepseek.com/v1',
+    ollama: 'http://127.0.0.1:11434/api',
+  };
+  const defaultUrl = defaultUrls[formData.value.provider_type];
+  return Boolean(defaultUrl && formData.value.base_url !== defaultUrl);
 });
 
 function hydrateForm(id: string | null) {
   if (!id) {
     formData.value = createEmptyFormData();
-    vendorId.value = CUSTOM_VENDOR_ID;
-    isPresetVendor.value = false;
-    modelSelectOptions.value = [];
     return;
   }
 
-  formData.value = createMockFormData(id);
-  vendorId.value = 'MiniMax';
-  isPresetVendor.value = true;
-  modelSelectOptions.value = [];
+  formData.value = createProviderFormData(id as ProviderType);
 }
 
 watch(
@@ -196,63 +185,36 @@ watch(
   { immediate: true },
 );
 
-function onVendorChange(value: AcceptableValue) {
-  const nextVendorId = String(value ?? CUSTOM_VENDOR_ID);
-  vendorId.value = nextVendorId;
+function onProviderChange(value: AcceptableValue) {
+  const providerType = value as ProviderType;
+  formData.value = createProviderFormData(providerType);
+}
 
-  const vendor = findPresetVendor(nextVendorId);
+function selectModel(modelId: string) {
+  formData.value.selected_model_id = modelId;
+}
 
-  if (!vendor || nextVendorId === CUSTOM_VENDOR_ID) {
-    isPresetVendor.value = false;
-    modelSelectOptions.value = [];
-
-    if (!props.selectedProviderId) {
-      formData.value.base_url = '';
-      formData.value.model = '';
-    }
-
-    return;
-  }
-
-  isPresetVendor.value = true;
-  modelSelectOptions.value = vendor.models.map(model => ({
-    label: model,
-    value: model,
-  }));
-
-  formData.value.name = vendor.name;
-  formData.value.base_url = vendor.base_url;
-  formData.value.model = vendor.models[0] ?? formData.value.model;
+function restorePresetBaseUrl() {
+  const defaultUrls: Record<ProviderType, string> = {
+    minimax: 'https://api.minimaxi.com/v1',
+    volcengine: 'https://ark.cn-beijing.volces.com/api/v3',
+    deepseek: 'https://api.deepseek.com/v1',
+    ollama: 'http://127.0.0.1:11434/api',
+  };
+  formData.value.base_url = defaultUrls[formData.value.provider_type];
 }
 
 function toggleShowApiKey() {
   showApiKey.value = !showApiKey.value;
 }
 
-function selectModel(model: string) {
-  formData.value.model = model;
-}
-
-function restorePresetBaseUrl() {
-  const vendor = findPresetVendor(vendorId.value);
-
-  if (vendor) {
-    formData.value.base_url = vendor.base_url;
-  }
-}
-
 async function saveConfig() {
-  if (isMockProviderPanel.value) {
+  if (isProviderPanel.value) {
     return;
   }
 
   try {
-    if (props.selectedProviderId) {
-      await updateModelConfig(formData.value);
-    } else {
-      await createModelConfig(formData.value);
-    }
-
+    await createModelConfig(formData.value);
     toast.success('保存成功');
     emit('refresh');
   } catch (error) {
@@ -261,7 +223,7 @@ async function saveConfig() {
 }
 
 function deleteConfig() {
-  if (!props.selectedProviderId || isMockProviderPanel.value) {
+  if (!props.selectedProviderId || isProviderPanel.value) {
     return;
   }
 
@@ -269,7 +231,7 @@ function deleteConfig() {
 }
 
 async function deleteConfirm() {
-  if (!props.selectedProviderId || isMockProviderPanel.value) {
+  if (!props.selectedProviderId || isProviderPanel.value) {
     return;
   }
 
@@ -283,34 +245,10 @@ async function deleteConfirm() {
   }
 }
 
-// async function testConnection() {
-//   if (isMockProviderPanel.value) {
-//     return;
-//   }
-
-//   testingConnection.value = true;
-
-//   try {
-//     await testAiConnection({
-//       api_key: formData.value.api_key,
-//       base_url: formData.value.base_url,
-//       model: formData.value.model,
-//     });
-//     toast.success('连接成功');
-//   } catch (error) {
-//     toast.error(getErrorMessage(error, '测试连接失败'));
-//   } finally {
-//     testingConnection.value = false;
-//   }
-// }
-
 defineExpose({
   formData,
   resetForm: () => {
     formData.value = createEmptyFormData();
-    vendorId.value = CUSTOM_VENDOR_ID;
-    isPresetVendor.value = false;
-    modelSelectOptions.value = [];
   },
 });
 </script>
@@ -321,10 +259,7 @@ defineExpose({
     <div class="flex items-start justify-between gap-4 border-b px-8 py-6">
       <div class="min-w-0 space-y-3">
         <div class="flex items-center gap-3">
-          <div
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-xs ring-1 ring-black/5"
-            :class="!providerPresentation.icon ? providerPresentation.iconFallbackClass : ''"
-          >
+          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-xs ring-1 ring-black/5">
             <img
               v-if="providerPresentation.icon"
               :src="providerPresentation.icon"
@@ -334,8 +269,9 @@ defineExpose({
             <span
               v-else
               class="text-sm font-semibold"
+              :class="providerPresentation.fallbackClass"
             >
-              {{ providerPresentation.initials }}
+              {{ providerPresentation.name.slice(0, 2) }}
             </span>
           </div>
 
@@ -361,24 +297,18 @@ defineExpose({
           class="grid gap-3 md:grid-cols-[240px_minmax(0,240px)]"
         >
           <SagSelect
-            :model-value="vendorId"
-            :options="vendorOptions"
+            :model-value="formData.provider_type"
+            :options="providerOptions"
             placeholder="请选择平台类型"
             :clearable="false"
-            @update:model-value="onVendorChange"
-          />
-          <Input
-            v-model="formData.name"
-            type="text"
-            placeholder="配置名称"
-            class="h-10 rounded-xl"
+            @update:model-value="onProviderChange"
           />
         </div>
       </div>
 
       <div class="flex items-center gap-3 pt-1">
         <span class="text-sm font-medium text-muted-foreground">启用</span>
-        <Switch v-model="formData.is_active" />
+        <Switch v-model="formData.enabled" />
       </div>
     </div>
 
@@ -460,21 +390,6 @@ defineExpose({
           </div>
 
           <div
-            v-if="!isPresetVendor"
-            class="rounded-2xl border border-dashed bg-muted/10 p-4"
-          >
-            <div class="space-y-2">
-              <Label>自定义模型名称</Label>
-              <Input
-                v-model="formData.model"
-                type="text"
-                placeholder="例如: gpt-4o, qwen-max, deepseek-chat"
-                class="h-11 rounded-xl"
-              />
-            </div>
-          </div>
-
-          <div
             v-if="availableModels.length > 0"
             class="space-y-3"
           >
@@ -483,14 +398,11 @@ defineExpose({
               :key="model"
               type="button"
               class="flex w-full items-center justify-between gap-4 rounded-2xl border bg-background px-5 py-4 text-left transition hover:bg-muted/20"
-              :class="formData.model === model ? 'bg-accent/40' : ''"
+              :class="formData.selected_model_id === model ? 'bg-accent/40' : ''"
               @click="selectModel(model)"
             >
               <div class="flex min-w-0 items-center gap-3">
-                <div
-                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5"
-                  :class="!providerPresentation.icon ? providerPresentation.iconFallbackClass : ''"
-                >
+                <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
                   <img
                     v-if="providerPresentation.icon"
                     :src="providerPresentation.icon"
@@ -500,8 +412,9 @@ defineExpose({
                   <span
                     v-else
                     class="text-[10px] font-semibold"
+                    :class="providerPresentation.fallbackClass"
                   >
-                    {{ providerPresentation.initials }}
+                    {{ providerPresentation.name.slice(0, 2) }}
                   </span>
                 </div>
 
@@ -533,7 +446,7 @@ defineExpose({
         type="button"
         variant="destructive"
         class="h-10 rounded-xl"
-        :disabled="!props.selectedProviderId || isMockProviderPanel"
+        :disabled="!props.selectedProviderId || isProviderPanel"
         @click="deleteConfig"
       >
         <Trash2 class="mr-2 h-4 w-4" />
@@ -543,7 +456,7 @@ defineExpose({
       <Button
         type="button"
         class="h-10 rounded-xl px-5"
-        :disabled="!isFormValid || isMockProviderPanel"
+        :disabled="!isFormValid || isProviderPanel"
         @click="saveConfig"
       >
         <Check class="mr-2 h-4 w-4" />

@@ -1,12 +1,14 @@
-import type { ModelConfig } from '@/services/model_config';
+import type { ProviderType } from '@/services/model_config';
 import deepseekIcon from '@/assets/model-icon/deepseek.svg';
 import minimaxIcon from '@/assets/model-icon/minimax.svg';
 import ollamaIcon from '@/assets/model-icon/ollama.svg';
 import volcengineIcon from '@/assets/model-icon/volcengine.svg';
 
-type ProviderLookupInput = Partial<Pick<ModelConfig, 'name' | 'base_url' | 'model'>> & {
-  vendorId?: string | null;
-};
+interface ProviderLookupInput {
+  providerType?: ProviderType | null;
+  base_url?: string | null;
+  selected_model_id?: string | null;
+}
 
 export interface ProviderPresentation {
   id: string;
@@ -123,11 +125,18 @@ function getInitials(name: string) {
 }
 
 export function resolveProviderPresentation(input: ProviderLookupInput): ProviderPresentation {
+  // 优先通过 providerType 匹配
+  if (input.providerType) {
+    const matchedByType = KNOWN_PROVIDERS.find(p => p.id === input.providerType);
+    if (matchedByType) {
+      return matchedByType;
+    }
+  }
+
+  // 通过 base_url 和 selected_model_id 关键字匹配
   const haystack = [
-    input.vendorId,
-    input.name,
     input.base_url,
-    input.model,
+    input.selected_model_id,
   ]
     .filter(Boolean)
     .map(value => normalizeText(String(value)))
@@ -141,7 +150,8 @@ export function resolveProviderPresentation(input: ProviderLookupInput): Provide
     return matched;
   }
 
-  return buildFallbackPresentation(input.name || '模型平台');
+  // 默认返回 MiniMax 作为后备
+  return KNOWN_PROVIDERS[0] || buildFallbackPresentation('模型平台');
 }
 
 function resolveModelGroupTitle(model: string) {
