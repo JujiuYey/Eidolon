@@ -10,6 +10,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            commands::agent_profile::list_agent_profiles,
+            commands::agent_profile::get_agent_profile,
+            commands::agent_profile::upsert_agent_profile,
+            commands::agent_profile::delete_agent_profile,
             commands::app_paths::get_app_paths,
             commands::app_paths::open_directory,
             commands::conversation::send_conversation_message,

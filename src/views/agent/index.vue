@@ -2,13 +2,16 @@
 import { computed, onActivated, onMounted, ref } from 'vue';
 import { Bot, PencilLine, Plus, Sparkles } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
+import { toast } from 'vue-sonner';
 import { PROVIDER_REGISTRY } from '@/config/provider-registry';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { listAgentProfiles } from '@/services/agent-profile';
+import { listAgentProfiles } from '@/services/agent-profile-storage';
+import type { AgentProfile } from '@/types';
 
 const router = useRouter();
-const profiles = ref(listAgentProfiles());
+const profiles = ref<AgentProfile[]>([]);
+const isLoading = ref(true);
 
 const providerNameMap = new Map(
   PROVIDER_REGISTRY.map(provider => [provider.provider_id, provider.name]),
@@ -21,8 +24,16 @@ const profileCards = computed(() => {
   }));
 });
 
-function loadProfiles() {
-  profiles.value = listAgentProfiles();
+async function loadProfiles() {
+  isLoading.value = true;
+
+  try {
+    profiles.value = await listAgentProfiles();
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : '加载 Agent 失败');
+  } finally {
+    isLoading.value = false;
+  }
 }
 
 function openCreatePage() {
@@ -38,11 +49,11 @@ function editAgent(profileId: string) {
 }
 
 onMounted(() => {
-  loadProfiles();
+  void loadProfiles();
 });
 
 onActivated(() => {
-  loadProfiles();
+  void loadProfiles();
 });
 </script>
 
@@ -66,7 +77,16 @@ onActivated(() => {
     </div>
 
     <div
-      v-if="profileCards.length === 0"
+      v-if="isLoading"
+      class="flex flex-1 items-center justify-center"
+    >
+      <div class="text-sm text-muted-foreground">
+        正在加载 Agent...
+      </div>
+    </div>
+
+    <div
+      v-else-if="profileCards.length === 0"
       class="flex flex-1 items-center justify-center"
     >
       <div class="w-full max-w-xl rounded-2xl border border-dashed bg-muted/10 px-8 py-12 text-center">

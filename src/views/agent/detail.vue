@@ -6,10 +6,10 @@ import AgentConversationPanel from './components/AgentConversationPanel.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
-  getAgentProfile,
   listAgentConversationMessages,
   saveAgentConversationMessages,
 } from '@/services/agent-profile';
+import { getAgentProfile } from '@/services/agent-profile-storage';
 import type { AgentMessage, AgentProfile } from '@/types';
 
 const route = useRoute();
@@ -18,6 +18,7 @@ const router = useRouter();
 const profile = ref<AgentProfile | null>(null);
 const messages = ref<AgentMessage[]>([]);
 const busy = ref(false);
+const isLoading = ref(true);
 let responseTimer: number | null = null;
 
 const profileId = computed(() => String(route.params.id ?? ''));
@@ -54,8 +55,14 @@ function buildInitialMessage(currentProfile: AgentProfile): AgentMessage {
   ].join('\n'));
 }
 
-function loadProfile() {
-  profile.value = getAgentProfile(profileId.value);
+async function loadProfile() {
+  isLoading.value = true;
+
+  try {
+    profile.value = await getAgentProfile(profileId.value);
+  } finally {
+    isLoading.value = false;
+  }
 }
 
 function loadMessages() {
@@ -130,8 +137,8 @@ function buildMockReply(currentProfile: AgentProfile, question: string) {
   ].join('\n');
 }
 
-watch(profileId, () => {
-  loadProfile();
+watch(profileId, async () => {
+  await loadProfile();
   loadMessages();
 }, { immediate: true });
 
@@ -144,7 +151,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="h-full bg-background">
-    <div v-if="!profile" class="mx-auto flex h-full max-w-3xl items-center justify-center p-6">
+    <div v-if="isLoading" class="mx-auto flex h-full max-w-3xl items-center justify-center p-6">
+      <div class="text-sm text-muted-foreground">
+        正在加载 Agent...
+      </div>
+    </div>
+
+    <div v-else-if="!profile" class="mx-auto flex h-full max-w-3xl items-center justify-center p-6">
       <Alert class="max-w-xl">
         <AlertCircle class="size-4" />
         <AlertTitle>没有找到这个 Agent</AlertTitle>

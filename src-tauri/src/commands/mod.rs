@@ -1,3 +1,4 @@
+pub mod agent_profile;
 pub mod app_paths;
 pub mod codegen;
 pub mod conversation;
