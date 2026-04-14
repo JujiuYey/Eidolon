@@ -18,7 +18,7 @@ const routes = [
       },
       {
         path: '/agent/workspace',
-        component: () => import('@/views/agent/workspace.vue'),
+        component: () => import('@/views/agent/workspace/index.vue'),
       },
       {
         path: '/agent/new',

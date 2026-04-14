@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { Component } from 'vue';
-import { MessageCircle, Bot, Sparkles } from 'lucide-vue-next';
+import { MessageCircle, Bot, Sparkles, LayoutDashboard } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
 
 interface Menu {
@@ -21,7 +21,13 @@ const menus: Menu[] = [
     path: '/index',
   },
   {
-    title: '智能体',
+    title: '智能体工作台',
+    key: 'agent-workspace',
+    icon: LayoutDashboard,
+    path: '/agent/workspace',
+  },
+  {
+    title: '智能体管理',
     key: 'agent',
     icon: Bot,
     path: '/agent',
@@ -40,7 +46,14 @@ const menus: Menu[] = [
   },
 ];
 
-const currentKey = computed(() => route.path.split('/')[1] || 'index');
+const currentKey = computed(() => {
+  const path = route.path;
+  // Match workspace first
+  if (path.startsWith('/agent/workspace')) {
+    return 'agent-workspace';
+  }
+  return path.split('/')[1] || 'index';
+});
 
 function handleClick(menu: Menu) {
   router.push(menu.path);
