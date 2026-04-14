@@ -1,11 +1,10 @@
-import type { ProviderType } from '@/services/model_config';
 import deepseekIcon from '@/assets/model-icon/deepseek.svg';
 import minimaxIcon from '@/assets/model-icon/minimax.svg';
 import ollamaIcon from '@/assets/model-icon/ollama.svg';
 import volcengineIcon from '@/assets/model-icon/volcengine.svg';
 
 interface ProviderLookupInput {
-  providerType?: ProviderType | null;
+  providerType?: string | null;
   base_url?: string | null;
   selected_model_id?: string | null;
 }

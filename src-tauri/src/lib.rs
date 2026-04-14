@@ -12,11 +12,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::app_paths::get_app_paths,
             commands::app_paths::open_directory,
-            commands::model_config::list_model_configs,
-            commands::model_config::create_model_config,
-            commands::model_config::update_model_config,
-            commands::model_config::delete_model_config,
-            commands::model_config::set_default_config,
+            commands::model_config::list_provider_configs,
+            commands::model_config::upsert_provider_config,
+            commands::model_config::delete_provider_config,
+            commands::model_config::fetch_provider_models,
             commands::test_connection::test_ai_connection,
             commands::codegen::generate_crud,
             commands::codegen::parse_sql_ddl,
@@ -43,8 +42,8 @@ pub fn run() {
                 .map_err(|error| std::io::Error::other(error.to_string()))?;
 
             // 创建本地 JSON 存储
-            let store = LocalJsonStore::new(app_data_dir)
-                .map_err(|error| std::io::Error::other(error))?;
+            let store =
+                LocalJsonStore::new(app_data_dir).map_err(|error| std::io::Error::other(error))?;
 
             log::info!("数据存储位置: {}", store.data_dir().display());
 

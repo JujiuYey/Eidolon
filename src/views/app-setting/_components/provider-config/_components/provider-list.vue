@@ -1,80 +1,52 @@
 <script setup lang="ts">
-import type { ProviderType } from '@/services/model_config';
-import {
-  PROVIDER_ICONS,
-  PROVIDER_NAMES,
-} from '../_shared/provider-icons';
+import { useProviderStore } from '@/stores/provider';
 
-interface StaticProviderItem {
-  id: ProviderType;
-  name: string;
-  icon: string;
-  website?: string;
-  apiUrl?: string;
-}
-
-const selectedProviderId = defineModel<string | null>('selectedProviderId');
-
-const staticProviders: StaticProviderItem[] = [
-  {
-    id: 'minimax',
-    name: PROVIDER_NAMES.minimax,
-    icon: PROVIDER_ICONS.minimax,
-    website: 'https://platform.minimaxi.com/',
-    apiUrl: 'https://api.minimaxi.com/v1',
-  },
-  {
-    id: 'volcengine',
-    name: PROVIDER_NAMES.volcengine,
-    icon: PROVIDER_ICONS.volcengine,
-    website: 'https://www.volcengine.com/',
-    apiUrl: 'https://ark.cn-beijing.volces.com/api/v3',
-  },
-  {
-    id: 'deepseek',
-    name: PROVIDER_NAMES.deepseek,
-    icon: PROVIDER_ICONS.deepseek,
-    website: 'https://www.deepseek.com/',
-    apiUrl: 'https://api.deepseek.com',
-  },
-  {
-    id: 'ollama',
-    name: PROVIDER_NAMES.ollama,
-    icon: PROVIDER_ICONS.ollama,
-    website: '127.0.0.1:11434',
-    apiUrl: 'http://127.0.0.1:11434/api',
-  },
-];
-
-function handleSelect(id: string) {
-  selectedProviderId.value = id;
-}
+const store = useProviderStore();
 </script>
 
 <template>
   <aside class="flex h-full w-[248px] shrink-0 flex-col border-r bg-muted/10 p-3">
     <nav class="space-y-1.5">
       <button
-        v-for="provider of staticProviders"
-        :key="provider.id"
+        v-for="view of store.providerViews"
+        :key="view.id"
         type="button"
         class="flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors"
-        :class="selectedProviderId === provider.id
+        :class="store.selectedProviderId === view.id
           ? 'border-primary bg-primary/50 shadow-xs'
           : 'border-transparent hover:bg-primary/10'"
-        @click="handleSelect(provider.id)"
+        @click="store.selectedProviderId = view.id"
       >
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background ring-1 ring-black/5">
           <img
-            :src="provider.icon"
-            :alt="provider.name"
+            v-if="view.icon"
+            :src="view.icon"
+            :alt="view.name"
             class="h-6 w-6 object-contain"
           />
+          <span
+            v-else
+            class="text-xs font-semibold text-muted-foreground"
+          >
+            {{ view.name.slice(0, 2).toUpperCase() }}
+          </span>
         </div>
 
         <div class="min-w-0 flex-1">
           <p class="truncate text-sm font-medium text-foreground">
-            {{ provider.name }}
+            {{ view.name }}
+          </p>
+          <p
+            v-if="view.config"
+            class="truncate text-xs text-emerald-500"
+          >
+            已配置
+          </p>
+          <p
+            v-else
+            class="truncate text-xs text-muted-foreground"
+          >
+            未配置
           </p>
         </div>
       </button>
