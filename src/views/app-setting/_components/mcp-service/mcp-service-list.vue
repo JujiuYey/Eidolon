@@ -47,40 +47,22 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
           <h1 class="text-2xl font-bold">
             MCP 服务
           </h1>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="size-8 rounded-full text-muted-foreground hover:text-foreground"
-          >
+          <Button variant="ghost" size="icon-sm">
             <Search class="size-4" />
             <span class="sr-only">搜索 MCP 服务</span>
           </Button>
         </div>
 
         <div class="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            class="size-8 rounded-full bg-destructive/8 text-destructive hover:bg-destructive/12 hover:text-destructive"
-          >
+          <Button variant="outline" size="icon-sm">
             <TriangleAlert class="size-4" />
             <span class="sr-only">查看异常</span>
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            class="rounded-full px-4"
-            @click="openPrimaryEdit"
-          >
+          <Button variant="outline" size="sm" @click="openPrimaryEdit">
             <PencilLine class="size-4" />
             <span>编辑</span>
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            class="rounded-full px-4"
-            @click="emit('create')"
-          >
+          <Button variant="outline" size="sm" @click="emit('create')">
             <Plus class="size-4" />
             <span>添加</span>
           </Button>
@@ -90,9 +72,9 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
       <article
         v-for="service of services"
         :key="service.id"
-        class="rounded-[1.75rem] border px-5 py-5 shadow-sm transition-colors" :class="[
+        class="rounded-xl border px-5 py-5 shadow-sm transition-colors" :class="[
           service.highlighted
-            ? 'border-destructive/45 bg-destructive/5'
+            ? 'border-primary/30 bg-primary/5'
             : 'border-border/70 bg-card',
         ]"
       >
@@ -109,20 +91,11 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
                 :model-value="service.enabled"
                 @update:model-value="updateEnabled(service.id, $event)"
               />
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                class="size-8 rounded-full text-destructive/80 hover:bg-destructive/10 hover:text-destructive"
-              >
+              <Button variant="ghost" size="icon-sm">
                 <Trash2 class="size-4" />
                 <span class="sr-only">删除服务</span>
               </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                class="size-8 rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
-                @click="emit('editService', service.id)"
-              >
+              <Button variant="ghost" size="icon-sm" @click="emit('editService', service.id)">
                 <Settings2 class="size-4" />
                 <span class="sr-only">查看配置</span>
               </Button>

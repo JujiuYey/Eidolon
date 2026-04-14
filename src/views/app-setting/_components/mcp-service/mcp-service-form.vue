@@ -73,35 +73,21 @@ function createFormState(mode: McpServiceFormMode, service?: McpServiceCard | nu
 <template>
   <ScrollArea class="h-full pr-3">
     <section class="space-y-5 pb-6">
-      <Button
-        variant="ghost"
-        size="icon"
-        class="size-9 rounded-full"
-        @click="emit('back')"
-      >
+      <Button variant="ghost" size="icon" @click="emit('back')">
         <ArrowLeft class="size-4" />
         <span class="sr-only">返回 MCP 服务列表</span>
       </Button>
 
-      <article class="rounded-[1.75rem] border border-border/70 bg-card px-5 py-5 shadow-sm">
+      <article class="rounded-xl border border-border/70 bg-card px-5 py-5 shadow-sm">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex flex-wrap items-center gap-2">
             <h1 class="text-[1.35rem] font-semibold tracking-tight">
               {{ formTitle }}
             </h1>
-            <Button
-              variant="outline"
-              size="sm"
-              class="h-8 rounded-lg px-3"
-            >
+            <Button variant="outline" size="sm">
               日志
             </Button>
-            <Button
-              v-if="showDeleteAction"
-              variant="ghost"
-              size="icon-sm"
-              class="size-8 rounded-full text-destructive/80 hover:bg-destructive/10 hover:text-destructive"
-            >
+            <Button v-if="showDeleteAction" variant="ghost" size="icon-sm">
               <Trash2 class="size-4" />
               <span class="sr-only">删除服务</span>
             </Button>
@@ -109,12 +95,7 @@ function createFormState(mode: McpServiceFormMode, service?: McpServiceCard | nu
 
           <div class="flex items-center gap-3 self-end sm:self-auto">
             <Switch v-model="form.enabled" />
-            <Button
-              variant="outline"
-              size="sm"
-              class="h-10 rounded-full px-4 text-muted-foreground"
-              disabled
-            >
+            <Button variant="outline" size="sm" class="text-muted-foreground" disabled>
               <Save class="size-4" />
               <span>保存</span>
             </Button>
@@ -124,7 +105,7 @@ function createFormState(mode: McpServiceFormMode, service?: McpServiceCard | nu
         <Separator class="my-5" />
 
         <div class="mb-6 border-b">
-          <div class="inline-flex border-b-2 border-destructive pb-3 text-base font-medium text-destructive">
+          <div class="inline-flex border-b-2 border-primary pb-3 text-base font-medium text-primary">
             通用
           </div>
         </div>
@@ -132,7 +113,7 @@ function createFormState(mode: McpServiceFormMode, service?: McpServiceCard | nu
         <div class="space-y-6">
           <section class="space-y-2.5">
             <div class="flex items-center gap-1">
-              <span class="text-destructive">*</span>
+              <span class="text-primary">*</span>
               <Label>名称</Label>
             </div>
             <Input
@@ -153,7 +134,7 @@ function createFormState(mode: McpServiceFormMode, service?: McpServiceCard | nu
 
           <section class="space-y-2.5">
             <div class="flex items-center gap-1">
-              <span class="text-destructive">*</span>
+              <span class="text-primary">*</span>
               <Label>类型</Label>
             </div>
             <NativeSelect
@@ -174,7 +155,7 @@ function createFormState(mode: McpServiceFormMode, service?: McpServiceCard | nu
 
           <section class="space-y-2.5">
             <div class="flex items-center gap-1">
-              <span class="text-destructive">*</span>
+              <span class="text-primary">*</span>
               <Label>命令</Label>
             </div>
             <Input
@@ -235,13 +216,10 @@ function createFormState(mode: McpServiceFormMode, service?: McpServiceCard | nu
             </InputGroup>
           </section>
 
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 pt-2 text-base font-medium text-destructive transition hover:text-destructive/90"
-          >
+          <Button variant="link" size="sm" class="px-0">
             <ChevronDown class="size-4" />
             <span>高级设置</span>
-          </button>
+          </Button>
         </div>
       </article>
     </section>

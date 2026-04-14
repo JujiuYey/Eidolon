@@ -4,9 +4,9 @@ import McpServiceForm from './mcp-service-form.vue';
 import McpServiceList from './mcp-service-list.vue';
 import type { McpServiceCard, McpServiceFormMode } from './types';
 
-const blueSolidTagClass = 'border-transparent bg-sky-500 text-white hover:bg-sky-500';
-const blueOutlineTagClass = 'border-sky-400/70 bg-sky-50 text-sky-600 hover:bg-sky-50 dark:border-sky-500/60 dark:bg-sky-500/10 dark:text-sky-300 dark:hover:bg-sky-500/10';
-const greenOutlineTagClass = 'border-lime-400/70 bg-lime-50 text-lime-700 hover:bg-lime-50 dark:border-lime-500/60 dark:bg-lime-500/10 dark:text-lime-300 dark:hover:bg-lime-500/10';
+const primarySolidTagClass = 'border-transparent bg-primary text-primary-foreground hover:bg-primary';
+const primaryOutlineTagClass = 'border-primary/20 bg-primary/10 text-primary hover:bg-primary/10';
+const secondaryTagClass = 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary';
 
 const services = ref<McpServiceCard[]>([
   {
@@ -17,7 +17,7 @@ const services = ref<McpServiceCard[]>([
     tags: [
       {
         label: 'STDIO',
-        class: blueOutlineTagClass,
+        class: primaryOutlineTagClass,
       },
     ],
   },
@@ -28,15 +28,15 @@ const services = ref<McpServiceCard[]>([
     tags: [
       {
         label: '0.1.0',
-        class: blueSolidTagClass,
+        class: primarySolidTagClass,
       },
       {
         label: '内置',
-        class: blueOutlineTagClass,
+        class: primaryOutlineTagClass,
       },
       {
         label: 'CherryAI',
-        class: greenOutlineTagClass,
+        class: secondaryTagClass,
       },
     ],
   },
@@ -47,11 +47,11 @@ const services = ref<McpServiceCard[]>([
     tags: [
       {
         label: '0.1.0',
-        class: blueSolidTagClass,
+        class: primarySolidTagClass,
       },
       {
         label: 'STDIO',
-        class: blueOutlineTagClass,
+        class: primaryOutlineTagClass,
       },
     ],
   },
