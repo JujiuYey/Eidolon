@@ -59,7 +59,7 @@ function handleSubmit(payload: { text: string; files: unknown[] }) {
             {{ profile.enabledMcpServiceIds.length }} MCP
           </Badge>
           <Badge variant="outline">
-            {{ profile.enabledToolKeys.length }} 工具
+            默认启用 MCP 工具
           </Badge>
         </div>
       </div>

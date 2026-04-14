@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { Bot, Plus, Sparkles } from 'lucide-vue-next';
+import { computed, onActivated, onMounted, ref } from 'vue';
+import { Bot, PencilLine, Plus, Sparkles } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { PROVIDER_REGISTRY } from '@/config/provider-registry';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,10 @@ const profileCards = computed(() => {
   }));
 });
 
+function loadProfiles() {
+  profiles.value = listAgentProfiles();
+}
+
 function openCreatePage() {
   router.push('/agent/new');
 }
@@ -28,6 +32,18 @@ function openCreatePage() {
 function openAgent(profileId: string) {
   router.push(`/agent/${profileId}`);
 }
+
+function editAgent(profileId: string) {
+  router.push(`/agent/${profileId}/edit`);
+}
+
+onMounted(() => {
+  loadProfiles();
+});
+
+onActivated(() => {
+  loadProfiles();
+});
 </script>
 
 <template>
@@ -88,9 +104,19 @@ function openAgent(profileId: string) {
             </p>
           </div>
 
-          <Badge variant="outline" class="shrink-0">
-            {{ profile.modelId }}
-          </Badge>
+          <div class="flex shrink-0 items-center gap-2">
+            <Badge variant="outline">
+              {{ profile.modelId }}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              @click.stop="editAgent(profile.id)"
+            >
+              <PencilLine class="size-4" />
+              <span class="sr-only">编辑 Agent</span>
+            </Button>
+          </div>
         </div>
 
         <div class="mt-4 flex flex-wrap gap-2">

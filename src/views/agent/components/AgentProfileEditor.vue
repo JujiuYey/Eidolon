@@ -1,28 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-import { Bot, Cpu, Settings2, Sparkles, Wrench } from 'lucide-vue-next';
-import { PROVIDER_REGISTRY } from '@/config/provider-registry';
-import { listDefaultModelSettings } from '@/services/default_model';
-import { listMcpServices } from '@/services/mcp_service';
+import type { Component } from 'vue';
 import {
-  listProviderModels,
-  listProviderSettings,
-} from '@/services/provider_config';
-import type {
-  AgentProfile,
-  AgentProfileInput,
-} from '@/types';
-import type { DefaultModelSetting } from '@/types/default-model';
-import type {
-  McpDiscoveredTool,
-  McpService,
-} from '@/types/mcp-service';
-import type {
-  ProviderModel,
-  ProviderSetting,
-} from '@/types/provider';
-import { getErrorMessage } from '@/utils/helpers';
-import { toast } from 'vue-sonner';
+  Bot,
+  Brain,
+  Cpu,
+  Server,
+  Settings2,
+  Shield,
+  Sparkles,
+  Wrench,
+} from 'lucide-vue-next';
+import { PROVIDER_REGISTRY } from '@/config/provider-registry';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,16 +26,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
+import { listDefaultModelSettings } from '@/services/default_model';
+import { listMcpServices } from '@/services/mcp_service';
+import {
+  listProviderModels,
+  listProviderSettings,
+} from '@/services/provider_config';
+import type {
+  AgentProfile,
+  AgentProfileInput,
+} from '@/types';
+import type { DefaultModelSetting } from '@/types/default-model';
+import type { McpService } from '@/types/mcp-service';
+import type {
+  ProviderModel,
+  ProviderSetting,
+} from '@/types/provider';
+import { getErrorMessage } from '@/utils/helpers';
+import { toast } from 'vue-sonner';
 
-interface AgentToolOption {
-  key: string;
-  serviceId: string;
-  serviceName: string;
-  name: string;
+type AgentEditorSectionKey = 'basic' | 'prompt' | 'permissions' | 'skills' | 'mcp' | 'plugins' | 'advanced';
+
+interface AgentEditorMenu {
   title: string;
+  key: AgentEditorSectionKey;
+  icon: Component;
   description: string;
+  dividerAfter?: boolean;
 }
 
 interface AgentFormState {
@@ -58,7 +66,6 @@ interface AgentFormState {
   maxTokens: string;
   systemPrompt: string;
   enabledMcpServiceIds: string[];
-  enabledToolKeys: string[];
 }
 
 const props = defineProps<{
@@ -71,6 +78,53 @@ const emit = defineEmits<{
   (e: 'save', value: AgentProfileInput): void;
 }>();
 
+const menus: AgentEditorMenu[] = [
+  {
+    title: '基础设置',
+    key: 'basic',
+    icon: Bot,
+    description: '维护 Agent 名称、简介、模型和基础参数。',
+  },
+  {
+    title: '提示词设置',
+    key: 'prompt',
+    icon: Sparkles,
+    description: '定义这个 Agent 的 system prompt 与行为边界。',
+    dividerAfter: true,
+  },
+  {
+    title: '权限模式',
+    key: 'permissions',
+    icon: Shield,
+    description: '后续这里会定义确认策略、执行边界和批准模式。',
+  },
+  {
+    title: 'Skill',
+    key: 'skills',
+    icon: Brain,
+    description: '后续这里会管理这个 Agent 可用的 skills。',
+  },
+  {
+    title: 'MCP 服务',
+    key: 'mcp',
+    icon: Server,
+    description: '选择这个 Agent 可使用的 MCP 服务，默认启用其全部已发现工具。',
+  },
+  {
+    title: '插件',
+    key: 'plugins',
+    icon: Wrench,
+    description: '后续这里会接入插件扩展能力。',
+  },
+  {
+    title: '高级设置',
+    key: 'advanced',
+    icon: Settings2,
+    description: '后续这里放运行时和实验性配置。',
+  },
+];
+
+const activeSection = ref<AgentEditorSectionKey>('basic');
 const isLoading = ref(false);
 const providerSettings = ref<ProviderSetting[]>([]);
 const providerModels = ref<ProviderModel[]>([]);
@@ -90,8 +144,11 @@ const form = reactive<AgentFormState>({
   maxTokens: '4096',
   systemPrompt: '',
   enabledMcpServiceIds: [],
-  enabledToolKeys: [],
 });
+
+const activeMenu = computed<AgentEditorMenu>(() =>
+  menus.find(menu => menu.key === activeSection.value) ?? menus[0]!,
+);
 
 const enabledProviderOptions = computed(() => {
   return providerSettings.value
@@ -102,7 +159,6 @@ const enabledProviderOptions = computed(() => {
       return {
         id: setting.provider_id,
         name: meta?.name ?? setting.provider_id,
-        icon: meta?.icon,
       };
     });
 });
@@ -110,37 +166,24 @@ const enabledProviderOptions = computed(() => {
 const availableModelOptions = computed(() => {
   return providerModels.value
     .filter(model => model.provider_id === form.providerId)
-    .map(model => {
-      const provider = providerMetaMap.get(model.provider_id);
-
-      return {
-        value: model.model_id,
-        modelId: model.model_id,
-        providerName: provider?.name ?? model.provider_id,
-        providerIcon: provider?.icon,
-      };
-    });
+    .map(model => ({
+      modelId: model.model_id,
+    }));
 });
 
-const availableMcpServices = computed(() => {
-  return mcpServices.value.filter(service => service.enabled);
-});
-
-const availableToolOptions = computed<AgentToolOption[]>(() => {
-  return availableMcpServices.value
-    .filter(service => form.enabledMcpServiceIds.includes(service.id))
-    .flatMap(service => {
-      const tools = service.discovery?.tools ?? [];
-
-      return tools
-        .filter(tool => tool.enabled)
-        .map(tool => buildToolOption(service, tool));
-    });
-});
+const availableMcpServices = computed(() =>
+  mcpServices.value.filter(service => service.enabled),
+);
 
 const selectedModelLabel = computed(() => {
   return availableModelOptions.value.find(option => option.modelId === form.modelId)?.modelId ?? '';
 });
+
+const selectedMcpServices = computed(() =>
+  availableMcpServices.value.filter(service => form.enabledMcpServiceIds.includes(service.id)),
+);
+
+const selectedToolCount = computed(() => deriveEnabledToolKeys(form.enabledMcpServiceIds).length);
 
 const canSave = computed(() => {
   return Boolean(
@@ -155,11 +198,6 @@ watch(() => props.initialProfile, () => {
   hydrateForm();
 }, { immediate: true });
 
-watch(availableToolOptions, tools => {
-  const availableKeys = new Set(tools.map(tool => tool.key));
-  form.enabledToolKeys = form.enabledToolKeys.filter(key => availableKeys.has(key));
-});
-
 watch(() => form.providerId, providerId => {
   if (!providerId) {
     form.modelId = '';
@@ -170,17 +208,6 @@ watch(() => form.providerId, providerId => {
     form.modelId = availableModelOptions.value[0]?.modelId ?? '';
   }
 });
-
-function buildToolOption(service: McpService, tool: McpDiscoveredTool): AgentToolOption {
-  return {
-    key: `${service.id}:${tool.name}`,
-    serviceId: service.id,
-    serviceName: service.name,
-    name: tool.name,
-    title: tool.title || tool.name,
-    description: tool.description,
-  };
-}
 
 function hydrateForm() {
   const profile = props.initialProfile;
@@ -193,7 +220,6 @@ function hydrateForm() {
   form.maxTokens = profile?.maxTokens ?? '4096';
   form.systemPrompt = profile?.systemPrompt ?? '';
   form.enabledMcpServiceIds = [...(profile?.enabledMcpServiceIds ?? [])];
-  form.enabledToolKeys = [...(profile?.enabledToolKeys ?? [])];
 }
 
 function applyDefaultModelSetting() {
@@ -212,27 +238,23 @@ function applyDefaultModelSetting() {
   form.maxTokens = assistantSetting.max_tokens || '4096';
 }
 
-function toggleMcpService(serviceId: string, enabled: boolean) {
-  if (enabled) {
-    if (!form.enabledMcpServiceIds.includes(serviceId)) {
-      form.enabledMcpServiceIds = [...form.enabledMcpServiceIds, serviceId];
-    }
+function toggleMcpService(serviceId: string) {
+  if (form.enabledMcpServiceIds.includes(serviceId)) {
+    form.enabledMcpServiceIds = form.enabledMcpServiceIds.filter(id => id !== serviceId);
     return;
   }
 
-  form.enabledMcpServiceIds = form.enabledMcpServiceIds.filter(id => id !== serviceId);
-  form.enabledToolKeys = form.enabledToolKeys.filter(key => !key.startsWith(`${serviceId}:`));
+  form.enabledMcpServiceIds = [...form.enabledMcpServiceIds, serviceId];
 }
 
-function toggleTool(toolKey: string, enabled: boolean) {
-  if (enabled) {
-    if (!form.enabledToolKeys.includes(toolKey)) {
-      form.enabledToolKeys = [...form.enabledToolKeys, toolKey];
-    }
-    return;
-  }
-
-  form.enabledToolKeys = form.enabledToolKeys.filter(key => key !== toolKey);
+function deriveEnabledToolKeys(serviceIds: string[]) {
+  return availableMcpServices.value
+    .filter(service => serviceIds.includes(service.id))
+    .flatMap(service =>
+      (service.discovery?.tools ?? [])
+        .filter(tool => tool.enabled)
+        .map(tool => `${service.id}:${tool.name}`),
+    );
 }
 
 function handleSave() {
@@ -246,7 +268,7 @@ function handleSave() {
     maxTokens: form.maxTokens.trim(),
     systemPrompt: form.systemPrompt.trim(),
     enabledMcpServiceIds: [...form.enabledMcpServiceIds],
-    enabledToolKeys: [...form.enabledToolKeys],
+    enabledToolKeys: deriveEnabledToolKeys(form.enabledMcpServiceIds),
   });
 }
 
@@ -286,235 +308,287 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="mx-auto flex h-full max-w-5xl flex-col overflow-hidden">
-    <div class="flex shrink-0 flex-col gap-3 border-b pb-5 lg:flex-row lg:items-end lg:justify-between">
-      <div>
-        <h1 class="text-2xl font-semibold tracking-tight text-foreground">
+  <div class="flex h-full overflow-hidden">
+    <aside class="flex w-56 flex-col border-r bg-sidebar py-4">
+      <div class="px-3 py-2">
+        <h2 class="mb-2 px-2 text-sm font-semibold text-sidebar-foreground/70">
           {{ mode === 'create' ? '新建 Agent' : '编辑 Agent' }}
-        </h1>
-        <p class="mt-2 text-sm text-muted-foreground">
-          先定义模型、提示词和可用能力，后面就可以基于这个 Agent 开始独立对话。
-        </p>
+        </h2>
+
+        <nav class="space-y-1">
+          <template v-for="(item, index) of menus" :key="item.key">
+            <Button
+              :variant="activeSection === item.key ? 'outline' : 'ghost'"
+              class="w-full justify-start gap-3"
+              @click="activeSection = item.key"
+            >
+              <component :is="item.icon" class="h-4 w-4 shrink-0" />
+              <span>{{ item.title }}</span>
+              <Badge
+                v-if="item.key === 'mcp' && form.enabledMcpServiceIds.length > 0"
+                variant="outline"
+                class="ml-auto border-border bg-muted text-muted-foreground"
+              >
+                {{ form.enabledMcpServiceIds.length }}
+              </Badge>
+            </Button>
+
+            <Separator
+              v-if="item.dividerAfter && index < menus.length - 1"
+              class="my-2"
+            />
+          </template>
+        </nav>
+      </div>
+    </aside>
+
+    <main class="mx-auto flex max-w-7xl flex-1 flex-col overflow-hidden p-6">
+      <div class="mb-6 flex shrink-0 flex-col gap-4 border-b pb-5 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight text-foreground">
+            {{ activeMenu.title }}
+          </h1>
+          <p class="mt-2 text-sm text-muted-foreground">
+            {{ activeMenu.description }}
+          </p>
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+          <Button variant="outline" @click="emit('cancel')">
+            取消
+          </Button>
+          <Button :disabled="!canSave || isLoading" @click="handleSave">
+            保存并进入对话
+          </Button>
+        </div>
       </div>
 
-      <div class="flex flex-wrap gap-2">
-        <Button variant="outline" @click="emit('cancel')">
-          取消
-        </Button>
-        <Button :disabled="!canSave || isLoading" @click="handleSave">
-          保存并进入对话
-        </Button>
-      </div>
-    </div>
+      <ScrollArea class="min-h-0 flex-1 pr-2">
+        <div class="space-y-6 pb-6">
+          <template v-if="activeSection === 'basic'">
+            <section class="rounded-xl border bg-card p-5 shadow-sm">
+              <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Bot class="size-4 text-primary" />
+                <span>Agent 信息</span>
+              </div>
 
-    <ScrollArea class="min-h-0 flex-1 pr-2">
-      <div class="space-y-6 py-6">
-        <section class="rounded-xl border bg-card p-5 shadow-sm">
-          <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Bot class="size-4 text-primary" />
-            <span>基本信息</span>
-          </div>
+              <div class="mt-5 grid gap-5">
+                <div class="space-y-2">
+                  <Label>名称</Label>
+                  <Input v-model="form.name" placeholder="例如：Obsidian 助手" />
+                </div>
 
-          <div class="mt-5 grid gap-5">
-            <div class="space-y-2">
-              <Label>名称</Label>
-              <Input v-model="form.name" placeholder="例如：Obsidian 助手" />
+                <div class="space-y-2">
+                  <Label>描述</Label>
+                  <Textarea
+                    v-model="form.description"
+                    placeholder="简短说明这个 Agent 的职责和风格"
+                    class="min-h-24"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section class="rounded-xl border bg-card p-5 shadow-sm">
+              <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Cpu class="size-4 text-primary" />
+                <span>模型设置</span>
+              </div>
+
+              <div class="mt-5 grid gap-5 lg:grid-cols-2">
+                <div class="space-y-2">
+                  <Label>Provider</Label>
+                  <Select v-model="form.providerId" :disabled="enabledProviderOptions.length === 0">
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择模型厂商" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem
+                          v-for="provider of enabledProviderOptions"
+                          :key="provider.id"
+                          :value="provider.id"
+                        >
+                          {{ provider.name }}
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div class="space-y-2">
+                  <Label>模型</Label>
+                  <Select v-model="form.modelId" :disabled="availableModelOptions.length === 0">
+                    <SelectTrigger>
+                      <SelectValue placeholder="选择模型">
+                        <span v-if="selectedModelLabel" class="truncate">
+                          {{ selectedModelLabel }}
+                        </span>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectGroup>
+                        <SelectItem
+                          v-for="option of availableModelOptions"
+                          :key="option.modelId"
+                          :value="option.modelId"
+                        >
+                          {{ option.modelId }}
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div class="space-y-2">
+                  <Label>Temperature</Label>
+                  <Input v-model="form.temperature" placeholder="0.7" />
+                </div>
+
+                <div class="space-y-2">
+                  <Label>Max Tokens</Label>
+                  <Input v-model="form.maxTokens" placeholder="4096" />
+                </div>
+              </div>
+            </section>
+          </template>
+
+          <section v-else-if="activeSection === 'prompt'" class="rounded-xl border bg-card p-5 shadow-sm">
+            <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Sparkles class="size-4 text-primary" />
+              <span>System Prompt</span>
             </div>
 
-            <div class="space-y-2">
-              <Label>描述</Label>
+            <div class="mt-5 space-y-2">
+              <Label>提示词</Label>
               <Textarea
-                v-model="form.description"
-                placeholder="简短说明这个 Agent 的职责和风格"
-                class="min-h-24"
+                v-model="form.systemPrompt"
+                placeholder="描述这个 Agent 的角色、边界和工作方式"
+                class="min-h-[260px]"
               />
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="rounded-xl border bg-card p-5 shadow-sm">
-          <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Cpu class="size-4 text-primary" />
-            <span>模型</span>
-          </div>
-
-          <div class="mt-5 grid gap-5 lg:grid-cols-2">
-            <div class="space-y-2">
-              <Label>Provider</Label>
-              <Select v-model="form.providerId" :disabled="enabledProviderOptions.length === 0">
-                <SelectTrigger>
-                  <SelectValue placeholder="选择模型厂商" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem
-                      v-for="provider of enabledProviderOptions"
-                      :key="provider.id"
-                      :value="provider.id"
-                    >
-                      {{ provider.name }}
-                    </SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div class="space-y-2">
-              <Label>模型</Label>
-              <Select v-model="form.modelId" :disabled="availableModelOptions.length === 0">
-                <SelectTrigger>
-                  <SelectValue placeholder="选择模型">
-                    <span v-if="selectedModelLabel" class="truncate">
-                      {{ selectedModelLabel }}
-                    </span>
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectItem
-                      v-for="option of availableModelOptions"
-                      :key="option.value"
-                      :value="option.modelId"
-                    >
-                      {{ option.modelId }}
-                    </SelectItem>
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div class="space-y-2">
-              <Label>Temperature</Label>
-              <Input v-model="form.temperature" placeholder="0.7" />
-            </div>
-
-            <div class="space-y-2">
-              <Label>Max Tokens</Label>
-              <Input v-model="form.maxTokens" placeholder="4096" />
-            </div>
-          </div>
-        </section>
-
-        <section class="rounded-xl border bg-card p-5 shadow-sm">
-          <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Sparkles class="size-4 text-primary" />
-            <span>提示词</span>
-          </div>
-
-          <div class="mt-5 space-y-2">
-            <Label>System Prompt</Label>
-            <Textarea
-              v-model="form.systemPrompt"
-              placeholder="描述这个 Agent 的角色、边界和工作方式"
-              class="min-h-[220px]"
-            />
-          </div>
-        </section>
-
-        <section class="rounded-xl border bg-card p-5 shadow-sm">
-          <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Settings2 class="size-4 text-primary" />
-            <span>MCP 服务</span>
-          </div>
-
-          <div class="mt-5">
-            <Alert v-if="availableMcpServices.length === 0">
-              <Wrench class="size-4" />
-              <AlertTitle>还没有可用 MCP 服务</AlertTitle>
-              <AlertDescription>
-                先去“应用设置 → MCP 服务”里配置并测试连接，完成后这里就可以直接选择。
-              </AlertDescription>
-            </Alert>
-
-            <div v-else class="space-y-3">
-              <button
-                v-for="service of availableMcpServices"
-                :key="service.id"
-                type="button"
-                class="flex w-full items-start justify-between gap-4 rounded-xl border px-4 py-4 text-left transition-colors"
-                :class="form.enabledMcpServiceIds.includes(service.id)
-                  ? 'border-primary bg-primary/5'
-                  : 'border-border hover:bg-muted/20'"
-                @click="toggleMcpService(service.id, !form.enabledMcpServiceIds.includes(service.id))"
-              >
-                <div class="min-w-0 space-y-2">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="text-sm font-medium text-foreground">
-                      {{ service.name }}
-                    </p>
-                    <Badge variant="outline" class="border-border bg-muted text-muted-foreground">
-                      {{ service.transport_type === 'stdio' ? 'STDIO' : 'HTTP' }}
-                    </Badge>
-                    <Badge
-                      v-if="service.discovery?.tools?.length"
-                      variant="outline"
-                      class="border-border bg-muted text-muted-foreground"
-                    >
-                      {{ service.discovery?.tools?.length }} 工具
-                    </Badge>
-                  </div>
-                  <p class="text-sm text-muted-foreground">
-                    {{ service.description || service.discovery?.server_name || '这个服务还没有额外描述。' }}
-                  </p>
-                </div>
-
-                <Switch
-                  :model-value="form.enabledMcpServiceIds.includes(service.id)"
-                  @update:model-value="toggleMcpService(service.id, Boolean($event))"
-                />
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section class="rounded-xl border bg-card p-5 shadow-sm">
-          <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <Wrench class="size-4 text-primary" />
-            <span>工具</span>
-          </div>
-
-          <div class="mt-5">
-            <Alert v-if="form.enabledMcpServiceIds.length === 0">
-              <Wrench class="size-4" />
-              <AlertTitle>先选择 MCP 服务</AlertTitle>
-              <AlertDescription>
-                选中一个或多个 MCP 服务后，这里才会列出对应的可用工具。
-              </AlertDescription>
-            </Alert>
-
-            <div v-else-if="availableToolOptions.length === 0" class="rounded-xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground">
-              当前已选服务还没有发现可用工具，或者这些工具在 MCP 设置里被全局禁用了。
-            </div>
-
-            <div v-else class="space-y-3">
-              <div
-                v-for="tool of availableToolOptions"
-                :key="tool.key"
-                class="flex items-start justify-between gap-4 rounded-xl border px-4 py-4"
-              >
-                <div class="min-w-0 space-y-2">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="text-sm font-medium text-foreground">
-                      {{ tool.title }}
-                    </p>
-                    <Badge variant="outline" class="border-border bg-muted text-muted-foreground">
-                      {{ tool.serviceName }}
-                    </Badge>
-                  </div>
-                  <p class="text-sm text-muted-foreground">
-                    {{ tool.description || '这个工具没有额外描述。' }}
-                  </p>
-                </div>
-
-                <Switch
-                  :model-value="form.enabledToolKeys.includes(tool.key)"
-                  @update:model-value="toggleTool(tool.key, Boolean($event))"
-                />
+          <template v-else-if="activeSection === 'mcp'">
+            <section class="rounded-xl border bg-card p-5 shadow-sm">
+              <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Server class="size-4 text-primary" />
+                <span>可用 MCP 服务</span>
               </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    </ScrollArea>
+
+              <div class="mt-5">
+                <Alert v-if="availableMcpServices.length === 0">
+                  <Wrench class="size-4" />
+                  <AlertTitle>还没有可用 MCP 服务</AlertTitle>
+                  <AlertDescription>
+                    先去“应用设置 → MCP 服务”里配置并测试连接，完成后这里就可以直接选择。
+                  </AlertDescription>
+                </Alert>
+
+                <div v-else class="space-y-3">
+                  <button
+                    v-for="service of availableMcpServices"
+                    :key="service.id"
+                    type="button"
+                    class="flex w-full items-start justify-between gap-4 rounded-xl border px-4 py-4 text-left transition-colors"
+                    :class="form.enabledMcpServiceIds.includes(service.id)
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:bg-muted/20'"
+                    @click="toggleMcpService(service.id)"
+                  >
+                    <div class="min-w-0 space-y-2">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <p class="text-sm font-medium text-foreground">
+                          {{ service.name }}
+                        </p>
+                        <Badge variant="outline" class="border-border bg-muted text-muted-foreground">
+                          {{ service.transport_type === 'stdio' ? 'STDIO' : 'HTTP' }}
+                        </Badge>
+                        <Badge
+                          v-if="service.discovery?.tools?.length"
+                          variant="outline"
+                          class="border-border bg-muted text-muted-foreground"
+                        >
+                          {{ service.discovery?.tools?.length }} 工具
+                        </Badge>
+                      </div>
+
+                      <p class="text-sm text-muted-foreground">
+                        {{ service.description || service.discovery?.server_name || '这个服务还没有额外描述。' }}
+                      </p>
+                    </div>
+
+                    <Badge
+                      variant="outline"
+                      :class="form.enabledMcpServiceIds.includes(service.id)
+                        ? 'border-primary/20 bg-primary/10 text-primary'
+                        : 'border-border bg-muted text-muted-foreground'"
+                    >
+                      {{ form.enabledMcpServiceIds.includes(service.id) ? '已启用' : '点击启用' }}
+                    </Badge>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <Alert v-if="form.enabledMcpServiceIds.length > 0">
+              <Wrench class="size-4" />
+              <AlertTitle>默认启用所选 MCP 的全部工具</AlertTitle>
+              <AlertDescription>
+                当前已选择 {{ selectedMcpServices.length }} 个 MCP 服务，共会默认启用 {{ selectedToolCount }} 个已发现且全局启用的工具。第一版不再单独勾选工具。
+              </AlertDescription>
+            </Alert>
+          </template>
+
+          <template v-else-if="activeSection === 'permissions'">
+            <section class="rounded-xl border border-dashed bg-muted/10 p-6">
+              <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Shield class="size-4 text-primary" />
+                <span>权限模式</span>
+              </div>
+              <p class="mt-3 text-sm leading-6 text-muted-foreground">
+                这里后续会接入工具执行确认、自动批准策略、可访问范围和风险级别控制。现在先保留占位。
+              </p>
+            </section>
+          </template>
+
+          <template v-else-if="activeSection === 'skills'">
+            <section class="rounded-xl border border-dashed bg-muted/10 p-6">
+              <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Brain class="size-4 text-primary" />
+                <span>Skill</span>
+              </div>
+              <p class="mt-3 text-sm leading-6 text-muted-foreground">
+                这里后续会让你为 Agent 指定默认 skills、偏好的工作流以及可启用的行为模板。现在先保留占位。
+              </p>
+            </section>
+          </template>
+
+          <template v-else-if="activeSection === 'plugins'">
+            <section class="rounded-xl border border-dashed bg-muted/10 p-6">
+              <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Wrench class="size-4 text-primary" />
+                <span>插件</span>
+              </div>
+              <p class="mt-3 text-sm leading-6 text-muted-foreground">
+                这里后续会接入插件能力，比如额外的数据源、动作执行器或扩展面板。现在先保留占位。
+              </p>
+            </section>
+          </template>
+
+          <template v-else-if="activeSection === 'advanced'">
+            <section class="rounded-xl border border-dashed bg-muted/10 p-6">
+              <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
+                <Settings2 class="size-4 text-primary" />
+                <span>高级设置</span>
+              </div>
+              <p class="mt-3 text-sm leading-6 text-muted-foreground">
+                这里后续会放运行时实验开关、上下文窗口策略、保留策略等高级选项。现在先保留占位。
+              </p>
+            </section>
+          </template>
+        </div>
+      </ScrollArea>
+    </main>
   </div>
 </template>

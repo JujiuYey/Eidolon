@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ArrowLeft, Bot, Cpu, Sparkles, Wrench } from 'lucide-vue-next';
+import { ArrowLeft, Bot, Cpu, PencilLine, Sparkles, Wrench } from 'lucide-vue-next';
 import { PROVIDER_REGISTRY } from '@/config/provider-registry';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'back'): void;
+  (e: 'edit'): void;
 }>();
 
 const providerName = computed(() => {
@@ -27,11 +28,9 @@ const selectedServices = computed(() => {
 });
 
 const selectedTools = computed(() => {
-  const selectedToolKeys = new Set(props.profile.enabledToolKeys);
-
   return selectedServices.value.flatMap(service =>
     (service.discovery?.tools ?? [])
-      .filter(tool => selectedToolKeys.has(`${service.id}:${tool.name}`))
+      .filter(tool => tool.enabled)
       .map(tool => ({
         key: `${service.id}:${tool.name}`,
         label: tool.title || tool.name,
@@ -44,10 +43,17 @@ const selectedTools = computed(() => {
 <template>
   <div class="flex h-full min-h-0 flex-col">
     <div class="border-b px-4 py-4">
-      <Button variant="ghost" size="sm" class="px-0" @click="emit('back')">
-        <ArrowLeft class="size-4" />
-        返回 Agent 列表
-      </Button>
+      <div class="flex items-center justify-between gap-2">
+        <Button variant="ghost" size="sm" class="px-0" @click="emit('back')">
+          <ArrowLeft class="size-4" />
+          返回 Agent 列表
+        </Button>
+
+        <Button variant="outline" size="sm" @click="emit('edit')">
+          <PencilLine class="size-4" />
+          编辑
+        </Button>
+      </div>
     </div>
 
     <ScrollArea class="min-h-0 flex-1">
@@ -120,7 +126,7 @@ const selectedTools = computed(() => {
               {{ tool.label }}
             </Badge>
             <p v-if="selectedTools.length === 0" class="text-sm text-muted-foreground">
-              暂未单独选择工具
+              所选 MCP 暂无可用工具
             </p>
           </div>
         </section>

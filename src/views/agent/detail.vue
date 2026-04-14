@@ -26,6 +26,17 @@ const busy = ref(false);
 let responseTimer: number | null = null;
 
 const profileId = computed(() => String(route.params.id ?? ''));
+const selectedToolCount = computed(() => {
+  if (!profile.value) {
+    return 0;
+  }
+
+  return mcpServices.value
+    .filter(service => profile.value?.enabledMcpServiceIds.includes(service.id))
+    .reduce((count, service) => {
+      return count + (service.discovery?.tools ?? []).filter(tool => tool.enabled).length;
+    }, 0);
+});
 
 function createUserMessage(content: string): AgentMessage {
   return {
@@ -55,7 +66,7 @@ function buildInitialMessage(currentProfile: AgentProfile): AgentMessage {
     '',
     `- 模型：${currentProfile.modelId}`,
     `- MCP 服务：${currentProfile.enabledMcpServiceIds.length}`,
-    `- 工具：${currentProfile.enabledToolKeys.length}`,
+    `- 工具：${selectedToolCount.value}`,
   ].join('\n'));
 }
 
@@ -89,6 +100,10 @@ function persistMessages() {
 
 function handleBack() {
   router.push('/agent');
+}
+
+function handleEdit() {
+  router.push(`/agent/${profileId.value}/edit`);
 }
 
 function handleSubmit(content: string) {
@@ -129,6 +144,7 @@ function buildMockReply(currentProfile: AgentProfile, question: string) {
     `- 模型：${currentProfile.modelId}`,
     `- Temperature：${currentProfile.temperature || '未设置'}`,
     `- Max Tokens：${currentProfile.maxTokens || '未设置'}`,
+    `- MCP 工具数：${selectedToolCount.value}`,
     '',
     `### 提示词摘要`,
     currentProfile.systemPrompt.slice(0, 220) || '未设置提示词',
@@ -170,7 +186,12 @@ onBeforeUnmount(() => {
 
     <AgentLayout v-else>
       <template #files>
-        <AgentProfileSummary :profile="profile" :mcp-services="mcpServices" @back="handleBack" />
+        <AgentProfileSummary
+          :profile="profile"
+          :mcp-services="mcpServices"
+          @back="handleBack"
+          @edit="handleEdit"
+        />
       </template>
 
       <template #chat>
