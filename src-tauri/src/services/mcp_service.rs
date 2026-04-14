@@ -4,17 +4,17 @@ use std::time::Duration;
 
 use chrono::Utc;
 use rmcp::{
-    RoleClient, ServiceExt,
     model::{ClientInfo, Prompt, PromptArgument, Resource, ResourceTemplate, ServerInfo, Tool},
     service::Peer,
     transport::{ConfigureCommandExt, StreamableHttpClientTransport, TokioChildProcess},
+    RoleClient, ServiceExt,
 };
 use tokio::process::Command;
 use tokio::time::timeout;
 
 use crate::models::mcp_service::{
-    McpDiscoveredPrompt, McpDiscoveredResource, McpDiscoveredResourceTemplate,
-    McpDiscoveredTool, McpPromptArgument, McpService, McpServiceDiscovery, McpTransportType,
+    McpDiscoveredPrompt, McpDiscoveredResource, McpDiscoveredResourceTemplate, McpDiscoveredTool,
+    McpPromptArgument, McpService, McpServiceDiscovery, McpTransportType,
 };
 
 pub async fn discover_service(service: &McpService) -> Result<McpServiceDiscovery, String> {
@@ -44,33 +44,25 @@ async fn discover_stdio_service(service: &McpService) -> Result<McpServiceDiscov
         .spawn()
         .map_err(|error| format!("启动 MCP 进程失败: {error}"))?;
 
-    let client = ClientInfo::default()
-        .serve(transport)
-        .await
-        .map_err(|error| format!("连接 MCP 服务失败: {error}"))?;
+    let client = match ClientInfo::default().serve(transport).await {
+        Ok(client) => client,
+        Err(error) => {
+            return Err(append_stderr(format!("连接 MCP 服务失败: {error}"), stderr).await);
+        }
+    };
 
-    let discovery = collect_discovery_from_peer(client.peer(), client.peer_info(), service.discovery.as_ref())
-        .await;
+    let discovery = collect_discovery_from_peer(
+        client.peer(),
+        client.peer_info(),
+        service.discovery.as_ref(),
+    )
+    .await;
 
     let _ = client.cancel().await;
 
     match discovery {
         Ok(result) => Ok(result),
-        Err(error) => {
-            if let Some(mut stderr) = stderr {
-                let mut output = String::new();
-                use tokio::io::AsyncReadExt;
-                let _ = stderr.read_to_string(&mut output).await;
-                let trimmed = output.trim();
-                if trimmed.is_empty() {
-                    Err(error)
-                } else {
-                    Err(format!("{error}\nSTDERR: {trimmed}"))
-                }
-            } else {
-                Err(error)
-            }
-        }
+        Err(error) => Err(append_stderr(error, stderr).await),
     }
 }
 
@@ -83,8 +75,12 @@ async fn discover_streamable_http_service(
         .await
         .map_err(|error| format!("连接 MCP 服务失败: {error}"))?;
 
-    let discovery = collect_discovery_from_peer(client.peer(), client.peer_info(), service.discovery.as_ref())
-        .await;
+    let discovery = collect_discovery_from_peer(
+        client.peer(),
+        client.peer_info(),
+        service.discovery.as_ref(),
+    )
+    .await;
     let _ = client.cancel().await;
     discovery
 }
@@ -163,7 +159,8 @@ fn merge_tool_preferences(
         })
         .unwrap_or_default();
 
-    tools.into_iter()
+    tools
+        .into_iter()
         .map(|tool| {
             let (enabled, auto_approve) = existing_preferences
                 .get(tool.name.as_ref())
@@ -264,7 +261,10 @@ fn parse_env(raw: &str) -> Result<HashMap<String, String>, String> {
         }
 
         let Some((key, value)) = trimmed.split_once('=') else {
-            return Err(format!("环境变量第 {} 行格式不正确，应为 KEY=value", index + 1));
+            return Err(format!(
+                "环境变量第 {} 行格式不正确，应为 KEY=value",
+                index + 1
+            ));
         };
 
         let normalized_key = key.trim();
@@ -278,12 +278,25 @@ fn parse_env(raw: &str) -> Result<HashMap<String, String>, String> {
     Ok(env)
 }
 
+async fn append_stderr(error: String, stderr: Option<tokio::process::ChildStderr>) -> String {
+    if let Some(mut stderr) = stderr {
+        let mut output = String::new();
+        use tokio::io::AsyncReadExt;
+        let _ = stderr.read_to_string(&mut output).await;
+        let trimmed = output.trim();
+        if !trimmed.is_empty() {
+            return format!("{error}\nSTDERR: {trimmed}");
+        }
+    }
+
+    error
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
     use rmcp::{
-        ErrorData, RoleServer, ServerHandler, ServiceExt,
         model::AnnotateAble,
         model::{
             Implementation, ListPromptsResult, ListResourceTemplatesResult, ListResourcesResult,
@@ -291,10 +304,11 @@ mod tests {
             RawResourceTemplate, ServerCapabilities, ServerInfo, Tool,
         },
         service::RequestContext,
+        ErrorData, RoleServer, ServerHandler, ServiceExt,
     };
     use serde_json::Map;
 
-    use super::{ClientInfo, collect_discovery_from_peer, parse_env};
+    use super::{collect_discovery_from_peer, parse_env, ClientInfo};
     use crate::models::mcp_service::McpServiceDiscovery;
 
     #[derive(Clone, Default)]
@@ -352,19 +366,17 @@ mod tests {
             _request: Option<PaginatedRequestParams>,
             _context: RequestContext<RoleServer>,
         ) -> Result<ListResourcesResult, ErrorData> {
-            Ok(ListResourcesResult::with_all_items(vec![
-                RawResource {
-                    uri: "file:///README.md".to_string(),
-                    name: "README".to_string(),
-                    title: None,
-                    description: Some("Project README".to_string()),
-                    mime_type: Some("text/markdown".to_string()),
-                    size: None,
-                    icons: None,
-                    meta: None,
-                }
-                .no_annotation(),
-            ]))
+            Ok(ListResourcesResult::with_all_items(vec![RawResource {
+                uri: "file:///README.md".to_string(),
+                name: "README".to_string(),
+                title: None,
+                description: Some("Project README".to_string()),
+                mime_type: Some("text/markdown".to_string()),
+                size: None,
+                icons: None,
+                meta: None,
+            }
+            .no_annotation()]))
         }
 
         async fn list_resource_templates(
@@ -414,9 +426,10 @@ mod tests {
             ..Default::default()
         };
 
-        let discovery = collect_discovery_from_peer(client.peer(), client.peer_info(), Some(&existing))
-            .await
-            .expect("discovery should succeed");
+        let discovery =
+            collect_discovery_from_peer(client.peer(), client.peer_info(), Some(&existing))
+                .await
+                .expect("discovery should succeed");
 
         assert_eq!(discovery.server_name, "test-mcp");
         assert_eq!(discovery.server_version, "0.1.0");
@@ -431,7 +444,10 @@ mod tests {
         assert_eq!(discovery.prompts[0].arguments[0].name, "diff");
         assert!(discovery.prompts[0].arguments[0].required);
         assert_eq!(discovery.resources[0].uri, "file:///README.md");
-        assert_eq!(discovery.resource_templates[0].uri_template, "file:///src/{path}");
+        assert_eq!(
+            discovery.resource_templates[0].uri_template,
+            "file:///src/{path}"
+        );
 
         let _ = client.cancel().await;
     }

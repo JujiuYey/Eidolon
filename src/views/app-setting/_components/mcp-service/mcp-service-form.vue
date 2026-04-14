@@ -326,7 +326,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
               <Input
                 v-model="form.name"
                 placeholder="MCP 服务名称"
-                class="h-11 rounded-xl"
+                class="h-11"
               />
             </section>
 
@@ -335,7 +335,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
               <Textarea
                 v-model="form.description"
                 placeholder="给这个服务写一段备注，方便后续识别"
-                class="min-h-24 rounded-xl"
+                class="min-h-24"
               />
             </section>
 
@@ -346,7 +346,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
               </div>
               <NativeSelect
                 v-model="form.transportType"
-                class="h-11 w-full rounded-xl"
+                class="h-11 w-full"
               >
                 <option v-for="option of transportOptions" :key="option.value" :value="option.value">
                   {{ option.label }}
@@ -363,7 +363,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                 <Input
                   v-model="form.command"
                   placeholder="例如: npx、uvx、node"
-                  class="h-11 rounded-xl"
+                  class="h-11"
                 />
               </section>
 
@@ -375,7 +375,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                 <Textarea
                   v-model="form.args"
                   :placeholder="argsPlaceholder"
-                  class="min-h-[96px] rounded-xl"
+                  class="min-h-[96px]"
                 />
               </section>
 
@@ -387,7 +387,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                 <Textarea
                   v-model="form.env"
                   :placeholder="envPlaceholder"
-                  class="min-h-[96px] rounded-xl"
+                  class="min-h-[96px]"
                 />
               </section>
 
@@ -409,7 +409,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                 <Input
                   v-model="form.url"
                   placeholder="例如: http://localhost:3000/mcp"
-                  class="h-11 rounded-xl"
+                  class="h-11"
                 />
               </section>
             </template>
@@ -419,10 +419,10 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                 <Label>超时</Label>
                 <CircleHelp class="size-4 text-muted-foreground" />
               </div>
-              <InputGroup class="rounded-xl">
+              <InputGroup>
                 <InputGroupInput
                   v-model="form.timeout"
-                  class="h-11 rounded-l-xl"
+                  class="h-11"
                 />
                 <InputGroupAddon
                   align="inline-end"
