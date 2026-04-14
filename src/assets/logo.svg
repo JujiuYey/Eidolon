@@ -1,1 +1,65 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="200" height="200" viewBox="0 0 200 200" fill="none"><path     fill="#FBBF24"  d="M20 110.738L20 185.368C20 191.614 25.155 196.678 31.51 196.678L52.21 196.678C66.1232 196.678 73.0847 188.547 79.55 178.218C89.1856 162.821 107.284 162.821 116.92 178.218C123.385 188.547 130.338 196.678 144.25 196.678L164.96 196.678C171.313 196.678 176.47 191.614 176.47 185.368L176.47 110.738C176.47 68.2688 141.437 33.838 98.23 33.838C55.0234 33.838 20 68.2688 20 110.738"></path><ellipse cx="99.9056396484375" cy="104.60401916503906" rx="33.80316162109375" ry="30.765914916992188"   fill="#FFFFFF" ></ellipse><ellipse cx="116.80303955078125" cy="103.07237243652344" rx="10.7520751953125" ry="10.765945434570312"   fill="#713F12" ></ellipse><rect x="53.89" y="18.468368530273438" width="9.21" height="39.99995422363281"   fill="#22C55E" ></rect><rect x="136.89" y="18.468368530273438" width="9.21" height="39.99995422363281"   fill="#22C55E" ></rect><ellipse cx="58.5" cy="13.846794128417969" rx="13" ry="13"   fill="#22C55E" ></ellipse><ellipse cx="141.5" cy="13.846794128417969" rx="13" ry="13"   fill="#22C55E" ></ellipse></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200" fill="none">
+  <defs>
+    <linearGradient id="cardGradient" x1="24" y1="20" x2="176" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F8F2E8" />
+      <stop offset="58%" stop-color="#EEE3D5" />
+      <stop offset="100%" stop-color="#E1D0BE" />
+    </linearGradient>
+    <radialGradient id="cardGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(54 42) rotate(44.5) scale(124)">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect x="14" y="14" width="172" height="172" rx="38" fill="url(#cardGradient)" />
+  <rect x="14" y="14" width="172" height="172" rx="38" fill="url(#cardGlow)" />
+
+  <g transform="translate(29 22) scale(0.72)">
+    <path
+      d="M20 110.738L20 185.368C20 191.614 25.155 196.678 31.51 196.678L52.21 196.678C66.1232 196.678 73.0847 188.547 79.55 178.218C89.1856 162.821 107.284 162.821 116.92 178.218C123.385 188.547 130.338 196.678 144.25 196.678L164.96 196.678C171.313 196.678 176.47 191.614 176.47 185.368L176.47 110.738C176.47 68.2688 141.437 33.838 98.23 33.838C55.0234 33.838 20 68.2688 20 110.738Z"
+      fill="#4F46E5"
+    />
+    <ellipse
+      cx="99.9056"
+      cy="104.604"
+      rx="33.8032"
+      ry="30.7659"
+      fill="white"
+    />
+    <ellipse
+      cx="116.803"
+      cy="103.072"
+      rx="10.7521"
+      ry="10.7659"
+      fill="#1E1B4B"
+    />
+    <rect
+      x="53.89"
+      y="18.4684"
+      width="9.21"
+      height="39.9999"
+      fill="#10B981"
+    />
+    <rect
+      x="136.89"
+      y="18.4684"
+      width="9.21"
+      height="39.9999"
+      fill="#10B981"
+    />
+    <ellipse
+      cx="58.5"
+      cy="13.8468"
+      rx="13"
+      ry="13"
+      fill="#10B981"
+    />
+    <ellipse
+      cx="141.5"
+      cy="13.8468"
+      rx="13"
+      ry="13"
+      fill="#10B981"
+    />
+  </g>
+</svg>
