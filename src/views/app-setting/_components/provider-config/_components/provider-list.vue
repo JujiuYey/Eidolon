@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { ProviderConfig } from '@/types/provider';
+import type { ProviderRegistryItem } from '@/types/provider';
 
 defineProps<{
-  providers: ProviderConfig[];
+  providers: ProviderRegistryItem[];
+  configuredProviderIds: string[];
 }>();
 
 const selectedProviderId = defineModel<string>('selectedProviderId', {
@@ -43,7 +44,7 @@ const selectedProviderId = defineModel<string>('selectedProviderId', {
             {{ provider.name }}
           </p>
           <p
-            v-if="provider.is_configured"
+            v-if="configuredProviderIds.includes(provider.provider_id)"
             class="truncate text-xs text-emerald-500"
           >
             已配置

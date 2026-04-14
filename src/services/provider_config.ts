@@ -1,41 +1,34 @@
-import type { ProviderConfig } from '@/types/provider';
+import type {
+  ProviderModel,
+  ProviderSetting,
+} from '@/types/provider';
 import { invoke } from '@tauri-apps/api/core';
 
-type PersistedProviderConfig = Pick<ProviderConfig, 'provider_id' | 'enabled' | 'api_key' | 'base_url'>;
-
-function toPersistedProviderConfig(config: ProviderConfig): PersistedProviderConfig {
-  return {
-    provider_id: config.provider_id,
-    enabled: config.enabled,
-    api_key: config.api_key,
-    base_url: config.base_url,
-  };
+export async function listProviderSettings(): Promise<ProviderSetting[]> {
+  return invoke<ProviderSetting[]>('list_provider_settings');
 }
 
-export async function listProviderConfigs(): Promise<PersistedProviderConfig[]> {
-  return invoke<PersistedProviderConfig[]>('list_provider_configs');
+export async function upsertProviderSetting(setting: ProviderSetting): Promise<string> {
+  return invoke<string>('upsert_provider_setting', { setting });
 }
 
-export async function upsertProviderConfig(config: ProviderConfig): Promise<string> {
-  return invoke<string>('upsert_provider_config', {
-    config: toPersistedProviderConfig(config),
+export async function deleteProviderSetting(providerId: string): Promise<string> {
+  return invoke<string>('delete_provider_setting', { providerId });
+}
+
+export async function listProviderModels(): Promise<ProviderModel[]> {
+  return invoke<ProviderModel[]>('list_provider_models');
+}
+
+export async function replaceProviderModels(providerId: string, models: ProviderModel[]): Promise<string> {
+  return invoke<string>('replace_provider_models', {
+    providerId,
+    models,
   });
 }
 
-export async function deleteProviderConfig(providerId: string): Promise<string> {
-  return invoke<string>('delete_provider_config', { providerId });
-}
-
-export async function fetchProviderModels(params: {
-  baseUrl: string;
-  apiKey: string;
-  apiType: string;
-}): Promise<string[]> {
-  return invoke<string[]>('fetch_provider_models', {
-    baseUrl: params.baseUrl,
-    apiKey: params.apiKey,
-    apiType: params.apiType,
-  });
+export async function deleteProviderModels(providerId: string): Promise<string> {
+  return invoke<string>('delete_provider_models', { providerId });
 }
 
 export async function testAiConnection(request: {

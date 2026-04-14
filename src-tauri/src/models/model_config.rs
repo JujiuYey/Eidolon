@@ -1,23 +1,45 @@
 use serde::{Deserialize, Serialize};
 
-/// 单个平台的配置文档。
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProviderConfig {
-    /// 平台唯一标识，内置平台使用固定字符串（"minimax" 等），
-    /// 用户自定义平台可使用任意非空字符串。
+pub struct ProviderSetting {
     pub provider_id: String,
 
-    /// 该平台在当前应用中是否启用。
     #[serde(default = "default_true")]
     pub enabled: bool,
 
-    /// API 密钥，Ollama 等无需 key 的平台留空即可。
     #[serde(default)]
     pub api_key: String,
 
-    /// 覆盖默认 base_url，留空时由前端 registry 提供默认值。
     #[serde(default)]
     pub base_url: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ProviderModelCapabilities {
+    #[serde(default)]
+    pub chat: bool,
+
+    #[serde(default)]
+    pub vision: bool,
+
+    #[serde(default)]
+    pub tool_call: bool,
+
+    #[serde(default)]
+    pub reasoning: bool,
+
+    #[serde(default)]
+    pub embedding: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ProviderModel {
+    pub provider_id: String,
+
+    pub model_id: String,
+
+    #[serde(default)]
+    pub capabilities: ProviderModelCapabilities,
 }
 
 fn default_true() -> bool {

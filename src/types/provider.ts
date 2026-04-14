@@ -1,28 +1,28 @@
-export type ProviderApiType = 'openai-compatible' | 'ollama';
-
-export interface ProviderModel {
-  id: string;
-  name: string;
-  capabilities: {
-    chat: boolean;
-    vision: boolean;
-    tool_call: boolean;
-    reasoning: boolean;
-    embedding: boolean;
-  };
-}
-
-export interface ProviderConfig {
+export interface ProviderRegistryItem {
   provider_id: string;
   name: string;
   icon?: string;
   website?: string;
-  api_type: ProviderApiType;
   default_base_url: string;
-  models: ProviderModel[];
+}
+
+export interface ProviderSetting {
+  provider_id: string;
   enabled: boolean;
   api_key: string;
   base_url: string;
-  is_builtin: boolean;
-  is_configured: boolean;
+}
+
+export interface ProviderModelCapabilities {
+  chat: boolean;
+  vision: boolean;
+  tool_call: boolean;
+  reasoning: boolean;
+  embedding: boolean;
+}
+
+export interface ProviderModel {
+  provider_id: string;
+  model_id: string;
+  capabilities: ProviderModelCapabilities;
 }

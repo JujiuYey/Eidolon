@@ -1,2 +1,6 @@
-export { findProviderConfig, PROVIDER_REGISTRY } from '@/config/provider-registry';
-export type { ProviderConfig, ProviderModel } from '@/types/provider';
+export { PROVIDER_REGISTRY } from '@/config/provider-registry';
+export type {
+  ProviderModel,
+  ProviderRegistryItem,
+  ProviderSetting,
+} from '@/types/provider';
