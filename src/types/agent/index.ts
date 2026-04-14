@@ -191,3 +191,38 @@ export interface RunFinishedEventData {
 export interface RunErrorEventData {
   message?: string;
 }
+
+// Agent Workspace Types (Tauri-backed conversation storage)
+
+/**
+ * Agent conversation with snapshot configuration (from Tauri storage)
+ */
+export interface AgentWorkspaceConversation {
+  id: string;
+  agentProfileId: string;
+  title: string;
+  snapshotVersion: number;
+  createdFromProfileUpdatedAt: number;
+  snapshotAgentName: string;
+  snapshotProviderId: string;
+  snapshotModelId: string;
+  snapshotTemperature: string;
+  snapshotMaxTokens: string;
+  snapshotSystemPrompt: string;
+  snapshotEnabledMcpServiceIds: string[];
+  snapshotEnabledToolKeys: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Agent conversation message (from Tauri storage)
+ */
+export interface AgentWorkspaceMessage {
+  id: string;
+  conversationId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  status: 'done' | 'error';
+  createdAt: number;
+}
