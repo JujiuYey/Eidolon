@@ -65,7 +65,7 @@ function toCamelCaseMessage(raw: TauriAgentConversationMessage): AgentWorkspaceM
  * List all conversations for a specific agent profile
  */
 export async function listAgentConversations(
-  agentProfileId: string
+  agentProfileId: string,
 ): Promise<AgentWorkspaceConversation[]> {
   const raw = await invoke<TauriAgentConversation[]>('list_agent_conversations', {
     agentProfileId,
@@ -77,7 +77,7 @@ export async function listAgentConversations(
  * Create a new conversation from an agent profile
  */
 export async function createAgentConversation(
-  agentProfileId: string
+  agentProfileId: string,
 ): Promise<AgentWorkspaceConversation> {
   const raw = await invoke<TauriAgentConversation>('create_agent_conversation', {
     agentProfileId,
@@ -89,7 +89,7 @@ export async function createAgentConversation(
  * Get a single conversation by ID
  */
 export async function getAgentConversation(
-  conversationId: string
+  conversationId: string,
 ): Promise<AgentWorkspaceConversation | null> {
   const raw = await invoke<TauriAgentConversation | null>('get_agent_conversation', {
     conversationId,
@@ -108,11 +108,11 @@ export async function deleteAgentConversation(conversationId: string): Promise<s
  * List all messages in a conversation
  */
 export async function listAgentConversationMessages(
-  conversationId: string
+  conversationId: string,
 ): Promise<AgentWorkspaceMessage[]> {
   const raw = await invoke<TauriAgentConversationMessage[]>(
     'list_agent_conversation_messages',
-    { conversationId }
+    { conversationId },
   );
   return raw.map(toCamelCaseMessage);
 }
@@ -122,11 +122,11 @@ export async function listAgentConversationMessages(
  */
 export async function sendAgentConversationMessage(
   conversationId: string,
-  content: string
+  content: string,
 ): Promise<AgentWorkspaceMessage> {
   const raw = await invoke<TauriAgentConversationMessage>(
     'send_agent_conversation_message',
-    { conversationId, content }
+    { conversationId, content },
   );
   return toCamelCaseMessage(raw);
 }

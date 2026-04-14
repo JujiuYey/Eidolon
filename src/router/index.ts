@@ -17,6 +17,10 @@ const routes = [
         component: () => import('@/views/agent/index.vue'),
       },
       {
+        path: '/agent/workspace',
+        component: () => import('@/views/agent/workspace.vue'),
+      },
+      {
         path: '/agent/new',
         component: () => import('@/views/agent/create.vue'),
       },
@@ -25,8 +29,9 @@ const routes = [
         component: () => import('@/views/agent/edit.vue'),
       },
       {
+        // Redirect old detail route to workspace
         path: '/agent/:id',
-        component: () => import('@/views/agent/detail.vue'),
+        redirect: '/agent/workspace',
       },
       {
         path: '/index',

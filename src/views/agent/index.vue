@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onActivated, onMounted, ref } from 'vue';
-import { Bot, PencilLine, Plus, Sparkles } from 'lucide-vue-next';
+import { Bot, PencilLine, Plus, Sparkles, ExternalLink } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 import { PROVIDER_REGISTRY } from '@/config/provider-registry';
@@ -41,7 +41,7 @@ function openCreatePage() {
 }
 
 function openAgent(profileId: string) {
-  router.push(`/agent/${profileId}`);
+  router.push(`/agent/workspace?agent=${profileId}`);
 }
 
 function editAgent(profileId: string) {
@@ -70,10 +70,16 @@ onActivated(() => {
         </p>
       </div>
 
-      <Button @click="openCreatePage">
-        <Plus class="size-4" />
-        新建 Agent
-      </Button>
+      <div class="flex gap-2">
+        <Button variant="outline" @click="router.push('/agent/workspace')">
+          <ExternalLink class="size-4" />
+          打开工作台
+        </Button>
+        <Button @click="openCreatePage">
+          <Plus class="size-4" />
+          新建 Agent
+        </Button>
+      </div>
     </div>
 
     <div
@@ -108,7 +114,7 @@ onActivated(() => {
 
     <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <button
-        v-for="profile of profileCards"
+        v-for="profile in profileCards"
         :key="profile.id"
         type="button"
         class="rounded-2xl border bg-card p-5 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5"
