@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, ref } from 'vue';
+import { toast } from 'vue-sonner';
 import ConversationList from './components/ConversationList.vue';
 import ChatPanel from './components/ChatPanel.vue';
+import { sendConversationMessage } from '@/services/conversation';
 import type { AgentConversation, AgentMessage } from '@/types';
+import { getErrorMessage } from '@/utils/helpers';
 
 const conversations = ref<AgentConversation[]>(createInitialConversations());
 const activeConversationId = ref(conversations.value[0]?.id ?? null);
 const isReplying = ref(false);
-let responseTimer: number | null = null;
 
 function createUserMessage(content: string): AgentMessage {
   return {
@@ -26,6 +28,16 @@ function createAssistantMessage(content: string): AgentMessage {
     content,
     createdAt: Date.now(),
     status: 'done',
+  };
+}
+
+function createAssistantErrorMessage(content: string): AgentMessage {
+  return {
+    id: `assistant-error-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    role: 'assistant',
+    content,
+    createdAt: Date.now(),
+    status: 'error',
   };
 }
 
@@ -88,18 +100,7 @@ function buildConversationTitle(content: string) {
   return normalized.length > 18 ? `${normalized.slice(0, 18)}...` : normalized;
 }
 
-function buildMockReply(question: string, conversationTitle: string) {
-  return [
-    '## 本地会话回复',
-    '',
-    `- 当前会话：${conversationTitle}`,
-    `- 当前问题：${question}`,
-    '',
-    '这是一个前端本地示例回复，用来演示会话列表切换和消息流交互。',
-  ].join('\n');
-}
-
-function handleSend(content: string) {
+async function handleSend(content: string) {
   const trimmed = content.trim();
   const currentConversation = activeConversation.value;
 
@@ -107,38 +108,47 @@ function handleSend(content: string) {
     return;
   }
 
+  const userMessage = createUserMessage(trimmed);
+  const nextTitle = currentConversation.messages.length === 0
+    ? buildConversationTitle(trimmed)
+    : currentConversation.title;
+  const nextMessages = [...currentConversation.messages, userMessage];
+
   updateConversation(currentConversation.id, conversation => ({
     ...conversation,
-    title: conversation.messages.length === 0 ? buildConversationTitle(trimmed) : conversation.title,
+    title: nextTitle,
     updatedAt: Date.now(),
-    messages: [...conversation.messages, createUserMessage(trimmed)],
+    messages: nextMessages,
   }));
 
   isReplying.value = true;
 
-  if (responseTimer) {
-    window.clearTimeout(responseTimer);
-  }
+  try {
+    const reply = await sendConversationMessage(nextMessages);
 
-  responseTimer = window.setTimeout(() => {
     updateConversation(currentConversation.id, conversation => ({
       ...conversation,
       updatedAt: Date.now(),
       messages: [
         ...conversation.messages,
-        createAssistantMessage(buildMockReply(trimmed, conversation.title)),
+        createAssistantMessage(reply.content),
       ],
     }));
+  } catch (error) {
+    const errorMessage = getErrorMessage(error, '对话失败');
+    updateConversation(currentConversation.id, conversation => ({
+      ...conversation,
+      updatedAt: Date.now(),
+      messages: [
+        ...conversation.messages,
+        createAssistantErrorMessage(`对话失败：${errorMessage}`),
+      ],
+    }));
+    toast.error(errorMessage);
+  } finally {
     isReplying.value = false;
-    responseTimer = null;
-  }, 450);
-}
-
-onBeforeUnmount(() => {
-  if (responseTimer) {
-    window.clearTimeout(responseTimer);
   }
-});
+}
 </script>
 
 <template>
