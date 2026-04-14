@@ -10,26 +10,41 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            // Agent conversation commands
+            commands::agent_conversation::list_agent_conversations,
+            commands::agent_conversation::create_agent_conversation,
+            commands::agent_conversation::get_agent_conversation,
+            commands::agent_conversation::delete_agent_conversation,
+            commands::agent_conversation::list_agent_conversation_messages,
+            commands::agent_conversation::send_agent_conversation_message,
+            // Agent profile commands
             commands::agent_profile::list_agent_profiles,
             commands::agent_profile::get_agent_profile,
             commands::agent_profile::upsert_agent_profile,
             commands::agent_profile::delete_agent_profile,
+            // App paths commands
             commands::app_paths::get_app_paths,
             commands::app_paths::open_directory,
+            // Conversation commands
             commands::conversation::send_conversation_message,
+            // Default model commands
             commands::default_model::list_default_model_settings,
             commands::default_model::upsert_default_model_setting,
+            // MCP service commands
             commands::mcp_service::list_mcp_services,
             commands::mcp_service::upsert_mcp_service,
             commands::mcp_service::delete_mcp_service,
             commands::mcp_service::discover_mcp_service,
+            // Model config commands
             commands::model_config::list_provider_settings,
             commands::model_config::upsert_provider_setting,
             commands::model_config::delete_provider_setting,
             commands::model_config::list_provider_models,
             commands::model_config::replace_provider_models,
             commands::model_config::delete_provider_models,
+            // Test connection command
             commands::test_connection::test_ai_connection,
+            // Codegen commands
             commands::codegen::generate_crud,
             commands::codegen::parse_sql_ddl,
             commands::codegen::generate_go_crud,
