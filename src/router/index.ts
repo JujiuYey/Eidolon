@@ -17,6 +17,14 @@ const routes = [
         component: () => import('@/views/agent/index.vue'),
       },
       {
+        path: '/agent/new',
+        component: () => import('@/views/agent/create.vue'),
+      },
+      {
+        path: '/agent/:id',
+        component: () => import('@/views/agent/detail.vue'),
+      },
+      {
         path: '/index',
         component: () => import('@/views/mail/index.vue'),
       },

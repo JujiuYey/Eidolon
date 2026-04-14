@@ -6,6 +6,34 @@ export interface AgentSettings {
   maxFileContentLength: number;
 }
 
+export interface AgentProfile {
+  id: string;
+  name: string;
+  description: string;
+  providerId: string;
+  modelId: string;
+  temperature: string;
+  maxTokens: string;
+  systemPrompt: string;
+  enabledMcpServiceIds: string[];
+  enabledToolKeys: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AgentProfileInput {
+  id?: string;
+  name: string;
+  description: string;
+  providerId: string;
+  modelId: string;
+  temperature: string;
+  maxTokens: string;
+  systemPrompt: string;
+  enabledMcpServiceIds: string[];
+  enabledToolKeys: string[];
+}
+
 export interface AgentToolTrace {
   id: string;
   name: string;

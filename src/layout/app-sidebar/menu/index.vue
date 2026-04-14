@@ -21,7 +21,7 @@ const menus: Menu[] = [
     path: '/index',
   },
   {
-    title: '代码分析',
+    title: '智能体',
     key: 'agent',
     icon: Bot,
     path: '/agent',
