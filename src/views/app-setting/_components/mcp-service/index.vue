@@ -1,67 +1,27 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { toast } from 'vue-sonner';
+import SagConfirm from '@/components/sag/sag-confirm/index.vue';
+import {
+  deleteMcpService,
+  listMcpServices,
+  upsertMcpService,
+} from '@/services/mcp_service';
+import type { McpService } from '@/types/mcp-service';
+import { getErrorMessage } from '@/utils/helpers';
 import McpServiceForm from './mcp-service-form.vue';
 import McpServiceList from './mcp-service-list.vue';
-import type { McpServiceCard, McpServiceFormMode } from './types';
-
-const primarySolidTagClass = 'border-transparent bg-primary text-primary-foreground hover:bg-primary';
-const primaryOutlineTagClass = 'border-primary/20 bg-primary/10 text-primary hover:bg-primary/10';
-const secondaryTagClass = 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary';
-
-const services = ref<McpServiceCard[]>([
-  {
-    id: 'stdio-host',
-    name: 'MCP 服务器',
-    enabled: false,
-    highlighted: true,
-    tags: [
-      {
-        label: 'STDIO',
-        class: primaryOutlineTagClass,
-      },
-    ],
-  },
-  {
-    id: 'cherry-fetch',
-    name: '@cherry/fetch',
-    enabled: true,
-    tags: [
-      {
-        label: '0.1.0',
-        class: primarySolidTagClass,
-      },
-      {
-        label: '内置',
-        class: primaryOutlineTagClass,
-      },
-      {
-        label: 'CherryAI',
-        class: secondaryTagClass,
-      },
-    ],
-  },
-  {
-    id: 'vortex',
-    name: 'vortex',
-    enabled: true,
-    tags: [
-      {
-        label: '0.1.0',
-        class: primarySolidTagClass,
-      },
-      {
-        label: 'STDIO',
-        class: primaryOutlineTagClass,
-      },
-    ],
-  },
-]);
+import type { McpServiceFormMode } from './types';
 
 type McpServiceViewState
   = | { type: 'list' }
     | { type: 'form'; mode: McpServiceFormMode; serviceId?: string };
 
 const viewState = ref<McpServiceViewState>({ type: 'list' });
+const services = ref<McpService[]>([]);
+const isLoading = ref(false);
+const deleteConfirmOpen = ref(false);
+const pendingDeleteService = ref<McpService | null>(null);
 
 const activeService = computed(() => {
   const currentView = viewState.value;
@@ -72,6 +32,18 @@ const activeService = computed(() => {
 
   return services.value.find(service => service.id === currentView.serviceId) ?? null;
 });
+
+async function loadServices() {
+  isLoading.value = true;
+
+  try {
+    services.value = await listMcpServices();
+  } catch (error) {
+    toast.error(getErrorMessage(error, '加载 MCP 服务失败'));
+  } finally {
+    isLoading.value = false;
+  }
+}
 
 function openCreateForm() {
   viewState.value = {
@@ -92,29 +64,91 @@ function backToList() {
   viewState.value = { type: 'list' };
 }
 
-function updateServiceEnabled(payload: { serviceId: string; enabled: boolean }) {
+async function updateServiceEnabled(payload: { serviceId: string; enabled: boolean }) {
   const target = services.value.find(service => service.id === payload.serviceId);
 
   if (!target) {
     return;
   }
 
+  const previousEnabled = target.enabled;
   target.enabled = payload.enabled;
+
+  try {
+    await upsertMcpService({
+      ...target,
+      enabled: payload.enabled,
+    });
+    toast.success(payload.enabled ? '已启用 MCP 服务' : '已禁用 MCP 服务');
+  } catch (error) {
+    target.enabled = previousEnabled;
+    toast.error(getErrorMessage(error, '更新 MCP 服务状态失败'));
+  }
 }
+
+function requestDelete(serviceId: string) {
+  pendingDeleteService.value = services.value.find(service => service.id === serviceId) ?? null;
+  deleteConfirmOpen.value = Boolean(pendingDeleteService.value);
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteService.value) {
+    return;
+  }
+
+  try {
+    await deleteMcpService(pendingDeleteService.value.id);
+    deleteConfirmOpen.value = false;
+    pendingDeleteService.value = null;
+    await loadServices();
+    backToList();
+    toast.success('MCP 服务已删除');
+  } catch (error) {
+    toast.error(getErrorMessage(error, '删除 MCP 服务失败'));
+  }
+}
+
+async function handleSaved(serviceId: string) {
+  await loadServices();
+  openEditForm(serviceId);
+}
+
+async function handleRemoved(serviceId: string) {
+  if (activeService.value?.id === serviceId) {
+    backToList();
+  }
+  await loadServices();
+}
+
+onMounted(() => {
+  void loadServices();
+});
 </script>
 
 <template>
   <McpServiceList
     v-if="viewState.type === 'list'"
+    :is-loading="isLoading"
     :services="services"
     @create="openCreateForm"
     @edit-service="openEditForm"
+    @request-delete="requestDelete"
     @update-enabled="updateServiceEnabled"
   />
   <McpServiceForm
     v-else
     :mode="viewState.mode"
     :service="activeService"
+    @removed="handleRemoved"
+    @saved="handleSaved"
     @back="backToList"
+  />
+
+  <SagConfirm
+    v-model:open="deleteConfirmOpen"
+    title="确定删除这个 MCP 服务吗？"
+    :description="pendingDeleteService ? `删除后会移除 ${pendingDeleteService.name} 的配置和工具偏好` : ''"
+    type="destructive"
+    @confirm="confirmDelete"
   />
 </template>
