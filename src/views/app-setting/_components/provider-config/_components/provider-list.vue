@@ -20,7 +20,7 @@ const selectedProviderId = defineModel<string>('selectedProviderId', {
         type="button"
         class="flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors"
         :class="selectedProviderId === provider.provider_id
-          ? 'border-primary bg-primary/50 shadow-xs'
+          ? 'border-primary bg-primary/20 shadow-xs'
           : 'border-transparent hover:bg-primary/10'"
         @click="selectedProviderId = provider.provider_id"
       >

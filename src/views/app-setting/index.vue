@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 
 import AppConfig from './_components/app-config/index.vue';
 import DataConfig from './_components/data-config/index.vue';
+import DefaultModel from './_components/default-model/index.vue';
 import McpService from './_components/mcp-service/index.vue';
 import ProviderConfig from './_components/provider-config/index.vue';
 
@@ -105,6 +106,7 @@ function handleClick(key: string) {
 
       <div class="min-h-0 flex-1">
         <ProviderConfig v-if="activeKey === 'provider-config'" />
+        <DefaultModel v-if="activeKey === 'default-model'" />
         <AppConfig v-if="activeKey === 'app-config'" />
         <DataConfig v-if="activeKey === 'data'" />
         <McpService v-if="activeKey === 'mcp-service'" />

@@ -12,6 +12,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::app_paths::get_app_paths,
             commands::app_paths::open_directory,
+            commands::default_model::list_default_model_settings,
+            commands::default_model::upsert_default_model_setting,
             commands::model_config::list_provider_settings,
             commands::model_config::upsert_provider_setting,
             commands::model_config::delete_provider_setting,
