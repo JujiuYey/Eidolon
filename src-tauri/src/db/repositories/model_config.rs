@@ -1,10 +1,9 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
 use serde::Deserialize;
 
-use crate::db::local_store::{now, LocalJsonStore};
+use crate::db::local_store::LocalJsonStore;
 use crate::models::model_config::ProviderConfig;
 
 const FILENAME: &str = "provider_configs";
@@ -42,14 +41,7 @@ impl<'a> ProviderConfigRepository<'a> {
         }
 
         let key = config.provider_id.clone();
-
-        let mut doc = config.clone();
-        if doc.created_at.is_none() {
-            doc.created_at = Some(now());
-        }
-        doc.updated_at = Some(now());
-
-        self.cache.borrow_mut().insert(key.clone(), doc);
+        self.cache.borrow_mut().insert(key.clone(), config.clone());
         self.store.write(FILENAME, &*self.cache.borrow())?;
 
         Ok(key)
@@ -91,8 +83,6 @@ fn load_cache(store: &LocalJsonStore) -> Result<(HashMap<String, ProviderConfig>
                 enabled: legacy.enabled,
                 api_key: legacy.connection.api_key.unwrap_or_default(),
                 base_url: legacy.connection.base_url.unwrap_or_default(),
-                created_at: legacy.created_at,
-                updated_at: legacy.updated_at,
             };
 
             (provider_id, config)
@@ -110,10 +100,6 @@ struct LegacyProviderConfig {
     enabled: bool,
     #[serde(default)]
     connection: LegacyProviderConnection,
-    #[serde(default)]
-    created_at: Option<DateTime<Utc>>,
-    #[serde(default)]
-    updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -150,8 +136,6 @@ mod tests {
             enabled: true,
             api_key: "sk-test".to_string(),
             base_url: "https://api.deepseek.com/v1".to_string(),
-            created_at: None,
-            updated_at: None,
         };
 
         repository
@@ -173,6 +157,14 @@ mod tests {
         assert!(
             !content.contains("\"catalog\""),
             "runtime model catalog should not be persisted",
+        );
+        assert!(
+            !content.contains("\"created_at\""),
+            "provider config should not persist created_at metadata",
+        );
+        assert!(
+            !content.contains("\"updated_at\""),
+            "provider config should not persist updated_at metadata",
         );
     }
 
@@ -228,6 +220,14 @@ mod tests {
         assert!(
             !migrated.contains("\"catalog\""),
             "migrated config should drop runtime catalog state",
+        );
+        assert!(
+            !migrated.contains("\"created_at\""),
+            "migrated config should drop created_at metadata",
+        );
+        assert!(
+            !migrated.contains("\"updated_at\""),
+            "migrated config should drop updated_at metadata",
         );
     }
 }

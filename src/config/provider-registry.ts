@@ -1,39 +1,18 @@
+import type { ProviderConfig } from '@/types/provider';
 import deepseekIcon from '@/assets/model-icon/deepseek.svg';
 import minimaxIcon from '@/assets/model-icon/minimax.svg';
 import ollamaIcon from '@/assets/model-icon/ollama.svg';
 import volcengineIcon from '@/assets/model-icon/volcengine.svg';
 
-export interface ProviderModelMeta {
-  id: string;
-  name: string;
-  capabilities: {
-    chat: boolean;
-    vision: boolean;
-    tool_call: boolean;
-    reasoning: boolean;
-    embedding: boolean;
-  };
-}
-
-export interface ProviderMeta {
-  id: string;
-  name: string;
-  icon?: string;
-  website: string;
-  defaultBaseUrl: string;
-  defaultModels: ProviderModelMeta[];
-  apiType: 'openai-compatible' | 'ollama';
-}
-
-export const PROVIDER_REGISTRY: ProviderMeta[] = [
+export const PROVIDER_REGISTRY: ProviderConfig[] = [
   {
-    id: 'minimax',
+    provider_id: 'minimax',
     name: 'MiniMax',
     icon: minimaxIcon,
     website: 'https://platform.minimaxi.com/',
-    defaultBaseUrl: 'https://api.minimaxi.com/v1',
-    apiType: 'openai-compatible',
-    defaultModels: [
+    api_type: 'openai-compatible',
+    default_base_url: 'https://api.minimaxi.com/v1',
+    models: [
       {
         id: 'MiniMax-M2.7',
         name: 'MiniMax-M2.7',
@@ -44,21 +23,21 @@ export const PROVIDER_REGISTRY: ProviderMeta[] = [
         name: 'MiniMax-M2.7-highspeed',
         capabilities: { chat: true, vision: false, tool_call: true, reasoning: false, embedding: false },
       },
-      {
-        id: 'MiniMax-Text-01',
-        name: 'MiniMax-Text-01',
-        capabilities: { chat: true, vision: false, tool_call: true, reasoning: false, embedding: false },
-      },
     ],
+    enabled: true,
+    api_key: '',
+    base_url: 'https://api.minimaxi.com/v1',
+    is_builtin: true,
+    is_configured: false,
   },
   {
-    id: 'volcengine',
+    provider_id: 'volcengine',
     name: '火山引擎',
     icon: volcengineIcon,
     website: 'https://www.volcengine.com/',
-    defaultBaseUrl: 'https://ark.cn-beijing.volces.com/api/v3',
-    apiType: 'openai-compatible',
-    defaultModels: [
+    api_type: 'openai-compatible',
+    default_base_url: 'https://ark.cn-beijing.volces.com/api/v3',
+    models: [
       {
         id: 'doubao-pro-32k',
         name: 'Doubao Pro 32K',
@@ -70,15 +49,20 @@ export const PROVIDER_REGISTRY: ProviderMeta[] = [
         capabilities: { chat: true, vision: false, tool_call: false, reasoning: false, embedding: false },
       },
     ],
+    enabled: true,
+    api_key: '',
+    base_url: 'https://ark.cn-beijing.volces.com/api/v3',
+    is_builtin: true,
+    is_configured: false,
   },
   {
-    id: 'deepseek',
+    provider_id: 'deepseek',
     name: 'DeepSeek',
     icon: deepseekIcon,
     website: 'https://www.deepseek.com/',
-    defaultBaseUrl: 'https://api.deepseek.com/v1',
-    apiType: 'openai-compatible',
-    defaultModels: [
+    api_type: 'openai-compatible',
+    default_base_url: 'https://api.deepseek.com/v1',
+    models: [
       {
         id: 'deepseek-chat',
         name: 'DeepSeek Chat',
@@ -90,15 +74,20 @@ export const PROVIDER_REGISTRY: ProviderMeta[] = [
         capabilities: { chat: true, vision: false, tool_call: false, reasoning: true, embedding: false },
       },
     ],
+    enabled: true,
+    api_key: '',
+    base_url: 'https://api.deepseek.com/v1',
+    is_builtin: true,
+    is_configured: false,
   },
   {
-    id: 'ollama',
+    provider_id: 'ollama',
     name: 'Ollama',
     icon: ollamaIcon,
     website: 'https://ollama.com/',
-    defaultBaseUrl: 'http://127.0.0.1:11434',
-    apiType: 'ollama',
-    defaultModels: [
+    api_type: 'ollama',
+    default_base_url: 'http://127.0.0.1:11434',
+    models: [
       {
         id: 'llama3',
         name: 'Llama 3',
@@ -110,9 +99,14 @@ export const PROVIDER_REGISTRY: ProviderMeta[] = [
         capabilities: { chat: true, vision: false, tool_call: false, reasoning: false, embedding: false },
       },
     ],
+    enabled: true,
+    api_key: '',
+    base_url: 'http://127.0.0.1:11434',
+    is_builtin: true,
+    is_configured: false,
   },
 ];
 
-export function findProviderMeta(id: string): ProviderMeta | undefined {
-  return PROVIDER_REGISTRY.find(provider => provider.id === id);
+export function findProviderConfig(id: string): ProviderConfig | undefined {
+  return PROVIDER_REGISTRY.find(provider => provider.provider_id === id);
 }

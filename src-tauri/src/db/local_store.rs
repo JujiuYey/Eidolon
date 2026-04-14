@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use chrono::{DateTime, Utc};
 use serde::{de::DeserializeOwned, Serialize};
 
 /// 本地 JSON 文件存储服务
@@ -76,9 +75,4 @@ impl LocalJsonStore {
     fn file_path(&self, filename: &str) -> PathBuf {
         self.data_dir.join(format!("{}.json", filename))
     }
-}
-
-/// 获取当前时间（UTC）
-pub fn now() -> DateTime<Utc> {
-    Utc::now()
 }

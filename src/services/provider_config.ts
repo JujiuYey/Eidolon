@@ -1,20 +1,25 @@
+import type { ProviderConfig } from '@/types/provider';
 import { invoke } from '@tauri-apps/api/core';
 
-export interface ProviderConfig {
-  provider_id: string;
-  enabled: boolean;
-  api_key: string;
-  base_url: string;
-  created_at?: string;
-  updated_at?: string;
+type PersistedProviderConfig = Pick<ProviderConfig, 'provider_id' | 'enabled' | 'api_key' | 'base_url'>;
+
+function toPersistedProviderConfig(config: ProviderConfig): PersistedProviderConfig {
+  return {
+    provider_id: config.provider_id,
+    enabled: config.enabled,
+    api_key: config.api_key,
+    base_url: config.base_url,
+  };
 }
 
-export async function listProviderConfigs(): Promise<ProviderConfig[]> {
-  return invoke<ProviderConfig[]>('list_provider_configs');
+export async function listProviderConfigs(): Promise<PersistedProviderConfig[]> {
+  return invoke<PersistedProviderConfig[]>('list_provider_configs');
 }
 
 export async function upsertProviderConfig(config: ProviderConfig): Promise<string> {
-  return invoke<string>('upsert_provider_config', { config });
+  return invoke<string>('upsert_provider_config', {
+    config: toPersistedProviderConfig(config),
+  });
 }
 
 export async function deleteProviderConfig(providerId: string): Promise<string> {

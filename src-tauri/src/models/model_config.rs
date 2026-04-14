@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// 单个平台的配置文档。
@@ -19,14 +18,6 @@ pub struct ProviderConfig {
     /// 覆盖默认 base_url，留空时由前端 registry 提供默认值。
     #[serde(default)]
     pub base_url: String,
-
-    /// 文档创建时间。
-    #[serde(default)]
-    pub created_at: Option<DateTime<Utc>>,
-
-    /// 文档最后更新时间。
-    #[serde(default)]
-    pub updated_at: Option<DateTime<Utc>>,
 }
 
 fn default_true() -> bool {

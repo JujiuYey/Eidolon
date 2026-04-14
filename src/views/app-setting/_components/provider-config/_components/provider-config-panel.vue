@@ -8,7 +8,6 @@ import {
   RotateCcw,
   Trash2,
 } from 'lucide-vue-next';
-import { storeToRefs } from 'pinia';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
@@ -17,56 +16,54 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
-import { useProviderStore } from '@/stores/provider';
-import type { ProviderConfig } from '@/services/provider_config';
+import {
+  deleteProviderConfig,
+  fetchProviderModels,
+  upsertProviderConfig,
+} from '@/services/provider_config';
+import type { ProviderConfig } from '@/types/provider';
 import { getErrorMessage } from '@/utils/helpers';
 
-const store = useProviderStore();
-const { modelListLoading, selectedProviderId, selectedView } = storeToRefs(store);
+const props = defineProps<{
+  selectedProvider: ProviderConfig;
+}>();
+
+const emit = defineEmits<{
+  (e: 'saved', providerId: string): void;
+  (e: 'removed', providerId: string): void;
+}>();
 
 const showApiKey = ref(false);
 const deleteConfirmOpen = ref(false);
+const fetchedModels = ref<string[] | null>(null);
+const isModelListLoading = ref(false);
 
 function buildFormData(): ProviderConfig {
-  const view = selectedView.value;
-  if (!view) {
-    return {
-      provider_id: '',
-      enabled: true,
-      api_key: '',
-      base_url: '',
-    };
-  }
-
-  if (view.config) {
-    return { ...view.config };
-  }
-
   return {
-    provider_id: view.id,
-    enabled: true,
-    api_key: '',
-    base_url: view.defaultBaseUrl,
+    ...props.selectedProvider,
+    models: [...props.selectedProvider.models],
   };
 }
 
 const formData = ref<ProviderConfig>(buildFormData());
 
-watch(selectedView, () => {
+watch(() => props.selectedProvider, () => {
   formData.value = buildFormData();
+  fetchedModels.value = null;
   showApiKey.value = false;
 }, { immediate: true });
 
-const isConfigured = computed(() => Boolean(selectedView.value?.config));
-const defaultBaseUrl = computed(() => selectedView.value?.defaultBaseUrl ?? '');
+const isConfigured = computed(() => props.selectedProvider.is_configured);
+const defaultBaseUrl = computed(() => props.selectedProvider.default_base_url);
 const canRestoreBaseUrl = computed(() =>
   Boolean(defaultBaseUrl.value && formData.value.base_url !== defaultBaseUrl.value),
 );
-const modelList = computed(() => store.getModelList(selectedProviderId.value));
-const isModelListLoading = computed(() => modelListLoading.value[selectedProviderId.value] ?? false);
+const modelList = computed(() =>
+  fetchedModels.value ?? props.selectedProvider.models.map(model => model.id),
+);
 const isFormValid = computed(() => Boolean(formData.value.base_url.trim()));
 const providerInitials = computed(() =>
-  (selectedView.value?.name ?? '?').slice(0, 2).toUpperCase(),
+  props.selectedProvider.name.slice(0, 2).toUpperCase(),
 );
 
 function restoreBaseUrl() {
@@ -75,7 +72,8 @@ function restoreBaseUrl() {
 
 async function saveConfig() {
   try {
-    await store.saveConfig({ ...formData.value });
+    await upsertProviderConfig({ ...formData.value });
+    emit('saved', formData.value.provider_id);
     toast.success('保存成功');
   } catch (error) {
     toast.error(getErrorMessage(error, '保存失败'));
@@ -92,8 +90,9 @@ function openDeleteConfirm() {
 
 async function confirmDelete() {
   try {
-    await store.removeConfig(selectedProviderId.value);
+    await deleteProviderConfig(props.selectedProvider.provider_id);
     deleteConfirmOpen.value = false;
+    emit('removed', props.selectedProvider.provider_id);
     toast.success('删除成功');
   } catch (error) {
     toast.error(getErrorMessage(error, '删除失败'));
@@ -101,14 +100,19 @@ async function confirmDelete() {
 }
 
 async function refreshModels() {
+  isModelListLoading.value = true;
+
   try {
-    await store.refreshModelList(selectedProviderId.value, {
+    fetchedModels.value = await fetchProviderModels({
       baseUrl: formData.value.base_url,
       apiKey: formData.value.api_key,
+      apiType: props.selectedProvider.api_type,
     });
     toast.success('模型列表已更新');
   } catch (error) {
     toast.error(getErrorMessage(error, '拉取模型列表失败'));
+  } finally {
+    isModelListLoading.value = false;
   }
 }
 </script>
@@ -121,9 +125,9 @@ async function refreshModels() {
         <div class="flex items-center gap-3">
           <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-xs ring-1 ring-black/5">
             <img
-              v-if="selectedView?.icon"
-              :src="selectedView.icon"
-              :alt="selectedView.name"
+              v-if="selectedProvider.icon"
+              :src="selectedProvider.icon"
+              :alt="selectedProvider.name"
               class="h-7 w-7 object-contain"
             />
             <span
@@ -137,17 +141,17 @@ async function refreshModels() {
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-2">
               <h2 class="truncate text-2xl font-semibold tracking-tight text-foreground">
-                {{ selectedView?.name }}
+                {{ selectedProvider.name }}
               </h2>
               <Button
-                v-if="selectedView?.website"
+                v-if="selectedProvider.website"
                 as-child
                 variant="ghost"
                 size="icon-sm"
                 class="h-8 w-8 rounded-full text-muted-foreground"
               >
                 <a
-                  :href="selectedView.website"
+                  :href="selectedProvider.website"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -252,9 +256,9 @@ async function refreshModels() {
               <div class="flex min-w-0 items-center gap-3">
                 <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
                   <img
-                    v-if="selectedView?.icon"
-                    :src="selectedView.icon"
-                    :alt="selectedView.name"
+                    v-if="selectedProvider.icon"
+                    :src="selectedProvider.icon"
+                    :alt="selectedProvider.name"
                     class="h-5 w-5 object-contain"
                   />
                   <span
