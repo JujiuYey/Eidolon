@@ -2,9 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { AlertCircle } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
-import AgentLayout from './components/agent-layout.vue';
 import AgentConversationPanel from './components/AgentConversationPanel.vue';
-import AgentProfileSummary from './components/AgentProfileSummary.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,31 +10,17 @@ import {
   listAgentConversationMessages,
   saveAgentConversationMessages,
 } from '@/services/agent-profile';
-import { listMcpServices } from '@/services/mcp_service';
 import type { AgentMessage, AgentProfile } from '@/types';
-import type { McpService } from '@/types/mcp-service';
 
 const route = useRoute();
 const router = useRouter();
 
 const profile = ref<AgentProfile | null>(null);
-const mcpServices = ref<McpService[]>([]);
 const messages = ref<AgentMessage[]>([]);
 const busy = ref(false);
 let responseTimer: number | null = null;
 
 const profileId = computed(() => String(route.params.id ?? ''));
-const selectedToolCount = computed(() => {
-  if (!profile.value) {
-    return 0;
-  }
-
-  return mcpServices.value
-    .filter(service => profile.value?.enabledMcpServiceIds.includes(service.id))
-    .reduce((count, service) => {
-      return count + (service.discovery?.tools ?? []).filter(tool => tool.enabled).length;
-    }, 0);
-});
 
 function createUserMessage(content: string): AgentMessage {
   return {
@@ -66,16 +50,12 @@ function buildInitialMessage(currentProfile: AgentProfile): AgentMessage {
     '',
     `- 模型：${currentProfile.modelId}`,
     `- MCP 服务：${currentProfile.enabledMcpServiceIds.length}`,
-    `- 工具：${selectedToolCount.value}`,
+    '- 工具：默认启用 MCP 工具',
   ].join('\n'));
 }
 
 function loadProfile() {
   profile.value = getAgentProfile(profileId.value);
-}
-
-async function loadMcpServices() {
-  mcpServices.value = await listMcpServices();
 }
 
 function loadMessages() {
@@ -100,10 +80,6 @@ function persistMessages() {
 
 function handleBack() {
   router.push('/agent');
-}
-
-function handleEdit() {
-  router.push(`/agent/${profileId.value}/edit`);
 }
 
 function handleSubmit(content: string) {
@@ -144,7 +120,7 @@ function buildMockReply(currentProfile: AgentProfile, question: string) {
     `- 模型：${currentProfile.modelId}`,
     `- Temperature：${currentProfile.temperature || '未设置'}`,
     `- Max Tokens：${currentProfile.maxTokens || '未设置'}`,
-    `- MCP 工具数：${selectedToolCount.value}`,
+    `- MCP 服务数：${currentProfile.enabledMcpServiceIds.length}`,
     '',
     `### 提示词摘要`,
     currentProfile.systemPrompt.slice(0, 220) || '未设置提示词',
@@ -154,9 +130,8 @@ function buildMockReply(currentProfile: AgentProfile, question: string) {
   ].join('\n');
 }
 
-watch(profileId, async () => {
+watch(profileId, () => {
   loadProfile();
-  await loadMcpServices();
   loadMessages();
 }, { immediate: true });
 
@@ -184,24 +159,13 @@ onBeforeUnmount(() => {
       </Alert>
     </div>
 
-    <AgentLayout v-else>
-      <template #files>
-        <AgentProfileSummary
-          :profile="profile"
-          :mcp-services="mcpServices"
-          @back="handleBack"
-          @edit="handleEdit"
-        />
-      </template>
-
-      <template #chat>
-        <AgentConversationPanel
-          :profile="profile"
-          :messages="messages"
-          :busy="busy"
-          @submit="handleSubmit"
-        />
-      </template>
-    </AgentLayout>
+    <AgentConversationPanel
+      v-else
+      :profile="profile"
+      :messages="messages"
+      :busy="busy"
+      @back="handleBack"
+      @submit="handleSubmit"
+    />
   </div>
 </template>

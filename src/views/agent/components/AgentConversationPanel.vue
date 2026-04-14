@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ArrowLeft } from 'lucide-vue-next';
 import type { AgentMessage, AgentProfile } from '@/types';
 import {
   Conversation,
@@ -19,6 +20,7 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from '@/components/ai-elements/prompt-input';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
 defineProps<{
@@ -28,6 +30,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (e: 'back'): void;
   (e: 'submit', value: string): void;
 }>();
 
@@ -41,26 +44,35 @@ function handleSubmit(payload: { text: string; files: unknown[] }) {
 <template>
   <div class="flex h-full min-h-0 flex-col">
     <div class="border-b bg-background px-4 py-4">
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div class="min-w-0">
-          <div class="text-sm font-medium">
-            {{ profile.name }}
-          </div>
-          <p class="text-xs text-muted-foreground">
-            当前仍是 mock 对话页，后续会把真实模型调用、MCP 和工具执行接进来。
-          </p>
+      <div class="flex flex-col gap-3">
+        <div>
+          <Button variant="ghost" size="sm" class="px-0" @click="emit('back')">
+            <ArrowLeft class="size-4" />
+            返回 Agent 列表
+          </Button>
         </div>
 
-        <div class="flex flex-wrap gap-2">
-          <Badge variant="outline">
-            {{ profile.modelId }}
-          </Badge>
-          <Badge variant="outline">
-            {{ profile.enabledMcpServiceIds.length }} MCP
-          </Badge>
-          <Badge variant="outline">
-            默认启用 MCP 工具
-          </Badge>
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div class="min-w-0">
+            <div class="text-sm font-medium">
+              {{ profile.name }}
+            </div>
+            <p class="text-xs text-muted-foreground">
+              当前仍是 mock 对话页，后续会把真实模型调用、MCP 和工具执行接进来。
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <Badge variant="outline">
+              {{ profile.modelId }}
+            </Badge>
+            <Badge variant="outline">
+              {{ profile.enabledMcpServiceIds.length }} MCP
+            </Badge>
+            <Badge variant="outline">
+              默认启用 MCP 工具
+            </Badge>
+          </div>
         </div>
       </div>
     </div>
