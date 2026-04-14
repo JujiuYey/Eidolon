@@ -15,16 +15,22 @@ const route = useRoute();
 
 const menus: Menu[] = [
   {
+    title: '开始',
+    key: 'index',
+    icon: MessageCircle,
+    path: '/index',
+  },
+  {
     title: '代码分析',
     key: 'agent',
     icon: Bot,
     path: '/agent',
   },
   {
-    title: '开始',
-    key: 'index',
+    title: '对话',
+    key: 'conversation',
     icon: MessageCircle,
-    path: '/index',
+    path: '/conversation',
   },
   {
     title: 'CRUD 生成',
