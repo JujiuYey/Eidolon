@@ -1,4 +1,5 @@
 import type { AgentMessage } from '@/types';
+
 const AGENT_CONVERSATION_STORAGE_KEY = 'eidolon.agent_conversations';
 
 type AgentConversationMap = Record<string, AgentMessage[]>;

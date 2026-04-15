@@ -114,7 +114,7 @@ onActivated(() => {
 
     <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       <button
-        v-for="profile in profileCards"
+        v-for="profile of profileCards"
         :key="profile.id"
         type="button"
         class="rounded-2xl border bg-card p-5 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5"
