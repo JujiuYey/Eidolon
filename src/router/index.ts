@@ -1,8 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import type { RouteRecordRaw } from 'vue-router';
 import Layout from '@/layout/index.vue';
 
 // 路由配置
-const routes = [
+const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: Layout,
@@ -31,7 +32,10 @@ const routes = [
       {
         // Redirect old detail route to workspace
         path: '/agent/:id',
-        redirect: '/agent/workspace',
+        redirect: to => ({
+          path: '/agent/workspace',
+          query: { agent: String(to.params.id ?? '') },
+        }),
       },
       {
         path: '/index',

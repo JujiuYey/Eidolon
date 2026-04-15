@@ -12,6 +12,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // Agent conversation commands
             commands::agent_conversation::list_agent_conversations,
+            commands::agent_conversation::list_recent_agent_conversations,
             commands::agent_conversation::create_agent_conversation,
             commands::agent_conversation::get_agent_conversation,
             commands::agent_conversation::delete_agent_conversation,

@@ -17,6 +17,15 @@ pub fn list_agent_conversations(
 }
 
 #[tauri::command]
+pub fn list_recent_agent_conversations(
+    store: tauri::State<'_, LocalJsonStore>,
+    limit: Option<usize>,
+) -> Result<Vec<AgentConversation>, String> {
+    let repo = AgentConversationRepository::new(&store);
+    repo.list_recent(limit)
+}
+
+#[tauri::command]
 pub fn create_agent_conversation(
     store: tauri::State<'_, LocalJsonStore>,
     agent_profile_id: String,

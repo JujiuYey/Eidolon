@@ -2,6 +2,7 @@
 import type { Component } from 'vue';
 import { MessageCircle, Bot, Sparkles, LayoutDashboard } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
+import AppSidebarRecentConversations from '../recent-conversations/index.vue';
 
 interface Menu {
   title: string;
@@ -84,5 +85,7 @@ const getMenuButtonClass = computed(() => (key: string) => ({
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
+
+    <AppSidebarRecentConversations />
   </SidebarContent>
 </template>

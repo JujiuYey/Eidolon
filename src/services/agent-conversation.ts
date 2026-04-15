@@ -74,6 +74,18 @@ export async function listAgentConversations(
 }
 
 /**
+ * List recent conversations across all agents
+ */
+export async function listRecentAgentConversations(
+  limit?: number,
+): Promise<AgentWorkspaceConversation[]> {
+  const raw = await invoke<TauriAgentConversation[]>('list_recent_agent_conversations', {
+    limit,
+  });
+  return raw.map(toCamelCaseConversation);
+}
+
+/**
  * Create a new conversation from an agent profile
  */
 export async function createAgentConversation(

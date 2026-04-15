@@ -50,6 +50,25 @@ impl<'a> AgentConversationRepository<'a> {
         Ok(results)
     }
 
+    pub fn list_recent(&self, limit: Option<usize>) -> Result<Vec<AgentConversation>, String> {
+        let cache = self.conversation_cache.borrow();
+        let mut results = cache.values().cloned().collect::<Vec<_>>();
+
+        results.sort_by(|left, right| {
+            right
+                .updated_at
+                .cmp(&left.updated_at)
+                .then(left.title.cmp(&right.title))
+                .then(left.id.cmp(&right.id))
+        });
+
+        if let Some(limit) = limit {
+            results.truncate(limit);
+        }
+
+        Ok(results)
+    }
+
     pub fn get(&self, conversation_id: &str) -> Result<Option<AgentConversation>, String> {
         Ok(self.conversation_cache.borrow().get(conversation_id).cloned())
     }
@@ -409,5 +428,31 @@ mod tests {
                 .expect("messages should load")
                 .is_empty()
         );
+    }
+
+    #[test]
+    fn list_recent_returns_conversations_across_agents_descending() {
+        let (_temp_dir, store) = create_profile_repo_and_store();
+        let conversation_repo = AgentConversationRepository::new(&store);
+        let first_profile = persist_profile(&store, "Filesystem Assistant", 1);
+        let second_profile = persist_profile(&store, "Docs Assistant", 2);
+
+        let older = conversation_repo
+            .create_from_profile(&first_profile)
+            .expect("older conversation should be created");
+
+        std::thread::sleep(std::time::Duration::from_millis(1));
+
+        let newer = conversation_repo
+            .create_from_profile(&second_profile)
+            .expect("newer conversation should be created");
+
+        let recent = conversation_repo
+            .list_recent(Some(10))
+            .expect("recent conversations should load");
+
+        assert_eq!(recent.len(), 2);
+        assert_eq!(recent[0].id, newer.id);
+        assert_eq!(recent[1].id, older.id);
     }
 }
