@@ -65,6 +65,7 @@ interface AgentFormState {
   temperature: string;
   maxTokens: string;
   systemPrompt: string;
+  workDirectory: string;
   enabledMcpServiceIds: string[];
 }
 
@@ -143,6 +144,7 @@ const form = reactive<AgentFormState>({
   temperature: '0.7',
   maxTokens: '4096',
   systemPrompt: '',
+  workDirectory: '',
   enabledMcpServiceIds: [],
 });
 
@@ -219,6 +221,7 @@ function hydrateForm() {
   form.temperature = profile?.temperature ?? '0.7';
   form.maxTokens = profile?.maxTokens ?? '4096';
   form.systemPrompt = profile?.systemPrompt ?? '';
+  form.workDirectory = profile?.workDirectory ?? '';
   form.enabledMcpServiceIds = [...(profile?.enabledMcpServiceIds ?? [])];
 }
 
@@ -267,6 +270,7 @@ function handleSave() {
     temperature: form.temperature.trim(),
     maxTokens: form.maxTokens.trim(),
     systemPrompt: form.systemPrompt.trim(),
+    workDirectory: form.workDirectory.trim(),
     enabledMcpServiceIds: [...form.enabledMcpServiceIds],
     enabledToolKeys: deriveEnabledToolKeys(form.enabledMcpServiceIds),
   });
@@ -385,6 +389,17 @@ onMounted(() => {
                     placeholder="简短说明这个 Agent 的职责和风格"
                     class="min-h-24"
                   />
+                </div>
+
+                <div class="space-y-2">
+                  <Label>工作目录</Label>
+                  <Input
+                    v-model="form.workDirectory"
+                    placeholder="/absolute/path/to/project"
+                  />
+                  <p class="text-xs leading-5 text-muted-foreground">
+                    填写后，这个 Agent 会绑定到对应项目目录。留空表示纯聊天 Agent，不应具备本地项目类能力。
+                  </p>
                 </div>
               </div>
             </section>

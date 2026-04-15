@@ -6,9 +6,6 @@ export * from './agent';
 // AI 服务提供商
 export * from './ai-provider';
 
-// 对话
-export * from './conversation';
-
 // 项目文件
 export * from './project-files';
 

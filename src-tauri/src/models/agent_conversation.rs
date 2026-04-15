@@ -36,6 +36,9 @@ pub struct AgentConversation {
     pub snapshot_system_prompt: String,
 
     #[serde(default)]
+    pub snapshot_work_directory: String,
+
+    #[serde(default)]
     pub snapshot_enabled_mcp_service_ids: Vec<String>,
 
     #[serde(default)]

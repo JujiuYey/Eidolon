@@ -16,6 +16,7 @@ interface TauriAgentProfile {
   temperature: string;
   max_tokens: string;
   system_prompt: string;
+  work_directory: string;
   enabled_mcp_service_ids: string[];
   enabled_tool_keys: string[];
   created_at: number;
@@ -68,6 +69,7 @@ function toFrontendProfile(profile: TauriAgentProfile): AgentProfile {
     temperature: profile.temperature,
     maxTokens: profile.max_tokens,
     systemPrompt: profile.system_prompt,
+    workDirectory: profile.work_directory,
     enabledMcpServiceIds: profile.enabled_mcp_service_ids,
     enabledToolKeys: profile.enabled_tool_keys,
     createdAt: profile.created_at,
@@ -88,6 +90,7 @@ function toTauriProfile(
     temperature: profile.temperature,
     max_tokens: profile.maxTokens,
     system_prompt: profile.systemPrompt,
+    work_directory: profile.workDirectory ?? '',
     enabled_mcp_service_ids: [...profile.enabledMcpServiceIds],
     enabled_tool_keys: [...profile.enabledToolKeys],
     created_at: 'createdAt' in profile ? profile.createdAt : 0,

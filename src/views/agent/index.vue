@@ -21,6 +21,7 @@ const profileCards = computed(() => {
   return profiles.value.map(profile => ({
     ...profile,
     providerName: providerNameMap.get(profile.providerId) ?? profile.providerId,
+    isChatOnly: !profile.workDirectory.trim(),
   }));
 });
 
@@ -150,12 +151,19 @@ onActivated(() => {
             {{ profile.providerName }}
           </Badge>
           <Badge variant="outline" class="border-border bg-muted text-muted-foreground">
+            {{ profile.isChatOnly ? '纯聊天' : '目录已绑定' }}
+          </Badge>
+          <Badge variant="outline" class="border-border bg-muted text-muted-foreground">
             {{ profile.enabledMcpServiceIds.length }} MCP
           </Badge>
           <Badge variant="outline" class="border-border bg-muted text-muted-foreground">
             {{ profile.enabledToolKeys.length }} 工具
           </Badge>
         </div>
+
+        <p class="mt-4 truncate text-xs text-muted-foreground">
+          {{ profile.workDirectory || '未配置工作目录，仅用于纯聊天' }}
+        </p>
 
         <p class="mt-4 text-xs text-muted-foreground">
           更新于 {{ new Date(profile.updatedAt).toLocaleString('zh-CN') }}

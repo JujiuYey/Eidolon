@@ -27,6 +27,9 @@ pub struct AgentProfile {
     pub system_prompt: String,
 
     #[serde(default)]
+    pub work_directory: String,
+
+    #[serde(default)]
     pub enabled_mcp_service_ids: Vec<String>,
 
     #[serde(default)]

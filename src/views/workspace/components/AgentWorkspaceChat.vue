@@ -12,6 +12,7 @@ defineProps<{
   hasConversationSelected: boolean;
   conversationTitle?: string;
   agentName?: string;
+  workDirectory?: string;
 }>();
 
 const emit = defineEmits<{
@@ -50,6 +51,9 @@ function handleKeydown(event: KeyboardEvent) {
         </div>
         <p class="truncate text-xs text-muted-foreground">
           {{ agentName || '当前会话' }}
+        </p>
+        <p class="truncate text-xs text-muted-foreground">
+          {{ workDirectory ? `工作目录：${workDirectory}` : '纯聊天模式：未配置工作目录' }}
         </p>
       </div>
     </div>

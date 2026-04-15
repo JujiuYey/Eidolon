@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { Component } from 'vue';
-import { MessageCircle, Bot, Sparkles, LayoutDashboard } from 'lucide-vue-next';
+import { MessageCircle, Bot, Sparkles } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
 import AppSidebarRecentConversations from '../recent-conversations/index.vue';
 
@@ -22,22 +22,10 @@ const menus: Menu[] = [
     path: '/index',
   },
   {
-    title: '智能体工作台',
-    key: 'agent-workspace',
-    icon: LayoutDashboard,
-    path: '/agent/workspace',
-  },
-  {
     title: '智能体管理',
     key: 'agent',
     icon: Bot,
     path: '/agent',
-  },
-  {
-    title: '对话',
-    key: 'conversation',
-    icon: MessageCircle,
-    path: '/conversation',
   },
   {
     title: 'CRUD 生成',
@@ -48,12 +36,7 @@ const menus: Menu[] = [
 ];
 
 const currentKey = computed(() => {
-  const path = route.path;
-  // Match workspace first
-  if (path.startsWith('/agent/workspace')) {
-    return 'agent-workspace';
-  }
-  return path.split('/')[1] || 'index';
+  return route.path.split('/')[1] || 'index';
 });
 
 function handleClick(menu: Menu) {

@@ -20,6 +20,15 @@ const activeConversationId = computed(() => {
     : null;
 });
 
+function getConversationScopeLabel(workDirectory: string) {
+  const normalized = workDirectory.trim();
+  if (!normalized) {
+    return '纯聊天';
+  }
+
+  return normalized.split(/[\\/]/).filter(Boolean).pop() ?? normalized;
+}
+
 function resolveCreateAgentId() {
   if (route.path === '/agent/workspace' && workspaceStore.activeConversation?.agentProfileId) {
     return workspaceStore.activeConversation.agentProfileId;
@@ -111,7 +120,7 @@ onMounted(() => {
                   {{ conversation.title }}
                 </span>
                 <span class="block truncate text-xs text-muted-foreground">
-                  {{ conversation.snapshotAgentName }}
+                  {{ conversation.snapshotAgentName }} · {{ getConversationScopeLabel(conversation.snapshotWorkDirectory) }}
                 </span>
               </span>
             </span>

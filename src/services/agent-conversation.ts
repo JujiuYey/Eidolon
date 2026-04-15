@@ -14,6 +14,7 @@ interface TauriAgentConversation {
   snapshot_temperature: string;
   snapshot_max_tokens: string;
   snapshot_system_prompt: string;
+  snapshot_work_directory: string;
   snapshot_enabled_mcp_service_ids: string[];
   snapshot_enabled_tool_keys: string[];
   created_at: number;
@@ -43,6 +44,7 @@ function toCamelCaseConversation(raw: TauriAgentConversation): AgentWorkspaceCon
     snapshotTemperature: raw.snapshot_temperature,
     snapshotMaxTokens: raw.snapshot_max_tokens,
     snapshotSystemPrompt: raw.snapshot_system_prompt,
+    snapshotWorkDirectory: raw.snapshot_work_directory,
     snapshotEnabledMcpServiceIds: raw.snapshot_enabled_mcp_service_ids,
     snapshotEnabledToolKeys: raw.snapshot_enabled_tool_keys,
     createdAt: raw.created_at,

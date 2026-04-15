@@ -15,6 +15,7 @@ export interface AgentProfile {
   temperature: string;
   maxTokens: string;
   systemPrompt: string;
+  workDirectory: string;
   enabledMcpServiceIds: string[];
   enabledToolKeys: string[];
   createdAt: number;
@@ -30,6 +31,7 @@ export interface AgentProfileInput {
   temperature: string;
   maxTokens: string;
   systemPrompt: string;
+  workDirectory: string;
   enabledMcpServiceIds: string[];
   enabledToolKeys: string[];
 }
@@ -209,6 +211,7 @@ export interface AgentWorkspaceConversation {
   snapshotTemperature: string;
   snapshotMaxTokens: string;
   snapshotSystemPrompt: string;
+  snapshotWorkDirectory: string;
   snapshotEnabledMcpServiceIds: string[];
   snapshotEnabledToolKeys: string[];
   createdAt: number;

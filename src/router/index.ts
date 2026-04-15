@@ -10,10 +10,6 @@ const routes: RouteRecordRaw[] = [
     redirect: '/agent',
     children: [
       {
-        path: '/conversation',
-        component: () => import('@/views/conversation/index.vue'),
-      },
-      {
         path: '/agent',
         component: () => import('@/views/agent/index.vue'),
       },

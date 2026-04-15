@@ -1,85 +1,4 @@
 import { toast } from 'vue-sonner';
-import type { Message, Conversation } from '../types/index';
-
-import { nanoid } from 'nanoid';
-
-/**
- * 格式化时间戳为可读格式
- */
-export function formatTimestamp(timestamp: number | undefined): string {
-  if (!timestamp) {
-    return '未知';
-  }
-
-  const date = new Date(timestamp);
-  const now = new Date();
-  const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-
-  if (diffInHours < 1) {
-    const diffInMinutes = Math.floor(diffInHours * 60);
-    return diffInMinutes <= 1 ? '刚刚' : `${diffInMinutes}分钟前`;
-  } else if (diffInHours < 24) {
-    return `${Math.floor(diffInHours)}小时前`;
-  } else if (diffInHours < 24 * 7) {
-    return `${Math.floor(diffInHours / 24)}天前`;
-  } else {
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  }
-}
-
-/**
- * 创建新消息
- */
-export function createMessage(content: string, role: 'user' | 'assistant'): Message {
-  return {
-    id: nanoid(),
-    content,
-    role,
-    timestamp: Date.now(),
-  };
-}
-
-/**
- * 创建新对话
- */
-export function createConversation(title?: string): Conversation {
-  const now = Date.now();
-  return {
-    id: nanoid(),
-    title: title || '新对话',
-    messages: [],
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-/**
- * 根据消息内容生成对话标题
- */
-export function generateConversationTitle(content: string | Message[]): string {
-  if (typeof content === 'string') {
-    // 取前30个字符作为标题
-    const title = content.slice(0, 30);
-    return title.length < content.length ? `${title}...` : title;
-  }
-
-  if (content.length === 0) {
-    return '新对话';
-  }
-
-  const firstUserMessage = content.find(m => m.role === 'user');
-  if (!firstUserMessage) {
-    return '新对话';
-  }
-
-  // 取前30个字符作为标题
-  const title = firstUserMessage.content.slice(0, 30);
-  return title.length < firstUserMessage.content.length ? `${title}...` : title;
-}
 
 /**
  * 复制文本到剪贴板
@@ -104,31 +23,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       return false;
     }
   }
-}
-
-/**
- * 下载文件
- */
-export function downloadFile(content: string, filename: string, contentType: string = 'application/json'): void {
-  const blob = new Blob([content], { type: contentType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
-/**
- * 截断文本
- */
-export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) {
-    return text;
-  }
-  return `${text.slice(0, maxLength)}...`;
 }
 
 /**

@@ -50,6 +50,7 @@ function buildInitialMessage(currentProfile: AgentProfile): AgentMessage {
     '当前页面还是 mock 对话模式，但已经会读取你创建这个 Agent 时选择的模型、提示词、MCP 和工具配置。',
     '',
     `- 模型：${currentProfile.modelId}`,
+    `- 工作目录：${currentProfile.workDirectory || '未配置（纯聊天）'}`,
     `- MCP 服务：${currentProfile.enabledMcpServiceIds.length}`,
     '- 工具：默认启用 MCP 工具',
   ].join('\n'));
@@ -125,6 +126,7 @@ function buildMockReply(currentProfile: AgentProfile, question: string) {
     `- Agent：${currentProfile.name}`,
     `- 当前问题：${question}`,
     `- 模型：${currentProfile.modelId}`,
+    `- 工作目录：${currentProfile.workDirectory || '未配置（纯聊天）'}`,
     `- Temperature：${currentProfile.temperature || '未设置'}`,
     `- Max Tokens：${currentProfile.maxTokens || '未设置'}`,
     `- MCP 服务数：${currentProfile.enabledMcpServiceIds.length}`,

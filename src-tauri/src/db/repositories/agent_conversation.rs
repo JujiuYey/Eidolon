@@ -87,6 +87,7 @@ impl<'a> AgentConversationRepository<'a> {
             snapshot_temperature: profile.temperature.clone(),
             snapshot_max_tokens: profile.max_tokens.clone(),
             snapshot_system_prompt: profile.system_prompt.clone(),
+            snapshot_work_directory: profile.work_directory.clone(),
             snapshot_enabled_mcp_service_ids: profile.enabled_mcp_service_ids.clone(),
             snapshot_enabled_tool_keys: profile.enabled_tool_keys.clone(),
             created_at: now,
@@ -310,6 +311,7 @@ mod tests {
                 temperature: "0.3".to_string(),
                 max_tokens: "2048".to_string(),
                 system_prompt: format!("System prompt for {name}"),
+                work_directory: format!("/tmp/{name}-workspace"),
                 enabled_mcp_service_ids: vec!["mcp_filesystem".to_string()],
                 enabled_tool_keys: vec!["mcp_filesystem:read_file".to_string()],
                 updated_at,
@@ -340,6 +342,10 @@ mod tests {
             vec!["mcp_filesystem:read_file".to_string()]
         );
         assert_eq!(conversation.created_from_profile_updated_at, 42);
+        assert_eq!(
+            conversation.snapshot_work_directory,
+            "/tmp/Filesystem Assistant-workspace"
+        );
     }
 
     #[test]

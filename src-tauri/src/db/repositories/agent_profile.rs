@@ -91,6 +91,8 @@ fn normalize_profile(
         return Err("system_prompt 不能为空".to_string());
     }
 
+    let work_directory = profile.work_directory.trim().to_string();
+
     let now = Utc::now().timestamp_millis();
     let id = if profile.id.trim().is_empty() {
         format!("agent_{}", nanoid!(10))
@@ -118,6 +120,7 @@ fn normalize_profile(
         temperature: normalize_optional_string(&profile.temperature, "0.7"),
         max_tokens: normalize_optional_string(&profile.max_tokens, "4096"),
         system_prompt,
+        work_directory,
         enabled_mcp_service_ids: normalize_list(&profile.enabled_mcp_service_ids),
         enabled_tool_keys: normalize_list(&profile.enabled_tool_keys),
         created_at,
@@ -167,6 +170,7 @@ mod tests {
             provider_id: "openai".to_string(),
             model_id: "gpt-4.1".to_string(),
             system_prompt: "Help me manage local files safely.".to_string(),
+            work_directory: "/tmp/eidolon-workspace".to_string(),
             enabled_mcp_service_ids: vec!["mcp_filesystem".to_string()],
             enabled_tool_keys: vec!["mcp_filesystem:read_file".to_string()],
             ..Default::default()
@@ -191,6 +195,33 @@ mod tests {
 
         assert_eq!(stored.enabled_mcp_service_ids, vec!["mcp_filesystem"]);
         assert_eq!(stored.enabled_tool_keys, vec!["mcp_filesystem:read_file"]);
+        assert_eq!(stored.work_directory, "/tmp/eidolon-workspace");
+    }
+
+    #[test]
+    fn upsert_normalizes_blank_work_directory() {
+        let temp_dir = tempdir().expect("temp dir should be created");
+        let store =
+            LocalJsonStore::new(temp_dir.path().to_path_buf()).expect("store should be created");
+        let repository = AgentProfileRepository::new(&store);
+
+        let profile_id = repository
+            .upsert(&AgentProfile {
+                name: "Chat Only".to_string(),
+                provider_id: "openai".to_string(),
+                model_id: "gpt-4.1".to_string(),
+                system_prompt: "Chat safely.".to_string(),
+                work_directory: "   ".to_string(),
+                ..Default::default()
+            })
+            .expect("profile should persist");
+
+        let stored = repository
+            .get(&profile_id)
+            .expect("lookup should succeed")
+            .expect("profile should exist");
+
+        assert_eq!(stored.work_directory, "");
     }
 
     #[test]
