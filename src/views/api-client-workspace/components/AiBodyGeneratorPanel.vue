@@ -6,10 +6,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import type { ApiAiModelOption } from '@/services/api-client';
 import type { ApiClientAiCandidate, ApiClientRequestBody } from '@/types/api-client';
 
 interface Props {
@@ -19,8 +17,7 @@ interface Props {
   prompt: string;
   reference: string;
   includeCurrentBody: boolean;
-  models: ApiAiModelOption[];
-  selectedModelKey: string | null;
+  currentModelLabel: string | null;
 }
 
 const props = defineProps<Props>();
@@ -29,7 +26,6 @@ const emit = defineEmits<{
   (e: 'update:prompt', value: string): void;
   (e: 'update:reference', value: string): void;
   (e: 'update:includeCurrentBody', value: boolean): void;
-  (e: 'update:selectedModelKey', value: string | null): void;
   (e: 'generate'): void;
   (e: 'cancel'): void;
   (e: 'apply'): void;
@@ -45,15 +41,6 @@ watch(
   },
   { immediate: true },
 );
-
-const localModelKey = computed({
-  get(): string {
-    return props.selectedModelKey ?? props.models[0]?.label ?? '';
-  },
-  set(value: string) {
-    emit('update:selectedModelKey', value || null);
-  },
-});
 
 const jsonState = computed(() => {
   const trimmed = localCandidateContent.value.trim();
@@ -168,14 +155,12 @@ function handleGenerate(): void {
       <Label class="w-20 shrink-0">
         模型
       </Label>
-      <NativeSelect
-        v-model="localModelKey"
-        class="flex-1"
-      >
-        <NativeSelectOption v-for="model of models" :key="model.label" :value="model.label">
-          {{ model.label }}
-        </NativeSelectOption>
-      </NativeSelect>
+      <div class="flex-1 rounded-md border bg-muted/30 px-3 py-1.5 text-sm">
+        <span v-if="currentModelLabel">{{ currentModelLabel }}</span>
+        <span v-else class="text-muted-foreground">
+          等待生成结果以显示当前使用的模型
+        </span>
+      </div>
     </div>
 
     <div class="flex gap-2">
@@ -224,9 +209,9 @@ function handleGenerate(): void {
       </Button>
     </div>
 
-    <Alert v-if="!models.length">
-      <AlertTitle>未配置可用模型</AlertTitle>
-      <AlertDescription>请先在设置中配置模型供应商与默认模型，再使用 AI 生成。</AlertDescription>
+    <Alert>
+      <AlertTitle>使用后端默认模型</AlertTitle>
+      <AlertDescription>请求体生成使用后端「默认模型」页签中 `api_body_generation` 键对应的模型。前端无法列出或切换；如需修改，请在设置页调整默认模型。</AlertDescription>
     </Alert>
   </div>
 </template>

@@ -31,7 +31,7 @@ const emit = defineEmits<{
   (e: 'selectRequest', requestId: string): void;
   (e: 'createProject'): void;
   (e: 'createGroup', groupId: string | null): void;
-  (e: 'createRequest', groupId: string): void;
+  (e: 'createRequest', payload: { groupId: string; groupName: string }): void;
   (e: 'deleteProject', projectId: string): void;
   (e: 'deleteGroup', groupId: string): void;
   (e: 'deleteRequest', requestId: string): void;
@@ -136,9 +136,9 @@ function handleCreateGroup(projectId: string, event: Event): void {
   emit('createGroup', projectId);
 }
 
-function handleCreateRequest(groupId: string, event: Event): void {
+function handleCreateRequest(groupId: string, groupName: string, event: Event): void {
   event.stopPropagation();
-  emit('createRequest', groupId);
+  emit('createRequest', { groupId, groupName });
 }
 </script>
 
@@ -242,7 +242,7 @@ function handleCreateRequest(groupId: string, event: Event): void {
                   type="button"
                   class="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100"
                   :aria-label="`新建请求 ${group.name}`"
-                  @click="handleCreateRequest(group.id, $event)"
+                  @click="handleCreateRequest(group.id, group.name, $event)"
                 >
                   <Plus class="size-3" />
                 </button>

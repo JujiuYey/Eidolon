@@ -2,7 +2,6 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import * as apiClientService from '@/services/api-client';
 import type {
-  ApiAiModelOption,
   ApiExecuteResult,
 } from '@/services/api-client';
 import type {
@@ -100,8 +99,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
 
   const aiCandidate = ref<ApiClientAiCandidate | null>(null);
   const aiAbortController = ref<AbortController | null>(null);
-  const aiAvailableModels = ref<ApiAiModelOption[]>([]);
-  const aiSelectedModelKey = ref<string | null>(null);
+  const aiCurrentModelLabel = ref<string | null>(null);
   const isGeneratingAi = ref(false);
 
   const history = ref<ApiClientRequestHistory[]>([]);
@@ -166,11 +164,10 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
       isLoadingGroups.value = false;
     }
   }
-
   async function loadRequests(projectId: string): Promise<void> {
     isLoadingRequests.value = true;
     try {
-      requests.value = await service.listAllApiRequests(projectId);
+      requests.value = await service.listApiRequests(projectId);
     } finally {
       isLoadingRequests.value = false;
     }
@@ -223,9 +220,9 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
   }
 
   async function updateProject(projectId: string, name: string, description: string): Promise<ApiClientProject> {
-    const project = await service.updateApiProject(projectId, name, description);
-    projects.value = projects.value.map(existing => (existing.id === projectId ? project : existing));
-    return project;
+    const updated = await service.updateApiProject(projectId, name, description);
+    projects.value = projects.value.map(existing => (existing.id === projectId ? updated : existing));
+    return updated;
   }
 
   async function deleteProject(projectId: string): Promise<void> {
@@ -350,7 +347,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
         aiPrompt: draft.value.aiPrompt,
         aiReference: draft.value.aiReference,
       };
-      const persisted = await service.saveApiRequest(updated);
+      const persisted = await service.updateApiRequest(updated);
       requests.value = requests.value.map(item => (item.id === persisted.id ? persisted : item));
 
       draft.value = buildDraftFromRequest(persisted);
@@ -393,8 +390,8 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     }
   }
 
-  async function moveRequest(requestId: string, groupId: string, sort: number): Promise<ApiClientRequest> {
-    const request = await service.moveApiRequest(requestId, groupId, sort);
+  async function moveRequest(requestId: string, groupId: string): Promise<ApiClientRequest> {
+    const request = await service.moveApiRequest(requestId, groupId);
     requests.value = requests.value.map(existing => (existing.id === requestId ? request : existing));
     return request;
   }
@@ -578,7 +575,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
       environmentName: env?.name ?? null,
     });
 
-    const lookup = env ? buildEnvironmentLookup(env.variables, env.isSensitive) : null;
+    const lookup = env ? buildEnvironmentLookup(env.variables, false) : null;
     const urlResolution = resolveExecutionUrl({
       baseUrl: env?.baseUrl ?? '',
       url: draft.value.url,
@@ -628,7 +625,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     };
 
     try {
-      const result = await service.executeApiRequest({
+      const result = await service.sendApiRequest({
         requestId: activeRequestId.value,
         executionId,
         snapshot,
@@ -707,7 +704,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     }
     executionAbortController.value?.abort();
     try {
-      await service.cancelApiExecution(current.executionId);
+      await service.cancelApiRequest(current.executionId);
     } catch {
       // ignore: cancellation is best-effort
     }
@@ -727,7 +724,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
   async function loadHistory(requestId: string): Promise<void> {
     isLoadingHistory.value = true;
     try {
-      history.value = await service.listApiRequestHistory(requestId);
+      history.value = await service.listApiRequestHistories(requestId);
     } finally {
       isLoadingHistory.value = false;
     }
@@ -739,7 +736,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     }
     isClearingHistory.value = true;
     try {
-      await service.clearApiRequestHistory(activeRequestId.value);
+      await service.clearApiRequestHistories(activeRequestId.value);
       history.value = [];
     } finally {
       isClearingHistory.value = false;
@@ -768,11 +765,10 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
   }
 
   async function loadAiModels(): Promise<void> {
-    try {
-      aiAvailableModels.value = await service.listApiAiModels();
-    } catch {
-      aiAvailableModels.value = [];
-    }
+    // No backend command to list AI models; the active model label is surfaced
+    // by the response of generate_api_request_body. Callers may invoke this
+    // hook without effect to keep the public store surface stable.
+    void service;
   }
 
   async function generateAiBody(options: { prompt: string; reference: string; includeCurrentBody: boolean }): Promise<void> {
@@ -787,31 +783,14 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     const controller = new AbortController();
     aiAbortController.value = controller;
 
-    const modelOption = aiAvailableModels.value.find(option => `${option.providerId}/${option.modelId}` === aiSelectedModelKey.value)
-      ?? aiAvailableModels.value[0]
-      ?? null;
-
-    if (!modelOption) {
-      aiCandidate.value = buildAiCandidateFailed({
-        requestId: activeRequestId.value,
-        taskId,
-        prompt: options.prompt,
-        reference: options.reference,
-        includeCurrentBody: options.includeCurrentBody,
-        modelLabel: '',
-        errorMessage: '请先在设置中配置模型',
-      });
-      throw new Error('未配置可用模型');
-    }
-
-    const modelLabel = modelOption.label;
+    const placeholderLabel = aiCurrentModelLabel.value ?? '';
     aiCandidate.value = buildAiCandidateGenerating({
       requestId: activeRequestId.value,
       taskId,
       prompt: options.prompt,
       reference: options.reference,
       includeCurrentBody: options.includeCurrentBody,
-      modelLabel,
+      modelLabel: placeholderLabel,
     });
     isGeneratingAi.value = true;
 
@@ -826,13 +805,11 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
         url: draft.value.url,
       });
 
-      const result = await service.generateApiBody({
-        requestId: activeRequestId.value,
-        taskId,
+      const result = await service.generateApiRequestBody({
         prompt: payload.prompt,
         reference: payload.reference,
         includeCurrentBody: payload.hasCurrentBody,
-        currentBody: payload.hasCurrentBody ? draft.value.body : null,
+        currentBody: payload.hasCurrentBody ? draft.value.body.text : null,
         requestName: payload.requestName,
         method: payload.method,
         url: payload.url,
@@ -842,13 +819,17 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
         return;
       }
 
+      if (result.modelLabel) {
+        aiCurrentModelLabel.value = result.modelLabel;
+      }
+
       aiCandidate.value = buildAiCandidate({
         requestId: activeRequestId.value,
         taskId,
         prompt: options.prompt,
         reference: options.reference,
         includeCurrentBody: options.includeCurrentBody,
-        modelLabel: result.model_label || modelLabel,
+        modelLabel: result.modelLabel || placeholderLabel,
         rawContent: result.content,
       });
     } catch (error) {
@@ -862,7 +843,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
         prompt: options.prompt,
         reference: options.reference,
         includeCurrentBody: options.includeCurrentBody,
-        modelLabel,
+        modelLabel: placeholderLabel,
         errorMessage: message,
       });
     } finally {
@@ -879,11 +860,6 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
       return;
     }
     aiAbortController.value?.abort();
-    try {
-      await service.cancelApiGeneration(candidate.taskId);
-    } catch {
-      // ignore: cancellation is best-effort
-    }
     aiCandidate.value = {
       ...candidate,
       status: 'cancelled',
@@ -906,10 +882,6 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
 
   function setSearchKeyword(keyword: string): void {
     requestListFilter.value = keyword;
-  }
-
-  function selectAiModel(key: string | null): void {
-    aiSelectedModelKey.value = key;
   }
 
   function editAiCandidateContent(value: string): void {
@@ -946,8 +918,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     isDeletingRequest,
     execution,
     aiCandidate,
-    aiAvailableModels,
-    aiSelectedModelKey,
+    aiCurrentModelLabel,
     isGeneratingAi,
     history,
     isLoadingHistory,
@@ -1006,7 +977,6 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     cancelAiGeneration,
     applyAiCandidateToBody,
     setSearchKeyword,
-    selectAiModel,
     editAiCandidateContent,
   };
 }

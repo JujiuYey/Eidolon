@@ -27,6 +27,7 @@ const statusLabels: Record<ApiClientRequestHistory['status'], string> = {
   network_error: '网络错误',
   timeout: '超时',
   cancelled: '已取消',
+  oversize: '响应过大',
 };
 
 const statusVariants: Record<ApiClientRequestHistory['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -35,6 +36,7 @@ const statusVariants: Record<ApiClientRequestHistory['status'], 'default' | 'sec
   network_error: 'destructive',
   timeout: 'destructive',
   cancelled: 'outline',
+  oversize: 'destructive',
 };
 
 const sorted = computed(() => {

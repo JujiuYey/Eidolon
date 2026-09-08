@@ -12,7 +12,7 @@
     "lint:ui": "eslint \"src/components/ui/**/*.{vue,ts,tsx}\" --fix --cache --cache-location node_modules/.cache/eslint/",
     "lint:ui2": "eslint \"src/components/ai-elements/**/*.{vue,ts,tsx}\" --fix --cache --cache-location node_modules/.cache/eslint/",
     "lint:lint-staged": "lint-staged",
-    "test": "node --experimental-strip-types --import \"data:text/javascript,import { register } from 'node:module'; import { pathToFileURL } from 'node:url'; register('./scripts/test-loader.mjs', pathToFileURL('./'));\" --test src/views/api-client/utils/__tests__/request-helpers.test.ts src/views/api-client/utils/__tests__/response-helpers.test.ts src/views/api-client/utils/__tests__/ai-helpers.test.ts src/views/api-client/utils/__tests__/store.test.ts"
+    "test": "vitest run"
   },
   "dependencies": {
     "@iconify/vue": "^5.0.0",
@@ -64,6 +64,7 @@
     "@types/markdown-it": "^14.1.2",
     "@types/node": "^24.0.8",
     "@vitejs/plugin-vue": "^6.0.0",
+    "@vitest/eslint-plugin": "^1.3.4",
     "@vue/eslint-config-typescript": "^14.6.0",
     "@vue/tsconfig": "^0.7.0",
     "eslint": "^9.30.1",
@@ -75,6 +76,7 @@
     "unplugin-vue-components": "^28.8.0",
     "vite": "^7.0.0",
     "vite-plugin-checker": "^0.10.0",
+    "vitest": "^1.6.0",
     "vue-tsc": "^2.2.10"
   },
   "lint-staged": {

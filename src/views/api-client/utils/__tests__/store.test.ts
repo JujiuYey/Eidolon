@@ -11,7 +11,7 @@ import type {
   ApiClientRequestHistory,
   ApiClientRequestSnapshot,
 } from '@/types/api-client';
-import type { TauriAiGenerateInput, TauriAiGenerateResult, TauriExecuteRequestInput, TauriExecuteRequestResult } from '@/services/api-client';
+import type { ApiSendRequestInput } from '@/services/api-client';
 
 function bindStore(service: ApiClientService) {
   const useBound = defineStore('api-client-test', () => createApiClientStore({ service }));
@@ -64,7 +64,6 @@ function makeEnvironment(overrides: Partial<ApiClientEnvironment> = {}): ApiClie
     name: 'dev',
     baseUrl: 'https://api.example.com',
     variables: [makeRow({ key: 'host', value: 'https://api.example.com' })],
-    isSensitive: false,
     createdAt: 0,
     updatedAt: 0,
     ...overrides,
@@ -95,39 +94,64 @@ function makeRequest(overrides: Partial<ApiClientRequest> = {}): ApiClientReques
 interface ExecuteInput {
   requestId: string;
   executionId: string;
-  snapshot: TauriExecuteRequestInput['snapshot'];
+  snapshot: ApiSendRequestInput['snapshot'];
   environmentId: string | null;
 }
 
+interface SnakeExecutionResult {
+  execution_id: string;
+  status: 'success' | 'http_error' | 'network_error' | 'timeout' | 'cancelled' | 'oversize';
+  status_code: number | null;
+  duration_ms: number;
+  size_bytes: number;
+  content_type: string | null;
+  response_headers: Array<{ id: string; enabled: boolean; key: string; value: string }>;
+  response_body: string;
+  response_truncated: boolean;
+  is_binary: boolean;
+  oversize: boolean;
+  connection_failed: boolean;
+  timed_out: boolean;
+  cancelled: boolean;
+  error_message: string | null;
+  history_id: string | null;
+  history_error?: string | null;
+}
+
 interface GenerateInput {
-  requestId: string;
-  taskId: string;
   prompt: string;
   reference: string;
   includeCurrentBody: boolean;
-  currentBody: TauriAiGenerateInput['currentBody'];
+  currentBody: string | null;
   requestName: string;
-  method: TauriAiGenerateInput['method'];
+  method: string;
   url: string;
+}
+
+interface SnakeAiGenerateResult {
+  content: string;
+  is_json_valid: boolean;
+  json_error: string | null;
+  model_label: string;
 }
 
 interface ServiceState {
   service: ApiClientService;
   calls: RecordedCall[];
-  setExecuteImpl: (impl: (input: ExecuteInput) => Promise<TauriExecuteRequestResult>) => void;
-  getExecuteImpl: () => (input: ExecuteInput) => Promise<TauriExecuteRequestResult>;
-  setGenerateImpl: (impl: (input: GenerateInput) => Promise<TauriAiGenerateResult>) => void;
-  getGenerateImpl: () => (input: GenerateInput) => Promise<TauriAiGenerateResult>;
+  setExecuteImpl: (impl: (input: ExecuteInput) => Promise<SnakeExecutionResult>) => void;
+  getExecuteImpl: () => (input: ExecuteInput) => Promise<SnakeExecutionResult>;
+  setGenerateImpl: (impl: (input: GenerateInput) => Promise<SnakeAiGenerateResult>) => void;
+  getGenerateImpl: () => (input: GenerateInput) => Promise<SnakeAiGenerateResult>;
   historyFixture: ApiClientRequestHistory[];
 }
 
 function buildService(): ServiceState {
   const calls: RecordedCall[] = [];
-  let executeImpl: (input: ExecuteInput) => Promise<TauriExecuteRequestResult>
+  let executeImpl: (input: ExecuteInput) => Promise<SnakeExecutionResult>
     = async () => {
       throw new Error('executeImpl not configured');
     };
-  let generateImpl: (input: GenerateInput) => Promise<TauriAiGenerateResult>
+  let generateImpl: (input: GenerateInput) => Promise<SnakeAiGenerateResult>
     = async () => {
       throw new Error('generateImpl not configured');
     };
@@ -138,100 +162,98 @@ function buildService(): ServiceState {
       calls.push({ method: 'listApiProjects', args: [] });
       return [makeProject()];
     },
-    createApiProject: async (name, description) => {
+    createApiProject: async (name: string, description: string) => {
       calls.push({ method: 'createApiProject', args: [name, description] });
       return makeProject({ name, description });
     },
-    renameApiProject: async (projectId, name) => {
+    renameApiProject: async (projectId: string, name: string) => {
       calls.push({ method: 'renameApiProject', args: [projectId, name] });
       return makeProject({ id: projectId, name });
     },
-    updateApiProject: async (projectId, name, description) => {
+    updateApiProject: async (projectId: string, name: string, description: string) => {
       calls.push({ method: 'updateApiProject', args: [projectId, name, description] });
       return makeProject({ id: projectId, name, description });
     },
-    deleteApiProject: async projectId => {
+    previewApiProjectDeletion: async (projectId: string) => {
+      calls.push({ method: 'previewApiProjectDeletion', args: [projectId] });
+      return { deletedRequests: 0, deletedHistories: 0 };
+    },
+    deleteApiProject: async (projectId: string) => {
       calls.push({ method: 'deleteApiProject', args: [projectId] });
       return { deletedRequests: 0, deletedHistories: 0 };
     },
-    listApiGroups: async projectId => {
+    listApiGroups: async (projectId: string) => {
       calls.push({ method: 'listApiGroups', args: [projectId] });
       return [makeGroup({ projectId })];
     },
-    createApiGroup: async (projectId, name) => {
+    createApiGroup: async (projectId: string, name: string) => {
       calls.push({ method: 'createApiGroup', args: [projectId, name] });
       return makeGroup({ projectId, name });
     },
-    renameApiGroup: async (groupId, name) => {
+    renameApiGroup: async (groupId: string, name: string) => {
       calls.push({ method: 'renameApiGroup', args: [groupId, name] });
       return makeGroup({ id: groupId, name });
     },
-    deleteApiGroup: async groupId => {
+    deleteApiGroup: async (groupId: string) => {
       calls.push({ method: 'deleteApiGroup', args: [groupId] });
       return { deletedRequests: 0, deletedHistories: 0 };
     },
-    moveApiGroup: async (groupId, sort) => {
-      calls.push({ method: 'moveApiGroup', args: [groupId, sort] });
-      return makeGroup({ id: groupId, sort });
-    },
-    listApiRequests: async groupId => {
-      calls.push({ method: 'listApiRequests', args: [groupId] });
+    reorderApiGroups: async (projectId: string, groupIds: string[]) => {
+      calls.push({ method: 'reorderApiGroups', args: [projectId, groupIds] });
       return [];
     },
-    listAllApiRequests: async projectId => {
-      calls.push({ method: 'listAllApiRequests', args: [projectId] });
+    listApiRequests: async (projectId: string) => {
+      calls.push({ method: 'listApiRequests', args: [projectId] });
       return [makeRequest({ projectId })];
     },
-    getApiRequest: async requestId => {
+    getApiRequest: async (requestId: string) => {
       calls.push({ method: 'getApiRequest', args: [requestId] });
       if (requestId === 'missing') {
         return null;
       }
       return makeRequest({ id: requestId });
     },
-    createApiRequest: async input => {
+    createApiRequest: async (input: { groupId: string; name: string }) => {
       calls.push({ method: 'createApiRequest', args: [input] });
       return makeRequest({
         id: 'request-new',
         groupId: input.groupId,
         name: input.name,
-        method: input.method,
-        url: input.url,
       });
     },
-    saveApiRequest: async request => {
-      calls.push({ method: 'saveApiRequest', args: [request] });
+    updateApiRequest: async (request: ApiClientRequest) => {
+      calls.push({ method: 'updateApiRequest', args: [request] });
       return request;
     },
-    duplicateApiRequest: async requestId => {
+    duplicateApiRequest: async (requestId: string) => {
       calls.push({ method: 'duplicateApiRequest', args: [requestId] });
       return makeRequest({ id: `${requestId}-copy`, name: `Copy of ${requestId}` });
     },
-    moveApiRequest: async (requestId, groupId, sort) => {
-      calls.push({ method: 'moveApiRequest', args: [requestId, groupId, sort] });
-      return makeRequest({ id: requestId, groupId, sort });
+    moveApiRequest: async (requestId: string, targetGroupId: string) => {
+      calls.push({ method: 'moveApiRequest', args: [requestId, targetGroupId] });
+      return makeRequest({ id: requestId, groupId: targetGroupId });
     },
-    deleteApiRequest: async requestId => {
+    deleteApiRequest: async (requestId: string) => {
       calls.push({ method: 'deleteApiRequest', args: [requestId] });
       return { deletedHistories: 0 };
     },
-    listApiEnvironments: async projectId => {
+    reorderApiRequests: async (groupId: string, requestIds: string[]) => {
+      calls.push({ method: 'reorderApiRequests', args: [groupId, requestIds] });
+      return [];
+    },
+    listApiEnvironments: async (projectId: string) => {
       calls.push({ method: 'listApiEnvironments', args: [projectId] });
       return [makeEnvironment({ projectId })];
     },
-    createApiEnvironment: async input => {
-      calls.push({ method: 'createApiEnvironment', args: [input] });
-      return makeEnvironment({ ...input });
-    },
-    saveApiEnvironment: async env => {
-      calls.push({ method: 'saveApiEnvironment', args: [env] });
+    upsertApiEnvironment: async (env: ApiClientEnvironment) => {
+      calls.push({ method: 'upsertApiEnvironment', args: [env] });
       return env;
     },
-    deleteApiEnvironment: async environmentId => {
+    deleteApiEnvironment: async (environmentId: string) => {
       calls.push({ method: 'deleteApiEnvironment', args: [environmentId] });
     },
-    executeApiRequest: async input => {
-      calls.push({ method: 'executeApiRequest', args: [input] });
+    sendApiRequest: async (input: ExecuteInput) => {
+      calls.push({ method: 'sendApiRequest', args: [input] });
       const result = await executeImpl(input);
       return {
         executionId: result.execution_id,
@@ -250,37 +272,41 @@ function buildService(): ServiceState {
         cancelled: result.cancelled,
         errorMessage: result.error_message,
         historyId: result.history_id,
+        historyError: result.history_error ?? null,
       };
     },
-    cancelApiExecution: async executionId => {
-      calls.push({ method: 'cancelApiExecution', args: [executionId] });
-    },
-    listApiRequestHistory: async requestId => {
-      calls.push({ method: 'listApiRequestHistory', args: [requestId] });
-      return [...historyFixture];
-    },
-    clearApiRequestHistory: async requestId => {
-      calls.push({ method: 'clearApiRequestHistory', args: [requestId] });
-    },
-    generateApiBody: async input => {
-      calls.push({ method: 'generateApiBody', args: [input] });
-      return generateImpl(input);
-    },
-    cancelApiGeneration: async (taskId: string) => {
-      calls.push({ method: 'cancelApiGeneration', args: [taskId] });
-    },
-    listApiAiModels: async () => {
-      calls.push({ method: 'listApiAiModels', args: [] });
-      return [{ providerId: 'mock', modelId: 'mock-model', label: 'mock-model' }];
-    },
-    getApiRequestBodyGenerationModel: async () => {
-      calls.push({ method: 'getApiRequestBodyGenerationModel', args: [] });
-      return null;
-    },
-    isApiBackendAvailable: async () => {
-      calls.push({ method: 'isApiBackendAvailable', args: [] });
+    cancelApiRequest: async (executionId: string) => {
+      calls.push({ method: 'cancelApiRequest', args: [executionId] });
       return true;
     },
+    previewApiRequest: async (input: { requestId: string; environmentId: string | null; snapshot: ApiSendRequestInput['snapshot'] }) => {
+      calls.push({ method: 'previewApiRequest', args: [input] });
+      return { method: input.snapshot.method, url: input.snapshot.url, bodySizeBytes: 0, environmentName: null };
+    },
+    listApiRequestHistories: async (requestId: string) => {
+      calls.push({ method: 'listApiRequestHistories', args: [requestId] });
+      return [...historyFixture];
+    },
+    getApiRequestHistory: async (historyId: string) => {
+      calls.push({ method: 'getApiRequestHistory', args: [historyId] });
+      return historyFixture.find(item => item.id === historyId) ?? null;
+    },
+    clearApiRequestHistories: async (requestId: string) => {
+      calls.push({ method: 'clearApiRequestHistories', args: [requestId] });
+      return 0;
+    },
+    generateApiRequestBody: async (input: GenerateInput) => {
+      calls.push({ method: 'generateApiRequestBody', args: [input] });
+      const result = await generateImpl(input);
+      return {
+        content: result.content,
+        isJsonValid: result.is_json_valid,
+        jsonError: result.json_error,
+        modelLabel: result.model_label,
+      };
+    },
+    buildEnvironmentSensitivity: () => 'unknown',
+    getExecutionKindFromStatus: () => 'idle',
   };
 
   return {
@@ -322,7 +348,7 @@ describe('selectProject bootstraps groups, requests, environments', () => {
 
     const methods = state.calls.map(call => call.method);
     assert.ok(methods.includes('listApiGroups'));
-    assert.ok(methods.includes('listAllApiRequests'));
+    assert.ok(methods.includes('listApiRequests'));
     assert.ok(methods.includes('listApiEnvironments'));
   });
 });
@@ -335,6 +361,50 @@ describe('empty initial state', () => {
     assert.equal(store.draft, null);
     assert.equal(store.activeRequestId, null);
     assert.equal(store.isDirty, false);
+  });
+});
+
+describe('updateProject persists name and description via update_api_project', () => {
+  it('calls updateApiProject with the right camelCase args and replaces the project in store', async () => {
+    const state = buildService();
+    const store = bindStore(state.service);
+    await store.loadProjects();
+    const initial = store.projects[0];
+    assert.ok(initial);
+
+    const updated = await store.updateProject(initial.id, '新名称', '新描述');
+
+    const updateCalls = state.calls.filter(call => call.method === 'updateApiProject');
+    assert.equal(updateCalls.length, 1);
+    assert.deepEqual(updateCalls[0]!.args, [initial.id, '新名称', '新描述']);
+
+    const renameCalls = state.calls.filter(call => call.method === 'renameApiProject');
+    assert.equal(renameCalls.length, 0, 'must not fall back to rename + local patch');
+
+    assert.equal(updated.name, '新名称');
+    assert.equal(updated.description, '新描述');
+
+    const persisted = store.projects.find(item => item.id === initial.id);
+    assert.ok(persisted);
+    assert.equal(persisted.name, '新名称');
+    assert.equal(persisted.description, '新描述');
+  });
+
+  it('surfaces backend error when update_api_project fails', async () => {
+    const state = buildService();
+    state.service.updateApiProject = async () => {
+      throw new Error('name 重复');
+    };
+    const store = bindStore(state.service);
+    await store.loadProjects();
+    const initial = store.projects[0];
+    assert.ok(initial);
+
+    await assert.rejects(() => store.updateProject(initial.id, '名称', '描述'), /name 重复/);
+
+    const persisted = store.projects.find(item => item.id === initial.id);
+    assert.ok(persisted);
+    assert.notEqual(persisted.name, '名称', 'local state must not be mutated when the command fails');
   });
 });
 
@@ -358,7 +428,7 @@ describe('uRL Query parsing on paste', () => {
 });
 
 describe('saveDraft vs send isolation', () => {
-  it('executeRequest does not call saveApiRequest and does not mutate saved snapshot', async () => {
+  it('executeRequest does not call updateApiRequest and does not mutate saved snapshot', async () => {
     const state = buildService();
     state.setExecuteImpl(async input => {
       return {
@@ -392,10 +462,10 @@ describe('saveDraft vs send isolation', () => {
     assert.equal(store.execution?.responseView.kind, 'success');
     assert.equal(store.lastSavedRequestSnapshot?.url, 'https://api.example.com/users');
 
-    const saveCalls = state.calls.filter(call => call.method === 'saveApiRequest');
+    const saveCalls = state.calls.filter(call => call.method === 'updateApiRequest');
     assert.equal(saveCalls.length, 0, 'executeRequest must not persist the draft');
 
-    const listCalls = state.calls.filter(call => call.method === 'listApiRequestHistory');
+    const listCalls = state.calls.filter(call => call.method === 'listApiRequestHistories');
     assert.ok(listCalls.length > 0, 'executeRequest should refresh history');
   });
 });
@@ -411,7 +481,7 @@ describe('executeRequest missing-variable guard', () => {
 
     await assert.rejects(() => store.executeRequest(), /未定义变量/);
 
-    const executeCalls = state.calls.filter(call => call.method === 'executeApiRequest');
+    const executeCalls = state.calls.filter(call => call.method === 'sendApiRequest');
     assert.equal(executeCalls.length, 0, 'executeRequest must block before invoke');
     assert.equal(store.execution?.responseView.kind, 'idle');
     assert.match(store.execution?.responseView.errorMessage ?? '', /未定义变量/);
@@ -421,9 +491,9 @@ describe('executeRequest missing-variable guard', () => {
 describe('executeRequest race ID handling', () => {
   it('discards late response whose executionId no longer matches the current execution', async () => {
     const state = buildService();
-    const pendingFirsts: Array<{ resolve: (value: TauriExecuteRequestResult) => void; executionId: string }> = [];
+    const pendingFirsts: Array<{ resolve: (value: SnakeExecutionResult) => void; executionId: string }> = [];
     state.setExecuteImpl(async input => {
-      return new Promise<TauriExecuteRequestResult>(resolve => {
+      return new Promise<SnakeExecutionResult>(resolve => {
         pendingFirsts.push({ resolve, executionId: input.executionId });
       });
     });
@@ -499,7 +569,6 @@ describe('applyHistoryToDraft never auto-sends', () => {
     state.historyFixture.push({
       id: 'history-1',
       requestId: 'request-1',
-      projectId: 'project-1',
       environmentName: 'dev',
       requestSnapshot: {
         method: 'POST',
@@ -532,7 +601,7 @@ describe('applyHistoryToDraft never auto-sends', () => {
     assert.equal(store.draft?.body.text, '{"orderId":"o-1"}');
     assert.equal(store.execution, null, 'restoring must not run a new execution');
 
-    const executeCalls = state.calls.filter(call => call.method === 'executeApiRequest');
+    const executeCalls = state.calls.filter(call => call.method === 'sendApiRequest');
     assert.equal(executeCalls.length, 0);
   });
 });
@@ -540,11 +609,11 @@ describe('applyHistoryToDraft never auto-sends', () => {
 describe('aI candidate does not auto-apply', () => {
   it('returns content as candidate and leaves draft body untouched', async () => {
     const state = buildService();
-    state.setGenerateImpl(async input => {
+    state.setGenerateImpl(async () => {
       return {
-        task_id: input.taskId,
-        request_id: input.requestId,
         content: '{"orderId":"o-1","items":[]}',
+        is_json_valid: true,
+        json_error: null,
         model_label: 'mock-model',
       };
     });
@@ -566,7 +635,7 @@ describe('aI candidate does not auto-apply', () => {
     assert.equal(store.aiCandidate?.content, '{"orderId":"o-1","items":[]}');
     assert.equal(store.draft?.body.text, '{"old":true}', 'draft body must not be modified automatically');
 
-    const executedAfterGen = state.calls.filter(call => call.method === 'executeApiRequest');
+    const executedAfterGen = state.calls.filter(call => call.method === 'sendApiRequest');
     assert.equal(executedAfterGen.length, 0, 'AI generation must not trigger execution');
   });
 });
@@ -574,10 +643,10 @@ describe('aI candidate does not auto-apply', () => {
 describe('aI generation race ID handling', () => {
   it('drops late result when a newer task is started', async () => {
     const state = buildService();
-    const pending: Array<{ resolve: (value: { task_id: string; request_id: string; content: string; model_label: string }) => void; taskId: string }> = [];
-    state.setGenerateImpl(async input => {
-      return new Promise(resolve => {
-        pending.push({ resolve, taskId: input.taskId });
+    const pending: Array<{ resolve: (value: SnakeAiGenerateResult) => void; taskId: string }> = [];
+    state.setGenerateImpl(async () => {
+      return new Promise<SnakeAiGenerateResult>(resolve => {
+        pending.push({ resolve, taskId: `task-${Math.random().toString(36).slice(2, 10)}` });
       });
     });
 
@@ -590,35 +659,37 @@ describe('aI generation race ID handling', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
     const firstEntry = pending.shift();
     assert.ok(firstEntry);
-    const firstTaskId = firstEntry.taskId;
-    assert.equal(store.aiCandidate?.taskId, firstTaskId);
+    const firstStoreTaskId = store.aiCandidate?.taskId;
+    assert.ok(firstStoreTaskId);
 
     firstEntry.resolve({
-      task_id: firstTaskId,
-      request_id: 'request-1',
       content: '{"first":true}',
+      is_json_valid: true,
+      json_error: null,
       model_label: 'mock-model',
     });
     await firstPromise;
     assert.equal(store.aiCandidate?.content, '{"first":true}');
+    const completedFirstTaskId = store.aiCandidate?.taskId;
 
     const secondPromise = store.generateAiBody({ prompt: 'p', reference: '', includeCurrentBody: false });
     await new Promise(resolve => setTimeout(resolve, 0));
     const secondEntry = pending.shift();
     assert.ok(secondEntry);
-    const secondTaskId = secondEntry.taskId;
-    assert.notEqual(secondTaskId, firstTaskId);
+    const secondStoreTaskId = store.aiCandidate?.taskId;
+    assert.ok(secondStoreTaskId);
+    assert.notEqual(secondStoreTaskId, completedFirstTaskId);
 
     secondEntry.resolve({
-      task_id: secondTaskId,
-      request_id: 'request-1',
       content: '{"latest":true}',
+      is_json_valid: true,
+      json_error: null,
       model_label: 'mock-model',
     });
 
     await secondPromise;
 
-    assert.notEqual(store.aiCandidate?.taskId, firstTaskId);
+    assert.notEqual(store.aiCandidate?.taskId, completedFirstTaskId);
     assert.equal(store.aiCandidate?.content, '{"latest":true}');
   });
 });
@@ -638,9 +709,9 @@ describe('selectRequest refuses when dirty without explicit discard', () => {
 
   it('switches request when discardUnsaved is true', async () => {
     const state = buildService();
-    const originalListAll = state.service.listAllApiRequests;
-    state.service.listAllApiRequests = async projectId => {
-      const items = await originalListAll(projectId);
+    const originalList = state.service.listApiRequests;
+    state.service.listApiRequests = async (projectId: string) => {
+      const items = await originalList(projectId);
       items.push(makeRequest({ id: 'request-2', projectId }));
       return items;
     };
@@ -736,7 +807,7 @@ describe('cancelExecution transitions running state to cancelled', () => {
     await promise;
 
     assert.equal(store.execution?.responseView.kind, 'cancelled');
-    const saveCalls = state.calls.filter(call => call.method === 'saveApiRequest');
+    const saveCalls = state.calls.filter(call => call.method === 'updateApiRequest');
     assert.equal(saveCalls.length, 0);
   });
 });

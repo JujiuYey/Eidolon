@@ -7,9 +7,9 @@ import type {
   ApiClientKeyValueRow,
   ApiClientProject,
   ApiClientRequest,
-  ApiClientRequestBody,
   ApiClientRequestHistory,
   ApiClientRequestSnapshot,
+  ApiClientResponseKind,
 } from '@/types/api-client';
 
 interface TauriKeyValueRow {
@@ -19,20 +19,12 @@ interface TauriKeyValueRow {
   value: string;
 }
 
+type TauriBodyKind = 'none' | 'json' | 'text' | 'form';
+
 interface TauriRequestBody {
-  kind: ApiClientBodyKind;
+  kind: TauriBodyKind;
   text: string;
   form: TauriKeyValueRow[];
-}
-
-interface TauriRequestSnapshot {
-  method: ApiClientHttpMethod;
-  url: string;
-  query: TauriKeyValueRow[];
-  headers: TauriKeyValueRow[];
-  body: TauriRequestBody;
-  timeout_ms: number;
-  environment_name: string | null;
 }
 
 interface TauriProject {
@@ -59,7 +51,7 @@ interface TauriRequest {
   group_id: string;
   project_id: string;
   name: string;
-  method: ApiClientHttpMethod;
+  method: TauriHttpMethod;
   url: string;
   query: TauriKeyValueRow[];
   headers: TauriKeyValueRow[];
@@ -72,24 +64,49 @@ interface TauriRequest {
   updated_at: number;
 }
 
+type TauriHttpMethod
+  = | 'GET'
+    | 'POST'
+    | 'PUT'
+    | 'PATCH'
+    | 'DELETE'
+    | 'HEAD'
+    | 'OPTIONS';
+
 interface TauriEnvironment {
   id: string;
   project_id: string;
   name: string;
   base_url: string;
   variables: TauriKeyValueRow[];
-  is_sensitive: boolean;
   created_at: number;
   updated_at: number;
+}
+
+type TauriExecutionStatus
+  = | 'success'
+    | 'http_error'
+    | 'network_error'
+    | 'timeout'
+    | 'cancelled'
+    | 'oversize';
+
+interface TauriRequestSnapshot {
+  method: string;
+  url: string;
+  query: TauriKeyValueRow[];
+  headers: TauriKeyValueRow[];
+  body: TauriRequestBody;
+  timeout_ms: number;
+  environment_name: string | null;
 }
 
 interface TauriRequestHistory {
   id: string;
   request_id: string;
-  project_id: string;
   environment_name: string | null;
   request_snapshot: TauriRequestSnapshot;
-  status: string;
+  status: TauriExecutionStatus;
   status_code: number | null;
   response_headers: TauriKeyValueRow[];
   response_body_preview: string;
@@ -97,6 +114,61 @@ interface TauriRequestHistory {
   duration_ms: number;
   error_message: string | null;
   executed_at: number;
+}
+
+interface TauriExecutionResult {
+  execution_id: string;
+  status: TauriExecutionStatus;
+  status_code: number | null;
+  response_headers: TauriKeyValueRow[];
+  body_text: string;
+  body_size_bytes: number;
+  content_type: string | null;
+  is_binary: boolean;
+  is_oversized: boolean;
+  duration_ms: number;
+  error_message: string | null;
+  history_error: string | null;
+  history_id: string | null;
+}
+
+interface TauriDeletionSummary {
+  deleted_requests: number;
+  deleted_histories: number;
+}
+
+interface TauriAiGenerateInput {
+  prompt: string;
+  reference: string;
+  current_body: string | null;
+  request_name: string;
+  method: string;
+  url: string;
+}
+
+interface TauriAiGenerateResult {
+  content: string;
+  is_json_valid: boolean;
+  json_error: string | null;
+  model_label: string;
+}
+
+const SUPPORTED_HTTP_METHODS: readonly TauriHttpMethod[] = [
+  'GET',
+  'POST',
+  'PUT',
+  'PATCH',
+  'DELETE',
+  'HEAD',
+  'OPTIONS',
+];
+
+function isSupportedHttpMethod(value: string): value is TauriHttpMethod {
+  return (SUPPORTED_HTTP_METHODS as readonly string[]).includes(value);
+}
+
+function toHttpMethod(value: string): ApiClientHttpMethod {
+  return isSupportedHttpMethod(value) ? value : 'GET';
 }
 
 function toFrontendRow(row: TauriKeyValueRow): ApiClientKeyValueRow {
@@ -117,7 +189,11 @@ function toTauriRow(row: ApiClientKeyValueRow): TauriKeyValueRow {
   };
 }
 
-function toFrontendBody(body: TauriRequestBody): ApiClientRequestBody {
+function toFrontendBody(body: TauriRequestBody): {
+  kind: ApiClientBodyKind;
+  text: string;
+  form: ApiClientKeyValueRow[];
+} {
   return {
     kind: body.kind,
     text: body.text,
@@ -125,7 +201,11 @@ function toFrontendBody(body: TauriRequestBody): ApiClientRequestBody {
   };
 }
 
-function toTauriBody(body: ApiClientRequestBody): TauriRequestBody {
+function toTauriBody(body: {
+  kind: ApiClientBodyKind;
+  text: string;
+  form: ApiClientKeyValueRow[];
+}): TauriRequestBody {
   return {
     kind: body.kind,
     text: body.text,
@@ -162,7 +242,7 @@ function toFrontendRequest(request: TauriRequest): ApiClientRequest {
     groupId: request.group_id,
     projectId: request.project_id,
     name: request.name,
-    method: request.method,
+    method: toHttpMethod(request.method),
     url: request.url,
     query: request.query.map(toFrontendRow),
     headers: request.headers.map(toFrontendRow),
@@ -182,7 +262,7 @@ function toTauriRequest(request: ApiClientRequest): TauriRequest {
     group_id: request.groupId,
     project_id: request.projectId,
     name: request.name,
-    method: request.method,
+    method: toHttpMethod(request.method),
     url: request.url,
     query: request.query.map(toTauriRow),
     headers: request.headers.map(toTauriRow),
@@ -203,7 +283,6 @@ function toFrontendEnvironment(env: TauriEnvironment): ApiClientEnvironment {
     name: env.name,
     baseUrl: env.base_url,
     variables: env.variables.map(toFrontendRow),
-    isSensitive: env.is_sensitive,
     createdAt: env.created_at,
     updatedAt: env.updated_at,
   };
@@ -216,7 +295,6 @@ function toTauriEnvironment(env: ApiClientEnvironment): TauriEnvironment {
     name: env.name,
     base_url: env.baseUrl,
     variables: env.variables.map(toTauriRow),
-    is_sensitive: env.isSensitive,
     created_at: env.createdAt,
     updated_at: env.updatedAt,
   };
@@ -224,7 +302,7 @@ function toTauriEnvironment(env: ApiClientEnvironment): TauriEnvironment {
 
 function toFrontendSnapshot(snapshot: TauriRequestSnapshot): ApiClientRequestSnapshot {
   return {
-    method: snapshot.method,
+    method: toHttpMethod(snapshot.method),
     url: snapshot.url,
     query: snapshot.query.map(toFrontendRow),
     headers: snapshot.headers.map(toFrontendRow),
@@ -234,14 +312,25 @@ function toFrontendSnapshot(snapshot: TauriRequestSnapshot): ApiClientRequestSna
   };
 }
 
+function toTauriSnapshot(snapshot: ApiClientRequestSnapshot): TauriRequestSnapshot {
+  return {
+    method: snapshot.method,
+    url: snapshot.url,
+    query: snapshot.query.map(toTauriRow),
+    headers: snapshot.headers.map(toTauriRow),
+    body: toTauriBody(snapshot.body),
+    timeout_ms: snapshot.timeoutMs,
+    environment_name: snapshot.environmentName,
+  };
+}
+
 function toFrontendHistory(history: TauriRequestHistory): ApiClientRequestHistory {
   return {
     id: history.id,
     requestId: history.request_id,
-    projectId: history.project_id,
     environmentName: history.environment_name,
     requestSnapshot: toFrontendSnapshot(history.request_snapshot),
-    status: history.status as ApiClientRequestHistory['status'],
+    status: history.status,
     statusCode: history.status_code,
     responseHeaders: history.response_headers.map(toFrontendRow),
     responseBodyPreview: history.response_body_preview,
@@ -252,181 +341,9 @@ function toFrontendHistory(history: TauriRequestHistory): ApiClientRequestHistor
   };
 }
 
-export async function listApiProjects(): Promise<ApiClientProject[]> {
-  const raw = await invoke<TauriProject[]>('api_client_list_projects');
-  return raw.map(toFrontendProject);
-}
-
-export async function createApiProject(name: string, description: string): Promise<ApiClientProject> {
-  const raw = await invoke<TauriProject>('api_client_create_project', { name, description });
-  return toFrontendProject(raw);
-}
-
-export async function renameApiProject(projectId: string, name: string): Promise<ApiClientProject> {
-  const raw = await invoke<TauriProject>('api_client_rename_project', { projectId, name });
-  return toFrontendProject(raw);
-}
-
-export async function updateApiProject(projectId: string, name: string, description: string): Promise<ApiClientProject> {
-  const raw = await invoke<TauriProject>('api_client_update_project', { projectId, name, description });
-  return toFrontendProject(raw);
-}
-
-export async function deleteApiProject(projectId: string): Promise<{ deletedRequests: number; deletedHistories: number }> {
-  const raw = await invoke<{ deleted_requests: number; deleted_histories: number }>(
-    'api_client_delete_project',
-    { projectId },
-  );
-  return {
-    deletedRequests: raw.deleted_requests,
-    deletedHistories: raw.deleted_histories,
-  };
-}
-
-export async function listApiGroups(projectId: string): Promise<ApiClientGroup[]> {
-  const raw = await invoke<TauriGroup[]>('api_client_list_groups', { projectId });
-  return raw.map(toFrontendGroup);
-}
-
-export async function createApiGroup(projectId: string, name: string): Promise<ApiClientGroup> {
-  const raw = await invoke<TauriGroup>('api_client_create_group', { projectId, name });
-  return toFrontendGroup(raw);
-}
-
-export async function renameApiGroup(groupId: string, name: string): Promise<ApiClientGroup> {
-  const raw = await invoke<TauriGroup>('api_client_rename_group', { groupId, name });
-  return toFrontendGroup(raw);
-}
-
-export async function deleteApiGroup(groupId: string): Promise<{ deletedRequests: number; deletedHistories: number }> {
-  const raw = await invoke<{ deleted_requests: number; deleted_histories: number }>(
-    'api_client_delete_group',
-    { groupId },
-  );
-  return {
-    deletedRequests: raw.deleted_requests,
-    deletedHistories: raw.deleted_histories,
-  };
-}
-
-export async function moveApiGroup(groupId: string, sort: number): Promise<ApiClientGroup> {
-  const raw = await invoke<TauriGroup>('api_client_move_group', { groupId, sort });
-  return toFrontendGroup(raw);
-}
-
-export async function listApiRequests(groupId: string): Promise<ApiClientRequest[]> {
-  const raw = await invoke<TauriRequest[]>('api_client_list_requests', { groupId });
-  return raw.map(toFrontendRequest);
-}
-
-export async function listAllApiRequests(projectId: string): Promise<ApiClientRequest[]> {
-  const raw = await invoke<TauriRequest[]>('api_client_list_project_requests', { projectId });
-  return raw.map(toFrontendRequest);
-}
-
-export async function getApiRequest(requestId: string): Promise<ApiClientRequest | null> {
-  const raw = await invoke<TauriRequest | null>('api_client_get_request', { requestId });
-  return raw ? toFrontendRequest(raw) : null;
-}
-
-export async function createApiRequest(input: {
-  groupId: string;
-  name: string;
-  method: ApiClientHttpMethod;
-  url: string;
-}): Promise<ApiClientRequest> {
-  const raw = await invoke<TauriRequest>('api_client_create_request', {
-    groupId: input.groupId,
-    name: input.name,
-    method: input.method,
-    url: input.url,
-  });
-  return toFrontendRequest(raw);
-}
-
-export async function saveApiRequest(request: ApiClientRequest): Promise<ApiClientRequest> {
-  const tauri = toTauriRequest(request);
-  const raw = await invoke<TauriRequest>('api_client_save_request', { request: tauri });
-  return toFrontendRequest(raw);
-}
-
-export async function duplicateApiRequest(requestId: string): Promise<ApiClientRequest> {
-  const raw = await invoke<TauriRequest>('api_client_duplicate_request', { requestId });
-  return toFrontendRequest(raw);
-}
-
-export async function moveApiRequest(requestId: string, groupId: string, sort: number): Promise<ApiClientRequest> {
-  const raw = await invoke<TauriRequest>('api_client_move_request', { requestId, groupId, sort });
-  return toFrontendRequest(raw);
-}
-
-export async function deleteApiRequest(requestId: string): Promise<{ deletedHistories: number }> {
-  const raw = await invoke<{ deleted_histories: number }>('api_client_delete_request', { requestId });
-  return { deletedHistories: raw.deleted_histories };
-}
-
-export async function listApiEnvironments(projectId: string): Promise<ApiClientEnvironment[]> {
-  const raw = await invoke<TauriEnvironment[]>('api_client_list_environments', { projectId });
-  return raw.map(toFrontendEnvironment);
-}
-
-export async function createApiEnvironment(input: {
-  projectId: string;
-  name: string;
-  baseUrl: string;
-  variables: ApiClientKeyValueRow[];
-  isSensitive: boolean;
-}): Promise<ApiClientEnvironment> {
-  const raw = await invoke<TauriEnvironment>('api_client_create_environment', {
-    projectId: input.projectId,
-    name: input.name,
-    baseUrl: input.baseUrl,
-    variables: input.variables.map(toTauriRow),
-    isSensitive: input.isSensitive,
-  });
-  return toFrontendEnvironment(raw);
-}
-
-export async function saveApiEnvironment(env: ApiClientEnvironment): Promise<ApiClientEnvironment> {
-  const raw = await invoke<TauriEnvironment>('api_client_save_environment', {
-    environment: toTauriEnvironment(env),
-  });
-  return toFrontendEnvironment(raw);
-}
-
-export async function deleteApiEnvironment(environmentId: string): Promise<void> {
-  await invoke('api_client_delete_environment', { environmentId });
-}
-
-export interface TauriExecuteRequestInput {
-  requestId: string;
-  executionId: string;
-  snapshot: ApiClientRequestSnapshot;
-  environmentId: string | null;
-}
-
-export interface TauriExecuteRequestResult {
-  execution_id: string;
-  status: string;
-  status_code: number | null;
-  duration_ms: number;
-  size_bytes: number;
-  content_type: string | null;
-  response_headers: TauriKeyValueRow[];
-  response_body: string;
-  response_truncated: boolean;
-  is_binary: boolean;
-  oversize: boolean;
-  connection_failed: boolean;
-  timed_out: boolean;
-  cancelled: boolean;
-  error_message: string | null;
-  history_id: string | null;
-}
-
 export interface ApiExecuteResult {
   executionId: string;
-  status: string;
+  status: TauriExecutionStatus;
   statusCode: number | null;
   durationMs: number;
   sizeBytes: number;
@@ -441,100 +358,269 @@ export interface ApiExecuteResult {
   cancelled: boolean;
   errorMessage: string | null;
   historyId: string | null;
+  historyError: string | null;
 }
 
-export async function executeApiRequest(input: TauriExecuteRequestInput): Promise<ApiExecuteResult> {
-  const snapshot: TauriRequestSnapshot = {
-    method: input.snapshot.method,
-    url: input.snapshot.url,
-    query: input.snapshot.query.map(toTauriRow),
-    headers: input.snapshot.headers.map(toTauriRow),
-    body: toTauriBody(input.snapshot.body),
-    timeout_ms: input.snapshot.timeoutMs,
-    environment_name: input.snapshot.environmentName,
-  };
-
-  const raw = await invoke<TauriExecuteRequestResult>('api_client_execute_request', {
-    requestId: input.requestId,
-    executionId: input.executionId,
-    snapshot,
-    environmentId: input.environmentId,
-  });
-
+function toFrontendExecution(result: TauriExecutionResult): ApiExecuteResult {
   return {
-    executionId: raw.execution_id,
-    status: raw.status,
-    statusCode: raw.status_code,
-    durationMs: raw.duration_ms,
-    sizeBytes: raw.size_bytes,
-    contentType: raw.content_type,
-    responseHeaders: raw.response_headers.map(toFrontendRow),
-    responseBody: raw.response_body,
-    responseTruncated: raw.response_truncated,
-    isBinary: raw.is_binary,
-    oversize: raw.oversize,
-    connectionFailed: raw.connection_failed,
-    timedOut: raw.timed_out,
-    cancelled: raw.cancelled,
-    errorMessage: raw.error_message,
-    historyId: raw.history_id,
+    executionId: result.execution_id,
+    status: result.status,
+    statusCode: result.status_code,
+    durationMs: result.duration_ms,
+    sizeBytes: result.body_size_bytes,
+    contentType: result.content_type,
+    responseHeaders: result.response_headers.map(toFrontendRow),
+    responseBody: result.body_text,
+    responseTruncated: result.is_oversized,
+    isBinary: result.is_binary,
+    oversize: result.is_oversized,
+    connectionFailed: result.status === 'network_error',
+    timedOut: result.status === 'timeout',
+    cancelled: result.status === 'cancelled',
+    errorMessage: result.error_message,
+    historyId: result.history_id,
+    historyError: result.history_error,
   };
 }
 
-export async function cancelApiExecution(executionId: string): Promise<void> {
-  await invoke('api_client_cancel_execution', { executionId });
-}
-
-export async function listApiRequestHistory(requestId: string): Promise<ApiClientRequestHistory[]> {
-  const raw = await invoke<TauriRequestHistory[]>('api_client_list_history', { requestId });
-  return raw.map(toFrontendHistory);
-}
-
-export async function clearApiRequestHistory(requestId: string): Promise<void> {
-  await invoke('api_client_clear_history', { requestId });
-}
-
-export interface TauriAiGenerateInput {
+export interface ApiSendRequestInput {
   requestId: string;
-  taskId: string;
+  executionId: string;
+  snapshot: ApiClientRequestSnapshot;
+  environmentId: string | null;
+}
+
+export interface ApiAiGenerateInput {
   prompt: string;
   reference: string;
   includeCurrentBody: boolean;
-  currentBody: ApiClientRequestBody | null;
+  currentBody: string | null;
   requestName: string;
-  method: ApiClientHttpMethod;
+  method: string;
   url: string;
 }
 
-export interface TauriAiGenerateResult {
-  task_id: string;
-  request_id: string;
+export interface ApiAiGenerateResult {
   content: string;
-  model_label: string;
+  isJsonValid: boolean;
+  jsonError: string | null;
+  modelLabel: string;
 }
 
-export async function generateApiBody(input: TauriAiGenerateInput): Promise<TauriAiGenerateResult> {
-  return invoke<TauriAiGenerateResult>('api_client_generate_body', {
-    requestId: input.requestId,
-    taskId: input.taskId,
+function toTauriAiInput(input: ApiAiGenerateInput): TauriAiGenerateInput {
+  return {
     prompt: input.prompt,
     reference: input.reference,
-    includeCurrentBody: input.includeCurrentBody,
-    currentBody: input.currentBody ? toTauriBody(input.currentBody) : null,
-    requestName: input.requestName,
+    current_body: input.includeCurrentBody ? input.currentBody : null,
+    request_name: input.requestName,
     method: input.method,
     url: input.url,
+  };
+}
+
+function toFrontendAiResult(result: TauriAiGenerateResult): ApiAiGenerateResult {
+  return {
+    content: result.content,
+    isJsonValid: result.is_json_valid,
+    jsonError: result.json_error,
+    modelLabel: result.model_label,
+  };
+}
+
+export async function listApiProjects(): Promise<ApiClientProject[]> {
+  const raw = await invoke<TauriProject[]>('list_api_projects');
+  return raw.map(toFrontendProject);
+}
+
+export async function createApiProject(name: string, description: string): Promise<ApiClientProject> {
+  const raw = await invoke<TauriProject>('create_api_project', {
+    name,
+    description,
   });
+  return toFrontendProject(raw);
 }
 
-export async function cancelApiGeneration(taskId: string): Promise<void> {
-  await invoke('api_client_cancel_generation', { taskId });
+export async function renameApiProject(projectId: string, name: string): Promise<ApiClientProject> {
+  const raw = await invoke<TauriProject>('rename_api_project', { projectId, name });
+  return toFrontendProject(raw);
 }
 
-export interface TauriAiModelOption {
-  provider_id: string;
-  model_id: string;
-  label: string;
+export async function updateApiProject(
+  projectId: string,
+  name: string,
+  description: string,
+): Promise<ApiClientProject> {
+  const raw = await invoke<TauriProject>('update_api_project', { projectId, name, description });
+  return toFrontendProject(raw);
+}
+
+export async function previewApiProjectDeletion(projectId: string): Promise<{ deletedRequests: number; deletedHistories: number }> {
+  const raw = await invoke<TauriDeletionSummary>('preview_api_project_deletion', { projectId });
+  return {
+    deletedRequests: raw.deleted_requests,
+    deletedHistories: raw.deleted_histories,
+  };
+}
+
+export async function deleteApiProject(projectId: string): Promise<{ deletedRequests: number; deletedHistories: number }> {
+  const raw = await invoke<TauriDeletionSummary>('delete_api_project', { projectId });
+  return {
+    deletedRequests: raw.deleted_requests,
+    deletedHistories: raw.deleted_histories,
+  };
+}
+
+export async function listApiGroups(projectId: string): Promise<ApiClientGroup[]> {
+  const raw = await invoke<TauriGroup[]>('list_api_groups', { projectId });
+  return raw.map(toFrontendGroup);
+}
+
+export async function createApiGroup(projectId: string, name: string): Promise<ApiClientGroup> {
+  const raw = await invoke<TauriGroup>('create_api_group', { projectId, name });
+  return toFrontendGroup(raw);
+}
+
+export async function renameApiGroup(groupId: string, name: string): Promise<ApiClientGroup> {
+  const raw = await invoke<TauriGroup>('rename_api_group', { groupId, name });
+  return toFrontendGroup(raw);
+}
+
+export async function deleteApiGroup(groupId: string): Promise<{ deletedRequests: number; deletedHistories: number }> {
+  const raw = await invoke<TauriDeletionSummary>('delete_api_group', { groupId });
+  return {
+    deletedRequests: raw.deleted_requests,
+    deletedHistories: raw.deleted_histories,
+  };
+}
+
+export async function reorderApiGroups(projectId: string, groupIds: string[]): Promise<ApiClientGroup[]> {
+  const raw = await invoke<TauriGroup[]>('reorder_api_groups', { projectId, groupIds });
+  return raw.map(toFrontendGroup);
+}
+
+export async function listApiRequests(projectId: string): Promise<ApiClientRequest[]> {
+  const raw = await invoke<TauriRequest[]>('list_api_requests', { projectId });
+  return raw.map(toFrontendRequest);
+}
+
+export async function getApiRequest(requestId: string): Promise<ApiClientRequest | null> {
+  const raw = await invoke<TauriRequest | null>('get_api_request', { requestId });
+  return raw ? toFrontendRequest(raw) : null;
+}
+
+export async function createApiRequest(input: {
+  groupId: string;
+  name: string;
+}): Promise<ApiClientRequest> {
+  const raw = await invoke<TauriRequest>('create_api_request', {
+    groupId: input.groupId,
+    name: input.name,
+  });
+  return toFrontendRequest(raw);
+}
+
+export async function updateApiRequest(request: ApiClientRequest): Promise<ApiClientRequest> {
+  const raw = await invoke<TauriRequest>('update_api_request', { request: toTauriRequest(request) });
+  return toFrontendRequest(raw);
+}
+
+export async function duplicateApiRequest(requestId: string): Promise<ApiClientRequest> {
+  const raw = await invoke<TauriRequest>('duplicate_api_request', { requestId });
+  return toFrontendRequest(raw);
+}
+
+export async function moveApiRequest(requestId: string, targetGroupId: string): Promise<ApiClientRequest> {
+  const raw = await invoke<TauriRequest>('move_api_request', {
+    requestId,
+    targetGroupId,
+  });
+  return toFrontendRequest(raw);
+}
+
+export async function deleteApiRequest(requestId: string): Promise<{ deletedHistories: number }> {
+  const raw = await invoke<TauriDeletionSummary>('delete_api_request', { requestId });
+  return { deletedHistories: raw.deleted_histories };
+}
+
+export async function reorderApiRequests(groupId: string, requestIds: string[]): Promise<ApiClientRequest[]> {
+  const raw = await invoke<TauriRequest[]>('reorder_api_requests', { groupId, requestIds });
+  return raw.map(toFrontendRequest);
+}
+
+export async function listApiEnvironments(projectId: string): Promise<ApiClientEnvironment[]> {
+  const raw = await invoke<TauriEnvironment[]>('list_api_environments', { projectId });
+  return raw.map(toFrontendEnvironment);
+}
+
+export async function upsertApiEnvironment(env: ApiClientEnvironment): Promise<ApiClientEnvironment> {
+  const raw = await invoke<TauriEnvironment>('upsert_api_environment', { environment: toTauriEnvironment(env) });
+  return toFrontendEnvironment(raw);
+}
+
+export async function deleteApiEnvironment(environmentId: string): Promise<void> {
+  await invoke('delete_api_environment', { environmentId });
+}
+
+export async function listApiRequestHistories(requestId: string): Promise<ApiClientRequestHistory[]> {
+  const raw = await invoke<TauriRequestHistory[]>('list_api_request_histories', { requestId });
+  return raw.map(toFrontendHistory);
+}
+
+export async function getApiRequestHistory(historyId: string): Promise<ApiClientRequestHistory | null> {
+  const raw = await invoke<TauriRequestHistory | null>('get_api_request_history', { historyId });
+  return raw ? toFrontendHistory(raw) : null;
+}
+
+export async function clearApiRequestHistories(requestId: string): Promise<number> {
+  const cleared = await invoke<number>('clear_api_request_histories', { requestId });
+  return cleared;
+}
+
+export async function sendApiRequest(input: ApiSendRequestInput): Promise<ApiExecuteResult> {
+  const raw = await invoke<TauriExecutionResult>('send_api_request', {
+    requestId: input.requestId,
+    environmentId: input.environmentId,
+    snapshot: toTauriSnapshot(input.snapshot),
+    executionId: input.executionId,
+  });
+  return toFrontendExecution(raw);
+}
+
+export async function cancelApiRequest(executionId: string): Promise<boolean> {
+  return invoke<boolean>('cancel_api_request', { executionId });
+}
+
+export async function previewApiRequest(input: {
+  requestId: string;
+  environmentId: string | null;
+  snapshot: ApiClientRequestSnapshot;
+}): Promise<{
+  method: string;
+  url: string;
+  bodySizeBytes: number;
+  environmentName: string | null;
+}> {
+  const raw = await invoke<{
+    method: string;
+    url: string;
+    body_size_bytes: number;
+    environment_name: string | null;
+  }>('preview_api_request', {
+    requestId: input.requestId,
+    environmentId: input.environmentId,
+    snapshot: toTauriSnapshot(input.snapshot),
+  });
+  return {
+    method: raw.method,
+    url: raw.url,
+    bodySizeBytes: raw.body_size_bytes,
+    environmentName: raw.environment_name,
+  };
+}
+
+export async function generateApiRequestBody(input: ApiAiGenerateInput): Promise<ApiAiGenerateResult> {
+  const raw = await invoke<TauriAiGenerateResult>('generate_api_request_body', { input: toTauriAiInput(input) });
+  return toFrontendAiResult(raw);
 }
 
 export interface ApiAiModelOption {
@@ -543,31 +629,30 @@ export interface ApiAiModelOption {
   label: string;
 }
 
-export async function listApiAiModels(): Promise<ApiAiModelOption[]> {
-  const raw = await invoke<TauriAiModelOption[]>('api_client_list_ai_models');
-  return raw.map(option => ({
-    providerId: option.provider_id,
-    modelId: option.model_id,
-    label: option.label,
-  }));
-}
+export type EnvironmentSensitivity = 'unknown' | 'sensitive';
 
-export async function getApiRequestBodyGenerationModel(): Promise<ApiAiModelOption | null> {
-  const raw = await invoke<TauriAiModelOption | null>('api_client_get_body_generation_model');
-  return raw
-    ? {
-        providerId: raw.provider_id,
-        modelId: raw.model_id,
-        label: raw.label,
-      }
-    : null;
-}
-
-export async function isApiBackendAvailable(): Promise<boolean> {
-  try {
-    await invoke('api_client_list_projects');
-    return true;
-  } catch {
-    return false;
+export function buildEnvironmentSensitivity(env: ApiClientEnvironment | null): EnvironmentSensitivity {
+  if (!env) {
+    return 'unknown';
   }
+  return 'unknown';
+}
+
+export function getExecutionKindFromStatus(status: ApiExecuteResult['status']): ApiClientResponseKind {
+  if (status === 'cancelled') {
+    return 'cancelled';
+  }
+  if (status === 'timeout') {
+    return 'timeout';
+  }
+  if (status === 'network_error') {
+    return 'network_error';
+  }
+  if (status === 'oversize') {
+    return 'oversize';
+  }
+  if (status === 'success') {
+    return 'success';
+  }
+  return 'http_error';
 }

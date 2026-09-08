@@ -77,7 +77,6 @@ export interface ApiClientEnvironment {
   name: string;
   baseUrl: string;
   variables: ApiClientKeyValueRow[];
-  isSensitive: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -87,7 +86,8 @@ export type ApiClientHistoryExecutionStatus
     | 'http_error'
     | 'network_error'
     | 'timeout'
-    | 'cancelled';
+    | 'cancelled'
+    | 'oversize';
 
 export type ApiClientResponseKind
   = | 'idle'
@@ -132,7 +132,6 @@ export interface ApiClientResponseView {
 export interface ApiClientRequestHistory {
   id: string;
   requestId: string;
-  projectId: string;
   environmentName: string | null;
   requestSnapshot: ApiClientRequestSnapshot;
   status: ApiClientHistoryExecutionStatus;

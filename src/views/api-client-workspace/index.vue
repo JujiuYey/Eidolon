@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, Loader2, Network } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { ChevronLeft, ChevronRight, FolderPlus, Network, Plus } from 'lucide-vue-next';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch as vueWatch } from 'vue';
+import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
 import { useApiClientStore } from '@/stores/api-client';
@@ -16,8 +15,15 @@ import AiBodyGeneratorPanel from './components/AiBodyGeneratorPanel.vue';
 import ApiClientTree from './components/ApiClientTree.vue';
 import ApiRequestEditor from './components/ApiRequestEditor.vue';
 import ApiResponsePanel from './components/ApiResponsePanel.vue';
+import CreateGroupDialog from './components/CreateGroupDialog.vue';
+import CreateRequestDialog from './components/CreateRequestDialog.vue';
 import RequestHistoryPanel from './components/RequestHistoryPanel.vue';
 
+const props = defineProps<{
+  projectId: string;
+}>();
+
+const router = useRouter();
 const store = useApiClientStore();
 
 const showAiPanel = ref(true);
@@ -79,13 +85,9 @@ function onConfirmDialogCancel(): void {
   pendingConfirm.resolve = null;
 }
 
-const newProjectName = ref('');
-const newGroupName = ref('');
-const newRequestName = ref('');
-const newRequestMethod = ref<ApiClientHttpMethod>('GET');
-const newRequestUrl = ref('');
-
-const backendError = ref<string | null>(null);
+const createGroupDialogOpen = ref(false);
+const createRequestDialogOpen = ref(false);
+const createRequestGroupName = ref('');
 
 const draft = computed(() => store.draft);
 const execution = computed(() => store.execution);
@@ -96,25 +98,26 @@ const isResponseLoading = computed(() => execution.value?.responseView.kind === 
 const responseView = computed(() => execution.value?.responseView ?? null);
 
 const aiCandidate = computed(() => store.aiCandidate);
-const aiModels = computed(() => store.aiAvailableModels);
+const aiCurrentModelLabel = computed(() => store.aiCurrentModelLabel);
 
 function handleError(error: unknown, fallback: string): void {
   const message = error instanceof Error ? error.message : fallback;
   toast.error(message);
 }
 
-async function bootstrap(): Promise<void> {
-  try {
-    await store.loadProjects();
-  } catch (error) {
-    backendError.value = error instanceof Error ? error.message : '加载项目失败';
-    return;
+async function bootstrapForProject(): Promise<void> {
+  if (store.activeProjectId !== props.projectId) {
+    try {
+      await store.selectProject(props.projectId, { discardUnsaved: true });
+    } catch (error) {
+      handleError(error, '切换项目失败');
+      return;
+    }
   }
-
   try {
     await store.loadAiModels();
   } catch {
-    // ignore: model list is optional
+    // ignore: no backend list command; current model is reported per generation
   }
 }
 
@@ -125,11 +128,8 @@ async function handleSelectProject(projectId: string): Promise<void> {
       return;
     }
   }
-
-  try {
-    await store.selectProject(projectId, { discardUnsaved: true });
-  } catch (error) {
-    handleError(error, '切换项目失败');
+  if (projectId !== props.projectId) {
+    void router.push('/api-client');
   }
 }
 
@@ -143,7 +143,6 @@ async function handleSelectGroup(_groupId: string): Promise<void> {
       return;
     }
   }
-
   store.selectEnvironment(store.activeEnvironmentId);
 }
 
@@ -154,7 +153,6 @@ async function handleSelectRequest(requestId: string): Promise<void> {
       return;
     }
   }
-
   try {
     await store.selectRequest(requestId, { discardUnsaved: true });
   } catch (error) {
@@ -177,48 +175,49 @@ async function promptUnsavedChange(): Promise<boolean> {
   return true;
 }
 
-async function handleCreateProject(): Promise<void> {
-  const name = newProjectName.value.trim();
-  if (!name) {
-    toast.error('请输入项目名称');
-    return;
-  }
-  try {
-    const project = await store.createProject(name, '');
-    newProjectName.value = '';
-    toast.success(`已创建项目 ${project.name}`);
-    await handleSelectProject(project.id);
-  } catch (error) {
-    handleError(error, '创建项目失败');
-  }
+function openCreateGroupDialog(): void {
+  createGroupDialogOpen.value = true;
 }
 
-async function handleCreateGroup(_projectId: string): Promise<void> {
-  const name = newGroupName.value.trim() || '默认分组';
+async function submitCreateGroup(payload: { name: string }): Promise<void> {
   if (!store.activeProjectId) {
     return;
   }
   try {
-    await store.createGroup(name);
-    newGroupName.value = '';
-    toast.success(`已创建分组 ${name}`);
+    await store.createGroup(payload.name);
+    createGroupDialogOpen.value = false;
+    toast.success(`已创建分组 ${payload.name}`);
   } catch (error) {
     handleError(error, '创建分组失败');
   }
 }
 
-async function handleCreateRequest(groupId: string): Promise<void> {
-  const name = newRequestName.value.trim() || '未命名请求';
+function openCreateRequestDialog(groupId: string, groupName: string): void {
+  pendingCreateRequestGroupId.value = groupId;
+  createRequestGroupName.value = groupName;
+  createRequestDialogOpen.value = true;
+}
+
+function handleTreeCreateRequest(payload: { groupId: string; groupName: string }): void {
+  openCreateRequestDialog(payload.groupId, payload.groupName);
+}
+
+const pendingCreateRequestGroupId = ref<string | null>(null);
+
+async function submitCreateRequest(payload: { name: string; method: ApiClientHttpMethod; url: string }): Promise<void> {
+  const groupId = pendingCreateRequestGroupId.value;
+  if (!groupId) {
+    return;
+  }
   try {
     const request = await store.createRequest({
       groupId,
-      name,
-      method: newRequestMethod.value,
-      url: newRequestUrl.value,
+      name: payload.name,
+      method: payload.method,
+      url: payload.url,
     });
-    newRequestName.value = '';
-    newRequestUrl.value = '';
-    newRequestMethod.value = 'GET';
+    createRequestDialogOpen.value = false;
+    pendingCreateRequestGroupId.value = null;
     toast.success(`已创建请求 ${request.name}`);
     await handleSelectRequest(request.id);
   } catch (error) {
@@ -240,6 +239,7 @@ async function handleDeleteProject(projectId: string): Promise<void> {
   try {
     await store.deleteProject(projectId);
     toast.success('项目已删除');
+    void router.push('/api-client');
   } catch (error) {
     handleError(error, '删除项目失败');
   }
@@ -416,10 +416,6 @@ function updateAiReference(value: string): void {
   store.updateDraftAiReference(value);
 }
 
-function updateAiModel(key: string | null): void {
-  store.selectAiModel(key);
-}
-
 function handleBeforeUnload(event: BeforeUnloadEvent): void {
   if (store.isDirty) {
     event.preventDefault();
@@ -427,8 +423,17 @@ function handleBeforeUnload(event: BeforeUnloadEvent): void {
   }
 }
 
+function handleBack(): void {
+  void router.push('/api-client');
+}
+
+vueWatch(() => props.projectId, async next => {
+  if (next) {
+    await bootstrapForProject();
+  }
+}, { immediate: true });
+
 onMounted(() => {
-  void bootstrap();
   window.addEventListener('beforeunload', handleBeforeUnload);
 });
 
@@ -437,17 +442,22 @@ onBeforeUnmount(() => {
 });
 
 const activeEnvironmentId = computed(() => store.activeEnvironmentId);
+const activeProject = computed(() => store.activeProject);
 </script>
 
 <template>
-  <div class="flex h-full flex-col">
+  <div class="flex h-full min-h-0 flex-col">
     <div class="flex items-center justify-between border-b bg-card px-4 py-3">
       <div class="flex items-center gap-2">
+        <Button variant="ghost" size="sm" @click="handleBack">
+          <ChevronLeft class="size-4" />
+          返回项目
+        </Button>
         <Network class="size-5 text-primary" />
         <h1 class="text-base font-semibold">
-          接口请求工具
+          {{ activeProject?.name ?? '接口请求工具' }}
         </h1>
-        <span class="text-xs text-muted-foreground">项目、分组、请求与 AI 生成</span>
+        <span class="text-xs text-muted-foreground">分组、请求、响应与 AI 生成</span>
       </div>
       <div class="flex items-center gap-2">
         <Button variant="ghost" size="sm" @click="showAiPanel = !showAiPanel">
@@ -461,14 +471,14 @@ const activeEnvironmentId = computed(() => store.activeEnvironmentId);
       </div>
     </div>
 
-    <Alert v-if="backendError" variant="destructive" class="m-4">
-      <AlertTitle>无法连接到接口请求后端</AlertTitle>
+    <Alert v-if="!store.activeProjectId" variant="destructive" class="m-4">
+      <AlertTitle>项目不可用</AlertTitle>
       <AlertDescription>
-        {{ backendError }}。请确认 Rust 端 API Client commands 已注册后重启应用。
+        请返回项目列表后重新进入。
       </AlertDescription>
     </Alert>
 
-    <div class="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_minmax(0,360px)]">
+    <div v-else class="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_minmax(0,360px)]">
       <ApiClientTree
         :projects="store.projects"
         :groups="store.groups"
@@ -487,9 +497,8 @@ const activeEnvironmentId = computed(() => store.activeEnvironmentId);
         @select-project="handleSelectProject"
         @select-group="handleSelectGroup"
         @select-request="handleSelectRequest"
-        @create-project="handleCreateProject"
-        @create-group="handleCreateGroup"
-        @create-request="handleCreateRequest"
+        @create-group="openCreateGroupDialog"
+        @create-request="handleTreeCreateRequest"
         @delete-project="handleDeleteProject"
         @delete-group="handleDeleteGroup"
         @delete-request="handleDeleteRequest"
@@ -501,50 +510,19 @@ const activeEnvironmentId = computed(() => store.activeEnvironmentId);
             <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
               <div>
                 <CardTitle>新建内容</CardTitle>
-                <CardDescription>从当前选中的项目或分组快速创建</CardDescription>
+                <CardDescription>使用弹窗在当前项目下创建分组或请求。</CardDescription>
               </div>
-            </CardHeader>
-            <CardContent class="space-y-3">
-              <div class="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto]">
-                <div class="flex flex-col gap-1">
-                  <Label>新建项目</Label>
-                  <Input v-model="newProjectName" placeholder="项目名称" />
-                </div>
-                <Button class="md:self-end" @click="handleCreateProject">
-                  新建项目
-                </Button>
-              </div>
-              <div class="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto]">
-                <div class="flex flex-col gap-1">
-                  <Label>新建分组（当前项目）</Label>
-                  <Input v-model="newGroupName" placeholder="分组名称" />
-                </div>
-                <Button class="md:self-end" :disabled="!store.activeProjectId" @click="store.activeProjectId && handleCreateGroup(store.activeProjectId)">
+              <div class="flex gap-2">
+                <Button variant="outline" size="sm" @click="openCreateGroupDialog">
+                  <FolderPlus class="size-4" />
                   新建分组
                 </Button>
-              </div>
-              <div class="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto]">
-                <div class="flex flex-col gap-1">
-                  <Label>新建请求</Label>
-                  <Input v-model="newRequestName" placeholder="请求名称" />
-                </div>
-                <div class="flex flex-col gap-1">
-                  <Label>方法</Label>
-                  <select v-model="newRequestMethod" class="rounded-md border bg-background px-2 py-1 text-sm">
-                    <option v-for="method of (['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'] as ApiClientHttpMethod[])" :key="method" :value="method">
-                      {{ method }}
-                    </option>
-                  </select>
-                </div>
-                <div class="flex flex-col gap-1">
-                  <Label>URL</Label>
-                  <Input v-model="newRequestUrl" placeholder="https://example.com/path" />
-                </div>
-                <Button class="md:self-end" :disabled="!store.activeGroupId" @click="store.activeGroupId && handleCreateRequest(store.activeGroupId)">
+                <Button size="sm" :disabled="!store.activeGroupId" @click="store.activeGroupId && openCreateRequestDialog(store.activeGroupId, store.groups.find(item => item.id === store.activeGroupId)?.name ?? '')">
+                  <Plus class="size-4" />
                   新建请求
                 </Button>
               </div>
-            </CardContent>
+            </CardHeader>
           </Card>
 
           <ApiRequestEditor
@@ -576,18 +554,9 @@ const activeEnvironmentId = computed(() => store.activeEnvironmentId);
             @select-environment="handleSelectEnvironment"
           />
 
-          <div v-else-if="store.activeProjectId" class="flex flex-col items-center justify-center rounded-md border border-dashed bg-muted/10 px-6 py-12 text-center text-sm text-muted-foreground">
-            <Network class="mb-2 size-6 text-muted-foreground" />
-            请在左侧选择或新建一个请求
-          </div>
-
-          <div v-else-if="store.isLoadingProjects" class="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 class="size-4 animate-spin" /> 加载项目…
-          </div>
-
           <div v-else class="flex flex-col items-center justify-center rounded-md border border-dashed bg-muted/10 px-6 py-12 text-center text-sm text-muted-foreground">
             <Network class="mb-2 size-6 text-muted-foreground" />
-            请先创建一个项目以开始
+            请在左侧选择或新建一个请求
           </div>
 
           <ApiResponsePanel
@@ -617,12 +586,10 @@ const activeEnvironmentId = computed(() => store.activeEnvironmentId);
             :prompt="draft.aiPrompt"
             :reference="draft.aiReference"
             :include-current-body="includeCurrentBody"
-            :models="aiModels"
-            :selected-model-key="store.aiSelectedModelKey"
+            :current-model-label="aiCurrentModelLabel"
             @update:prompt="updateAiPrompt"
             @update:reference="updateAiReference"
             @update:include-current-body="includeCurrentBody = $event"
-            @update:selected-model-key="updateAiModel"
             @generate="handleGenerateAi"
             @cancel="handleCancelAi"
             @apply="handleApplyAi"
@@ -639,7 +606,7 @@ const activeEnvironmentId = computed(() => store.activeEnvironmentId);
       </ScrollArea>
     </div>
 
-    <Spinner v-if="store.isLoadingProjects" class="pointer-events-none fixed right-6 top-6" />
+    <Spinner v-if="store.isLoadingGroups || store.isLoadingRequests" class="pointer-events-none fixed right-6 top-6" />
 
     <ConfirmDialog
       :open="pendingConfirm.open"
@@ -651,6 +618,20 @@ const activeEnvironmentId = computed(() => store.activeEnvironmentId);
       @update:open="onConfirmDialogUpdate"
       @confirm="onConfirmDialogConfirm"
       @cancel="onConfirmDialogCancel"
+    />
+
+    <CreateGroupDialog
+      :open="createGroupDialogOpen"
+      :project-name="store.activeProject?.name"
+      @update:open="(value: boolean) => createGroupDialogOpen = value"
+      @submit="submitCreateGroup"
+    />
+
+    <CreateRequestDialog
+      :open="createRequestDialogOpen"
+      :group-name="createRequestGroupName"
+      @update:open="(value: boolean) => createRequestDialogOpen = value"
+      @submit="submitCreateRequest"
     />
   </div>
 </template>

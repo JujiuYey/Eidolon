@@ -258,16 +258,22 @@ fn map_history(row: &Row<'_>) -> rusqlite::Result<Result<ApiRequestHistory, Stri
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::repositories::api_client::ApiClientRepository;
+    use crate::db::repositories::api_group_repo::ApiGroupRepository;
+    use crate::db::repositories::api_project_repo::ApiProjectRepository;
+    use crate::db::repositories::api_request_repo::ApiRequestRepository;
     use crate::models::api_client::{BodyKind, RequestBody};
 
     fn seeded() -> (ApiClientDatabase, String) {
         let database = ApiClientDatabase::open_in_memory().expect("in-memory database");
         let request_id = {
-            let repo = ApiClientRepository::new(&database);
-            let project = repo.create_project("订单系统", "").expect("project");
-            let group = repo.list_groups(&project.id).expect("groups")[0].clone();
-            repo.create_request(&group.id, "新增订单")
+            let project_repo = ApiProjectRepository::new(&database);
+            let project = project_repo.create("订单系统", "").expect("project");
+            let group = ApiGroupRepository::new(&database)
+                .list(&project.id)
+                .expect("groups")[0]
+                .clone();
+            ApiRequestRepository::new(&database)
+                .create(&group.id, "新增订单")
                 .expect("request")
                 .id
         };

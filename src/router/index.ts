@@ -43,7 +43,13 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: '/api-client',
-        component: () => import('@/views/api-client/index.vue'),
+        component: () => import('@/views/api-project/index.vue'),
+      },
+      {
+        path: '/api-client/projects/:id',
+        name: 'api-client-project',
+        component: () => import('@/views/api-client-workspace/index.vue'),
+        props: route => ({ projectId: route.params.id }),
       },
       {
         path: '/app-setting',

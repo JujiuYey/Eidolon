@@ -44,7 +44,14 @@ impl ApiClientDatabase {
         let connection =
             Connection::open_in_memory().map_err(|error| format!("打开内存数据库失败: {error}"))?;
 
-        configure(&connection)?;
+        // 内存数据库不支持 WAL journal mode；只启用外键与 busy_timeout
+        connection
+            .pragma_update(None, "foreign_keys", true)
+            .map_err(|error| format!("启用外键约束失败: {error}"))?;
+        connection
+            .busy_timeout(std::time::Duration::from_secs(5))
+            .map_err(|error| format!("设置 busy_timeout 失败: {error}"))?;
+
         migrate(&connection)?;
 
         Ok(Self {
@@ -174,7 +181,6 @@ mod tests {
                 for expected in [
                     "api_environments",
                     "api_groups",
-                    "api_project_deletions",
                     "api_projects",
                     "api_request_histories",
                     "api_requests",

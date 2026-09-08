@@ -1,6 +1,6 @@
 use crate::db::api_client::ApiClientDatabase;
-use crate::db::repositories::api_client::ApiClientRepository;
 use crate::db::repositories::api_history::ApiHistoryRepository;
+use crate::db::repositories::api_request_repo::ApiRequestRepository;
 use crate::models::api_client::{ApiRequestHistory, ExecutionResult, RequestSnapshot};
 use crate::services::api_http::{new_execution_id, prepare_request, ApiHttpClient};
 
@@ -14,9 +14,8 @@ pub async fn send_api_request(
     snapshot: RequestSnapshot,
     execution_id: Option<String>,
 ) -> Result<ExecutionResult, String> {
-    let repository = ApiClientRepository::new(&database);
-    let environment =
-        repository.resolve_environment_for_request(&request_id, environment_id.as_deref())?;
+    let repository = ApiRequestRepository::new(&database);
+    let environment = repository.resolve_environment(&request_id, environment_id.as_deref())?;
 
     let prepared = prepare_request(&snapshot, environment.as_ref()).map_err(String::from)?;
 
@@ -74,9 +73,8 @@ pub fn preview_api_request(
     environment_id: Option<String>,
     snapshot: RequestSnapshot,
 ) -> Result<PreparedRequestPreview, String> {
-    let repository = ApiClientRepository::new(&database);
-    let environment =
-        repository.resolve_environment_for_request(&request_id, environment_id.as_deref())?;
+    let repository = ApiRequestRepository::new(&database);
+    let environment = repository.resolve_environment(&request_id, environment_id.as_deref())?;
     let prepared = prepare_request(&snapshot, environment.as_ref()).map_err(String::from)?;
 
     Ok(PreparedRequestPreview {

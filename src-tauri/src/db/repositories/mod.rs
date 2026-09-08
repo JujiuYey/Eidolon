@@ -1,7 +1,11 @@
 pub mod agent_conversation;
 pub mod agent_profile;
-pub mod api_client;
+pub mod api_client_repo_common;
+pub mod api_environment_repo;
+pub mod api_group_repo;
 pub mod api_history;
+pub mod api_project_repo;
+pub mod api_request_repo;
 pub mod default_model;
 pub mod mcp_service;
 pub mod model_config;
