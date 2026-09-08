@@ -37,6 +37,11 @@ tera = "1.20"
 nanoid = "0.4"
 tempfile = "3.14"
 rmcp = { version = "0.16.0", features = ["client", "macros", "transport-child-process", "transport-streamable-http-client-reqwest"] }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
+reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls", "charset", "http2", "stream", "system-proxy"] }
+url = "2.5.8"
+futures-util = "0.3"
 
 [dev-dependencies]
 tempfile = "3.14"
+axum = "0.8"

@@ -13,9 +13,7 @@ pub struct DefaultModelSettingRepository<'a> {
 
 impl<'a> DefaultModelSettingRepository<'a> {
     pub fn new(store: &'a LocalJsonStore) -> Self {
-        let cache = store
-            .read(FILENAME)
-            .unwrap_or_else(|_| HashMap::default());
+        let cache = store.read(FILENAME).unwrap_or_else(|_| HashMap::default());
 
         Self {
             store,

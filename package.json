@@ -11,7 +11,8 @@
     "lint:eslint": "eslint \"src/**/*.{vue,ts,tsx}\" --fix --cache --cache-location node_modules/.cache/eslint/",
     "lint:ui": "eslint \"src/components/ui/**/*.{vue,ts,tsx}\" --fix --cache --cache-location node_modules/.cache/eslint/",
     "lint:ui2": "eslint \"src/components/ai-elements/**/*.{vue,ts,tsx}\" --fix --cache --cache-location node_modules/.cache/eslint/",
-    "lint:lint-staged": "lint-staged"
+    "lint:lint-staged": "lint-staged",
+    "test": "node --experimental-strip-types --import \"data:text/javascript,import { register } from 'node:module'; import { pathToFileURL } from 'node:url'; register('./scripts/test-loader.mjs', pathToFileURL('./'));\" --test src/views/api-client/utils/__tests__/request-helpers.test.ts src/views/api-client/utils/__tests__/response-helpers.test.ts src/views/api-client/utils/__tests__/ai-helpers.test.ts src/views/api-client/utils/__tests__/store.test.ts"
   },
   "dependencies": {
     "@iconify/vue": "^5.0.0",

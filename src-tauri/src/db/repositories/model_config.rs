@@ -4,9 +4,7 @@ use std::collections::HashMap;
 use serde::Deserialize;
 
 use crate::db::local_store::LocalJsonStore;
-use crate::models::model_config::{
-    ProviderModel, ProviderModelCapabilities, ProviderSetting,
-};
+use crate::models::model_config::{ProviderModel, ProviderModelCapabilities, ProviderSetting};
 
 const SETTINGS_FILENAME: &str = "provider_settings";
 const MODELS_FILENAME: &str = "provider_models";
@@ -117,7 +115,9 @@ impl<'a> ProviderModelRepository<'a> {
     }
 
     pub fn delete_by_provider(&self, provider_id: &str) -> Result<String, String> {
-        self.cache.borrow_mut().retain(|model| model.provider_id != provider_id);
+        self.cache
+            .borrow_mut()
+            .retain(|model| model.provider_id != provider_id);
         self.store.write(MODELS_FILENAME, &*self.cache.borrow())?;
         Ok(provider_id.to_string())
     }
@@ -139,7 +139,8 @@ fn load_provider_setting_cache(
         return Ok((cache, false));
     }
 
-    let flat_legacy: HashMap<String, FlatLegacyProviderConfig> = store.read(FLAT_LEGACY_FILENAME)?;
+    let flat_legacy: HashMap<String, FlatLegacyProviderConfig> =
+        store.read(FLAT_LEGACY_FILENAME)?;
     if !flat_legacy.is_empty() {
         let migrated = flat_legacy
             .into_iter()
@@ -193,15 +194,14 @@ fn load_provider_setting_cache(
     Ok((migrated, true))
 }
 
-fn load_provider_model_cache(
-    store: &LocalJsonStore,
-) -> Result<(Vec<ProviderModel>, bool), String> {
+fn load_provider_model_cache(store: &LocalJsonStore) -> Result<(Vec<ProviderModel>, bool), String> {
     let cache: Vec<ProviderModel> = store.read(MODELS_FILENAME)?;
     if !cache.is_empty() {
         return Ok((cache, false));
     }
 
-    let flat_legacy: HashMap<String, FlatLegacyProviderConfig> = store.read(FLAT_LEGACY_FILENAME)?;
+    let flat_legacy: HashMap<String, FlatLegacyProviderConfig> =
+        store.read(FLAT_LEGACY_FILENAME)?;
     if !flat_legacy.is_empty() {
         let mut migrated = Vec::new();
 
@@ -355,9 +355,7 @@ mod tests {
 
     use super::{ProviderModelRepository, ProviderSettingRepository};
     use crate::db::local_store::LocalJsonStore;
-    use crate::models::model_config::{
-        ProviderModel, ProviderModelCapabilities, ProviderSetting,
-    };
+    use crate::models::model_config::{ProviderModel, ProviderModelCapabilities, ProviderSetting};
 
     #[test]
     fn upsert_persists_provider_settings_without_model_fields() {
@@ -503,7 +501,9 @@ mod tests {
             LocalJsonStore::new(temp_dir.path().to_path_buf()).expect("store should be created");
 
         let model_repo = ProviderModelRepository::new(&store);
-        let models = model_repo.list().expect("flat legacy models should migrate");
+        let models = model_repo
+            .list()
+            .expect("flat legacy models should migrate");
 
         assert_eq!(models.len(), 1);
         assert_eq!(models[0].provider_id, "deepseek");

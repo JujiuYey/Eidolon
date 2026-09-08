@@ -1,7 +1,5 @@
 use crate::db::local_store::LocalJsonStore;
-use crate::db::repositories::model_config::{
-    ProviderModelRepository, ProviderSettingRepository,
-};
+use crate::db::repositories::model_config::{ProviderModelRepository, ProviderSettingRepository};
 use crate::models::model_config::{ProviderModel, ProviderSetting};
 
 #[tauri::command]

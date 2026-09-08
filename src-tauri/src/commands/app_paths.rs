@@ -1,5 +1,5 @@
-use tauri::{AppHandle, Manager};
 use serde::Serialize;
+use tauri::{AppHandle, Manager};
 
 #[derive(Serialize)]
 pub struct AppPaths {
@@ -10,10 +10,7 @@ pub struct AppPaths {
 /// 获取应用数据目录和应用日志目录
 #[tauri::command]
 pub fn get_app_paths(app: AppHandle) -> Result<AppPaths, String> {
-    let app_data = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| e.to_string())?;
+    let app_data = app.path().app_data_dir().map_err(|e| e.to_string())?;
 
     let app_log = app_data.join("logs");
 

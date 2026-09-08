@@ -30,8 +30,6 @@ pub fn delete_mcp_service(
 }
 
 #[tauri::command]
-pub async fn discover_mcp_service(
-    service: McpService,
-) -> Result<McpServiceDiscovery, String> {
+pub async fn discover_mcp_service(service: McpService) -> Result<McpServiceDiscovery, String> {
     discover_service(&service).await
 }

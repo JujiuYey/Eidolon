@@ -141,8 +141,8 @@ mod tests {
         let persisted_path = temp_dir.path().join("mcp_services.json");
         assert!(persisted_path.exists());
 
-        let content = fs::read_to_string(&persisted_path)
-            .expect("persisted mcp services should be readable");
+        let content =
+            fs::read_to_string(&persisted_path).expect("persisted mcp services should be readable");
         assert!(content.contains("\"server_name\": \"filesystem\""));
         assert!(content.contains("\"read_file\""));
     }

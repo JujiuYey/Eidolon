@@ -70,7 +70,11 @@ impl<'a> AgentConversationRepository<'a> {
     }
 
     pub fn get(&self, conversation_id: &str) -> Result<Option<AgentConversation>, String> {
-        Ok(self.conversation_cache.borrow().get(conversation_id).cloned())
+        Ok(self
+            .conversation_cache
+            .borrow()
+            .get(conversation_id)
+            .cloned())
     }
 
     pub fn create_from_profile(&self, profile: &AgentProfile) -> Result<AgentConversation, String> {
@@ -134,7 +138,9 @@ impl<'a> AgentConversationRepository<'a> {
             .cloned()
             .unwrap_or_default();
         messages.sort_by(|left, right| {
-            left.created_at.cmp(&right.created_at).then(left.id.cmp(&right.id))
+            left.created_at
+                .cmp(&right.created_at)
+                .then(left.id.cmp(&right.id))
         });
         Ok(messages)
     }
@@ -148,10 +154,7 @@ impl<'a> AgentConversationRepository<'a> {
             .borrow()
             .contains_key(message.conversation_id.as_str())
         {
-            return Err(format!(
-                "未找到 id 为 {} 的会话",
-                message.conversation_id
-            ));
+            return Err(format!("未找到 id 为 {} 的会话", message.conversation_id));
         }
 
         let normalized = normalize_message(message)?;
@@ -229,7 +232,9 @@ impl<'a> AgentConversationRepository<'a> {
     }
 }
 
-fn normalize_message(message: &AgentConversationMessage) -> Result<AgentConversationMessage, String> {
+fn normalize_message(
+    message: &AgentConversationMessage,
+) -> Result<AgentConversationMessage, String> {
     let conversation_id = message.conversation_id.trim().to_string();
     if conversation_id.is_empty() {
         return Err("conversation_id 不能为空".to_string());
@@ -422,18 +427,14 @@ mod tests {
             .delete(&conversation.id)
             .expect("conversation should delete");
 
-        assert!(
-            conversation_repo
-                .get(&conversation.id)
-                .expect("lookup should succeed")
-                .is_none()
-        );
-        assert!(
-            conversation_repo
-                .list_messages(&conversation.id)
-                .expect("messages should load")
-                .is_empty()
-        );
+        assert!(conversation_repo
+            .get(&conversation.id)
+            .expect("lookup should succeed")
+            .is_none());
+        assert!(conversation_repo
+            .list_messages(&conversation.id)
+            .expect("messages should load")
+            .is_empty());
     }
 
     #[test]

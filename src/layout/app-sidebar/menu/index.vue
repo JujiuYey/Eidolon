@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { Component } from 'vue';
-import { MessageCircle, Bot, Sparkles } from 'lucide-vue-next';
+import { MessageCircle, Bot, Sparkles, Network } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
 import AppSidebarRecentConversations from '../recent-conversations/index.vue';
 
@@ -32,6 +32,12 @@ const menus: Menu[] = [
     key: 'codegen',
     icon: Sparkles,
     path: '/codegen',
+  },
+  {
+    title: '接口请求',
+    key: 'api-client',
+    icon: Network,
+    path: '/api-client',
   },
 ];
 

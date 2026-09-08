@@ -113,15 +113,24 @@ async fn run_snapshot_agent_turn(
         })?;
 
     if !provider_setting.enabled {
-        return Err(format!("{} 已被禁用，请先启用后再对话", provider_setting.provider_id));
+        return Err(format!(
+            "{} 已被禁用，请先启用后再对话",
+            provider_setting.provider_id
+        ));
     }
 
     if provider_setting.api_key.trim().is_empty() {
-        return Err(format!("{} 的 API Key 不能为空", provider_setting.provider_id));
+        return Err(format!(
+            "{} 的 API Key 不能为空",
+            provider_setting.provider_id
+        ));
     }
 
     if provider_setting.base_url.trim().is_empty() {
-        return Err(format!("{} 的 Base URL 不能为空", provider_setting.provider_id));
+        return Err(format!(
+            "{} 的 Base URL 不能为空",
+            provider_setting.provider_id
+        ));
     }
 
     // Build messages for rig

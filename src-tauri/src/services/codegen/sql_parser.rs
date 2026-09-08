@@ -19,8 +19,16 @@ const FILTERED_AUDIT_FIELDS: &[&str] = &[
 #[derive(Debug, Clone)]
 enum SqlStatement {
     CreateTable(String),
-    CommentOnTable { table: String, comment: String },
-    CommentOnColumn { table: String, column: String, comment: String },
+    CommentOnTable {
+        #[allow(dead_code)]
+        table: String,
+        comment: String,
+    },
+    CommentOnColumn {
+        table: String,
+        column: String,
+        comment: String,
+    },
 }
 
 /// Split SQL into individual statements, handling quotes and parentheses
@@ -108,9 +116,12 @@ fn split_sql_statements(sql: &str) -> Vec<String> {
 /// Parse a COMMENT ON statement
 fn parse_comment_statement(stmt: &str) -> Option<SqlStatement> {
     let trimmed = stmt.trim();
-    
+
     // Try COMMENT ON TABLE
-    let table_regex = Regex::new(r#"(?i)^\s*COMMENT\s+ON\s+TABLE\s+`?([a-zA-Z0-9_.]+)`?\s+(?:IS|=)\s*'([^']*)'\s*;?\s*$"#).ok()?;
+    let table_regex = Regex::new(
+        r#"(?i)^\s*COMMENT\s+ON\s+TABLE\s+`?([a-zA-Z0-9_.]+)`?\s+(?:IS|=)\s*'([^']*)'\s*;?\s*$"#,
+    )
+    .ok()?;
     if let Some(captures) = table_regex.captures(trimmed) {
         let table = captures.get(1)?.as_str().to_string();
         let comment = captures.get(2)?.as_str().to_string();
@@ -123,7 +134,11 @@ fn parse_comment_statement(stmt: &str) -> Option<SqlStatement> {
         let table = captures.get(1)?.as_str().to_string();
         let column = captures.get(2)?.as_str().to_string();
         let comment = captures.get(3)?.as_str().to_string();
-        return Some(SqlStatement::CommentOnColumn { table, column, comment });
+        return Some(SqlStatement::CommentOnColumn {
+            table,
+            column,
+            comment,
+        });
     }
 
     None
@@ -132,7 +147,7 @@ fn parse_comment_statement(stmt: &str) -> Option<SqlStatement> {
 /// Classify a SQL statement
 fn classify_statement(stmt: &str) -> Option<SqlStatement> {
     let trimmed = stmt.trim();
-    
+
     // Check if it's a CREATE TABLE
     let create_table_regex = Regex::new(r#"(?i)^\s*CREATE\s+TABLE"#).ok()?;
     if create_table_regex.is_match(trimmed) {
@@ -174,22 +189,27 @@ pub fn parse_sql_ddl(sql: &str) -> Result<ParsedTable, String> {
 
     // Parse the CREATE TABLE (existing logic)
     let (table_name, body, tail) = extract_create_table_sections(&create_table_stmt)?;
-    
+
     // Extract table comment from CREATE TABLE tail
     let mut entity_label = extract_table_comment(&tail);
-    
+
     // Process COMMENT ON statements for additional comments
-    let mut column_comments: std::collections::HashMap<String, String> = std::collections::HashMap::new();
-    
+    let mut column_comments: std::collections::HashMap<String, String> =
+        std::collections::HashMap::new();
+
     for stmt in &classified {
         match stmt {
-            SqlStatement::CommentOnTable { table, comment } => {
+            SqlStatement::CommentOnTable { table: _, comment } => {
                 // Only use if we don't already have a table comment
                 if entity_label.is_none() {
                     entity_label = Some(comment.clone());
                 }
             }
-            SqlStatement::CommentOnColumn { table, column, comment } => {
+            SqlStatement::CommentOnColumn {
+                table,
+                column,
+                comment,
+            } => {
                 // Store column comments by column name
                 let key = format!("{}.{}", table, column);
                 column_comments.insert(key, comment.clone());
@@ -211,7 +231,7 @@ pub fn parse_sql_ddl(sql: &str) -> Result<ParsedTable, String> {
                     field.comment = Some(comment.clone());
                 }
             }
-            
+
             if FILTERED_AUDIT_FIELDS.contains(&field.name.as_str()) {
                 continue;
             }
@@ -898,7 +918,7 @@ COMMENT ON COLUMN test_table.name = '名称';
         let table = parse_sql_ddl(sql).expect("sql should parse");
 
         assert_eq!(table.entity_label.as_deref(), Some("测试表"));
-        
+
         let name = table
             .fields
             .iter()
@@ -923,7 +943,7 @@ COMMENT ON COLUMN demo.title IS '标题';
         let table = parse_sql_ddl(sql).expect("sql should parse");
 
         assert_eq!(table.entity_label.as_deref(), Some("演示表"));
-        
+
         let title = table
             .fields
             .iter()

@@ -42,6 +42,10 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/codegen/index.vue'),
       },
       {
+        path: '/api-client',
+        component: () => import('@/views/api-client/index.vue'),
+      },
+      {
         path: '/app-setting',
         component: () => import('@/views/app-setting/index.vue'),
       },

@@ -1,5 +1,8 @@
 pub mod agent_conversation;
 pub mod agent_profile;
+pub mod api_client;
+pub mod api_generate;
+pub mod api_request;
 pub mod app_paths;
 pub mod codegen;
 pub mod conversation;

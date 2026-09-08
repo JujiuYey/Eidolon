@@ -111,15 +111,24 @@ fn resolve_chat_target(
         .ok_or_else(|| format!("未找到 {} 的模型服务配置", default_setting.provider_id))?;
 
     if !provider_setting.enabled {
-        return Err(format!("{} 已被禁用，请先启用后再对话", provider_setting.provider_id));
+        return Err(format!(
+            "{} 已被禁用，请先启用后再对话",
+            provider_setting.provider_id
+        ));
     }
 
     if provider_setting.api_key.trim().is_empty() {
-        return Err(format!("{} 的 API Key 不能为空", provider_setting.provider_id));
+        return Err(format!(
+            "{} 的 API Key 不能为空",
+            provider_setting.provider_id
+        ));
     }
 
     if provider_setting.base_url.trim().is_empty() {
-        return Err(format!("{} 的 Base URL 不能为空", provider_setting.provider_id));
+        return Err(format!(
+            "{} 的 Base URL 不能为空",
+            provider_setting.provider_id
+        ));
     }
 
     Ok(ChatTarget {
@@ -139,11 +148,15 @@ fn build_additional_params(setting: &DefaultModelSetting) -> Result<Option<Value
         params.insert("top_p".to_string(), json!(top_p));
     }
 
-    if let Some(presence_penalty) = parse_optional_f64(&setting.presence_penalty, "presence_penalty")? {
+    if let Some(presence_penalty) =
+        parse_optional_f64(&setting.presence_penalty, "presence_penalty")?
+    {
         params.insert("presence_penalty".to_string(), json!(presence_penalty));
     }
 
-    if let Some(frequency_penalty) = parse_optional_f64(&setting.frequency_penalty, "frequency_penalty")? {
+    if let Some(frequency_penalty) =
+        parse_optional_f64(&setting.frequency_penalty, "frequency_penalty")?
+    {
         params.insert("frequency_penalty".to_string(), json!(frequency_penalty));
     }
 
@@ -224,9 +237,7 @@ fn extract_text_response(choice: rig::OneOrMany<AssistantContent>) -> Option<Str
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        build_rig_messages, resolve_chat_target, ConversationMessageInput,
-    };
+    use super::{build_rig_messages, resolve_chat_target, ConversationMessageInput};
     use crate::models::default_model::DefaultModelSetting;
     use crate::models::model_config::ProviderSetting;
 

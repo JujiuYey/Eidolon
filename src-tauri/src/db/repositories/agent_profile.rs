@@ -51,7 +51,9 @@ impl<'a> AgentProfileRepository<'a> {
         let normalized = normalize_profile(profile, existing.as_ref())?;
         let profile_id = normalized.id.clone();
 
-        self.cache.borrow_mut().insert(profile_id.clone(), normalized);
+        self.cache
+            .borrow_mut()
+            .insert(profile_id.clone(), normalized);
         self.store.write(PROFILES_FILENAME, &*self.cache.borrow())?;
 
         Ok(profile_id)
@@ -280,11 +282,9 @@ mod tests {
             .delete(&profile_id)
             .expect("profile should be deleted");
 
-        assert!(
-            repository
-                .get(&profile_id)
-                .expect("profile lookup should succeed")
-                .is_none()
-        );
+        assert!(repository
+            .get(&profile_id)
+            .expect("profile lookup should succeed")
+            .is_none());
     }
 }

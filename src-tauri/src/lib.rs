@@ -2,7 +2,8 @@ mod commands;
 mod db;
 pub mod models;
 pub mod services;
-use db::LocalJsonStore;
+use db::{ApiClientDatabase, LocalJsonStore};
+use services::api_http::ApiHttpClient;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -49,6 +50,35 @@ pub fn run() {
             commands::codegen::generate_crud,
             commands::codegen::parse_sql_ddl,
             commands::codegen::generate_go_crud,
+            // API client commands
+            commands::api_client::list_api_projects,
+            commands::api_client::create_api_project,
+            commands::api_client::rename_api_project,
+            commands::api_client::preview_api_project_deletion,
+            commands::api_client::delete_api_project,
+            commands::api_client::list_api_groups,
+            commands::api_client::create_api_group,
+            commands::api_client::rename_api_group,
+            commands::api_client::delete_api_group,
+            commands::api_client::reorder_api_groups,
+            commands::api_client::list_api_requests,
+            commands::api_client::get_api_request,
+            commands::api_client::create_api_request,
+            commands::api_client::update_api_request,
+            commands::api_client::duplicate_api_request,
+            commands::api_client::move_api_request,
+            commands::api_client::delete_api_request,
+            commands::api_client::reorder_api_requests,
+            commands::api_client::list_api_environments,
+            commands::api_client::upsert_api_environment,
+            commands::api_client::delete_api_environment,
+            commands::api_client::list_api_request_histories,
+            commands::api_client::get_api_request_history,
+            commands::api_client::clear_api_request_histories,
+            commands::api_request::send_api_request,
+            commands::api_request::cancel_api_request,
+            commands::api_request::preview_api_request,
+            commands::api_generate::generate_api_request_body,
         ])
         .setup(|app| {
             // 窗口启动时自动最大化
@@ -70,13 +100,22 @@ pub fn run() {
                 .app_data_dir()
                 .map_err(|error| std::io::Error::other(error.to_string()))?;
 
-            // 创建本地 JSON 存储
-            let store =
-                LocalJsonStore::new(app_data_dir).map_err(|error| std::io::Error::other(error))?;
+            // 创建本地 JSON 存储（消耗 app_data_dir）
+            let store = LocalJsonStore::new(app_data_dir.clone())
+                .map_err(|error| std::io::Error::other(error))?;
 
             log::info!("数据存储位置: {}", store.data_dir().display());
 
             app.manage(store);
+
+            // 初始化接口请求工具专用 SQLite 数据库与 HTTP 客户端
+            let api_database = ApiClientDatabase::open(&app_data_dir)
+                .map_err(|error| std::io::Error::other(error))?;
+            log::info!("接口请求数据库位置: {}", api_database.path().display());
+            app.manage(api_database);
+
+            let http_client = ApiHttpClient::new().map_err(|error| std::io::Error::other(error))?;
+            app.manage(http_client);
 
             Ok(())
         })
