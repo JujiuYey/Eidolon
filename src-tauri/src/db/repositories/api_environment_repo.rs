@@ -6,11 +6,11 @@
 
 use chrono::Utc;
 use nanoid::nanoid;
-use rusqlite::params;
+use rusqlite::{params, Row};
 
 use crate::db::api_client::ApiClientDatabase;
 use crate::db::repositories::api_client_repo_common::{
-    begin, map_environment, require_name, require_project, sql_error, to_json,
+    begin, from_json, require_name, require_project, sql_error, to_json,
 };
 use crate::models::api_client::ApiEnvironment;
 
@@ -99,6 +99,26 @@ impl<'a> ApiEnvironmentRepository<'a> {
             Ok(environment_id.to_string())
         })
     }
+}
+
+pub(crate) fn map_environment(row: &Row<'_>) -> rusqlite::Result<Result<ApiEnvironment, String>> {
+    let variables_json: String = row.get(4)?;
+    let environment = ApiEnvironment {
+        id: row.get(0)?,
+        project_id: row.get(1)?,
+        name: row.get(2)?,
+        base_url: row.get(3)?,
+        variables: Vec::new(),
+        created_at: row.get(5)?,
+        updated_at: row.get(6)?,
+    };
+
+    Ok((|| {
+        Ok(ApiEnvironment {
+            variables: from_json(&variables_json)?,
+            ..environment
+        })
+    })())
 }
 
 #[cfg(test)]

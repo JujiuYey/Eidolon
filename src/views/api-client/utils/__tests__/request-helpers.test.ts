@@ -17,6 +17,7 @@ import {
   maskHeadersForHistory,
   maskSensitiveText,
   parseFullUrl,
+  prepareExecution,
   resolveExecutionUrl,
   resolveVariables,
   rowsEqual,
@@ -24,7 +25,11 @@ import {
   trimRows,
   tryFormatJson,
 } from '@/views/api-client/utils/request-helpers';
-import type { ApiClientKeyValueRow, ApiClientRequestBody } from '@/types/api-client';
+import type {
+  ApiClientEnvironment,
+  ApiClientKeyValueRow,
+  ApiClientRequestBody,
+} from '@/types/api-client';
 
 function makeRow(overrides: Partial<ApiClientKeyValueRow> = {}): ApiClientKeyValueRow {
   return {
@@ -506,5 +511,106 @@ describe('diffDraftAgainstSaved', () => {
     assert.ok(result.changedFields.includes('query'));
     assert.ok(result.changedFields.includes('body'));
     assert.ok(result.changedFields.includes('timeoutMs'));
+  });
+});
+
+function makeEnvironment(overrides: Partial<ApiClientEnvironment> = {}): ApiClientEnvironment {
+  return {
+    id: 'env-1',
+    projectId: 'project-1',
+    name: 'dev',
+    baseUrl: 'https://api.example.com',
+    variables: [],
+    createdAt: 0,
+    updatedAt: 0,
+    ...overrides,
+  };
+}
+
+describe('prepareExecution', () => {
+  it('returns the snapshot with environment name and no missing variables when fully resolved', () => {
+    const env = makeEnvironment({
+      variables: [makeRow({ key: 'baseUrl', value: 'https://api.example.com' })],
+    });
+
+    const result = prepareExecution({
+      url: 'https://{{baseUrl}}/users',
+      query: [],
+      headers: [],
+      body: createEmptyBody('none'),
+      method: 'GET',
+      timeoutMs: 5000,
+      environment: env,
+    });
+
+    assert.deepEqual(result.missingVariables, []);
+    assert.equal(result.environmentId, 'env-1');
+    assert.equal(result.environmentName, 'dev');
+    assert.equal(result.snapshot.url, 'https://{{baseUrl}}/users');
+    assert.equal(result.snapshot.environmentName, 'dev');
+    assert.equal(result.snapshot.timeoutMs, 5000);
+  });
+
+  it('lists missing variables from url, headers, and body in one place', () => {
+    const env = makeEnvironment({
+      variables: [makeRow({ key: 'host', value: 'https://api.example.com' })],
+    });
+
+    const result = prepareExecution({
+      url: 'https://{{host}}/{{path}}',
+      query: [],
+      headers: [
+        makeRow({ enabled: true, key: 'X-Auth', value: 'Bearer {{token}}' }),
+      ],
+      body: { kind: 'json', text: '{"body":"{{bodyVar}}"}', form: [] },
+      method: 'POST',
+      timeoutMs: 5000,
+      environment: env,
+    });
+
+    assert.deepEqual(result.missingVariables.sort(), ['bodyVar', 'path', 'token']);
+  });
+
+  it('returns no missing variables and keeps environmentId null when no environment is selected', () => {
+    const result = prepareExecution({
+      url: 'https://api.example.com/users',
+      query: [],
+      headers: [],
+      body: createEmptyBody('none'),
+      method: 'GET',
+      timeoutMs: 5000,
+      environment: null,
+    });
+
+    assert.equal(result.environmentId, null);
+    assert.equal(result.environmentName, null);
+    assert.deepEqual(result.missingVariables, []);
+  });
+
+  it('forwards body and header rows to the snapshot without dropping disabled ones', () => {
+    const env = makeEnvironment();
+    const query = [
+      makeRow({ key: 'a', value: '1', enabled: true }),
+      makeRow({ key: 'b', value: '2', enabled: false }),
+    ];
+    const headers = [
+      makeRow({ key: 'X-Test', value: 'yes', enabled: true }),
+    ];
+
+    const result = prepareExecution({
+      url: 'https://api.example.com/x',
+      query,
+      headers,
+      body: createEmptyBody('none'),
+      method: 'GET',
+      timeoutMs: 1000,
+      environment: env,
+    });
+
+    assert.equal(result.snapshot.query.length, 2);
+    assert.equal(result.snapshot.query[0]?.enabled, true);
+    assert.equal(result.snapshot.query[1]?.enabled, false);
+    assert.equal(result.snapshot.headers.length, 1);
+    assert.equal(result.snapshot.timeoutMs, 1000);
   });
 });

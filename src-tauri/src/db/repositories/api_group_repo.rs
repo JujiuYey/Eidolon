@@ -5,12 +5,11 @@
 
 use chrono::Utc;
 use nanoid::nanoid;
-use rusqlite::params;
+use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use crate::db::api_client::ApiClientDatabase;
 use crate::db::repositories::api_client_repo_common::{
-    begin, load_group, map_group, next_sort, require_name, require_project, sql_error,
-    DeletionSummary,
+    begin, next_sort, require_name, require_project, sql_error, DeletionSummary,
 };
 use crate::models::api_client::ApiGroup;
 
@@ -173,6 +172,32 @@ impl<'a> ApiGroupRepository<'a> {
         self.list(project_id)
     }
 }
+
+fn map_group(row: &Row<'_>) -> rusqlite::Result<ApiGroup> {
+    Ok(ApiGroup {
+        id: row.get(0)?,
+        project_id: row.get(1)?,
+        parent_group_id: row.get(2)?,
+        name: row.get(3)?,
+        sort: row.get(4)?,
+        created_at: row.get(5)?,
+        updated_at: row.get(6)?,
+    })
+}
+
+fn load_group(connection: &Connection, group_id: &str) -> Result<ApiGroup, String> {
+    connection
+        .query_row(
+            "SELECT id, project_id, parent_group_id, name, sort, created_at, updated_at
+             FROM api_groups WHERE id = ?1",
+            params![group_id],
+            map_group,
+        )
+        .optional()
+        .map_err(sql_error)?
+        .ok_or_else(|| format!("未找到 id 为 {group_id} 的分组"))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::db::api_client::ApiClientDatabase;

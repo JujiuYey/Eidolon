@@ -24,7 +24,7 @@ const SENSITIVE_HEADER_HINTS: &[&str] = &[
 ];
 
 /// 脱敏后的占位值
-pub const REDACTED: &str = "***";
+const REDACTED: &str = "***";
 
 /// 执行历史仓库
 pub struct ApiHistoryRepository<'a> {

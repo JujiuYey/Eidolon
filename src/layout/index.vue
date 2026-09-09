@@ -6,7 +6,7 @@ import AppSidebar from './app-sidebar/index.vue';
 <template>
   <SidebarProvider :default-open="true">
     <AppSidebar />
-    <div class="w-[0px] flex-1 h-screen">
+    <div class="w-[0px] flex-1 h-screen overflow-hidden">
       <RouterView />
     </div>
   </SidebarProvider>

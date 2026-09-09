@@ -58,6 +58,7 @@ declare global {
   const useComm: typeof import('../composables/user-commits')['useComm']
   const useCommitTheme: typeof import('../composables/user-commits')['useCommitTheme']
   const useCommits: typeof import('../composables/user-commits')['useCommits']
+  const useConfirm: typeof import('../composables/use-confirm')['useConfirm']
   const useCssModule: typeof import('vue')['useCssModule']
   const useCssVars: typeof import('vue')['useCssVars']
   const useId: typeof import('vue')['useId']
@@ -83,4 +84,7 @@ declare global {
   // @ts-ignore
   export type { AppPaths } from '../composables/use-app-paths'
   import('../composables/use-app-paths')
+  // @ts-ignore
+  export type { ConfirmOptions } from '../composables/use-confirm'
+  import('../composables/use-confirm')
 }

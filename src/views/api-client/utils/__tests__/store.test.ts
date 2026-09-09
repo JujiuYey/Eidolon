@@ -305,8 +305,6 @@ function buildService(): ServiceState {
         modelLabel: result.model_label,
       };
     },
-    buildEnvironmentSensitivity: () => 'unknown',
-    getExecutionKindFromStatus: () => 'idle',
   };
 
   return {
@@ -623,7 +621,6 @@ describe('aI candidate does not auto-apply', () => {
     await store.selectRequest('request-1', { discardUnsaved: true });
     store.updateDraftBody({ kind: 'json', text: '{"old":true}', form: [] });
 
-    await store.loadAiModels();
     await store.generateAiBody({
       prompt: '生成订单',
       reference: '',
@@ -653,7 +650,6 @@ describe('aI generation race ID handling', () => {
     const store = bindStore(state.service);
     await store.selectProject('project-1', { discardUnsaved: true });
     await store.selectRequest('request-1', { discardUnsaved: true });
-    await store.loadAiModels();
 
     const firstPromise = store.generateAiBody({ prompt: 'p', reference: '', includeCurrentBody: false });
     await new Promise(resolve => setTimeout(resolve, 0));

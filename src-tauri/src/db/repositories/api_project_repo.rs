@@ -6,11 +6,11 @@
 
 use chrono::Utc;
 use nanoid::nanoid;
-use rusqlite::params;
+use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use crate::db::api_client::ApiClientDatabase;
 use crate::db::repositories::api_client_repo_common::{
-    begin, map_project, next_sort, require_name, sql_error, DeletionSummary,
+    begin, next_sort, require_name, sql_error, DeletionSummary,
 };
 use crate::models::api_client::ApiProject;
 
@@ -118,7 +118,7 @@ impl<'a> ApiProjectRepository<'a> {
                 return Err(format!("未找到 id 为 {project_id} 的项目"));
             }
 
-            crate::db::repositories::api_client_repo_common::load_project(connection, project_id)
+            load_project(connection, project_id)
         })
     }
 
@@ -146,7 +146,7 @@ impl<'a> ApiProjectRepository<'a> {
                 return Err(format!("未找到 id 为 {project_id} 的项目"));
             }
 
-            crate::db::repositories::api_client_repo_common::load_project(connection, project_id)
+            load_project(connection, project_id)
         })
     }
 
@@ -221,6 +221,30 @@ fn project_deletion_summary(
         deleted_requests,
         deleted_histories,
     })
+}
+
+fn map_project(row: &Row<'_>) -> rusqlite::Result<ApiProject> {
+    Ok(ApiProject {
+        id: row.get(0)?,
+        name: row.get(1)?,
+        description: row.get(2)?,
+        sort: row.get(3)?,
+        created_at: row.get(4)?,
+        updated_at: row.get(5)?,
+    })
+}
+
+fn load_project(connection: &Connection, project_id: &str) -> Result<ApiProject, String> {
+    connection
+        .query_row(
+            "SELECT id, name, description, sort, created_at, updated_at
+             FROM api_projects WHERE id = ?1",
+            params![project_id],
+            map_project,
+        )
+        .optional()
+        .map_err(sql_error)?
+        .ok_or_else(|| format!("未找到 id 为 {project_id} 的项目"))
 }
 
 #[cfg(test)]

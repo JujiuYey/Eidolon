@@ -1,5 +1,6 @@
 import type {
   ApiClientBodyKind,
+  ApiClientEnvironment,
   ApiClientKeyValueRow,
   ApiClientRequestBody,
   ApiClientRequestSnapshot,
@@ -472,4 +473,62 @@ export function maskHeadersForHistory(
 
 export function maskQueryForHistory(rows: ApiClientKeyValueRow[]): ApiClientKeyValueRow[] {
   return cloneRows(rows);
+}
+
+export interface ExecutionPreparationInput {
+  url: string;
+  query: ApiClientKeyValueRow[];
+  headers: ApiClientKeyValueRow[];
+  body: ApiClientRequestBody;
+  method: ApiClientRequestSnapshot['method'];
+  timeoutMs: number;
+  environment: ApiClientEnvironment | null;
+}
+
+export interface ExecutionPreparation {
+  snapshot: ApiClientRequestSnapshot;
+  missingVariables: string[];
+  environmentId: string | null;
+  environmentName: string | null;
+}
+
+/**
+ * 构造执行快照并集中校验未定义变量。Store 在调用 `send_api_request` 之前
+ * 必须先得到一份 snapshot 与缺失变量列表；本函数是纯函数，便于在测试里直接覆盖。
+ */
+export function prepareExecution(input: ExecutionPreparationInput): ExecutionPreparation {
+  const env = input.environment;
+  const lookup = env ? buildEnvironmentLookup(env.variables, false) : null;
+  const urlResolution = resolveExecutionUrl({
+    baseUrl: env?.baseUrl ?? '',
+    url: input.url,
+    query: input.query,
+    headers: input.headers,
+    body: input.body,
+    environment: env ? { baseUrl: env.baseUrl, name: env.name } : null,
+    lookup,
+  });
+
+  const headerMissing = lookup ? collectMissingVariablesInRows(input.headers, lookup) : [];
+  const bodyMissing = lookup ? collectMissingVariablesInBody(input.body, lookup) : [];
+  const missingVariables = Array.from(new Set([
+    ...urlResolution.missingVariables,
+    ...headerMissing,
+    ...bodyMissing,
+  ]));
+
+  return {
+    snapshot: buildRequestSnapshot({
+      method: input.method,
+      url: input.url,
+      query: input.query,
+      headers: input.headers,
+      body: input.body,
+      timeoutMs: input.timeoutMs,
+      environmentName: env?.name ?? null,
+    }),
+    missingVariables,
+    environmentId: env?.id ?? null,
+    environmentName: env?.name ?? null,
+  };
 }

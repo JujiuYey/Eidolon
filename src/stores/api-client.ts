@@ -25,17 +25,14 @@ import {
   buildAiContextPayload,
 } from '@/views/api-client/utils/ai-helpers';
 import {
-  buildEnvironmentLookup,
   buildRequestSnapshot,
   cloneBody,
   cloneRows,
-  collectMissingVariablesInBody,
-  collectMissingVariablesInRows,
   createEmptyRow,
   createId,
   diffDraftAgainstSaved,
   maskHeadersForHistory,
-  resolveExecutionUrl,
+  prepareExecution,
   splitUrlIntoBaseAndParams,
   tryFormatJson,
 } from '@/views/api-client/utils/request-helpers';
@@ -562,40 +559,19 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     const executionId = createId('exec');
     const controller = new AbortController();
     executionAbortController.value = controller;
-    const env = activeEnvironment.value;
-    const environmentId = env?.id ?? null;
 
-    const snapshot = buildRequestSnapshot({
+    const preparation = prepareExecution({
+      url: draft.value.url,
+      query: draft.value.query,
+      headers: draft.value.headers,
+      body: draft.value.body,
       method: draft.value.method,
-      url: draft.value.url,
-      query: draft.value.query,
-      headers: draft.value.headers,
-      body: draft.value.body,
       timeoutMs: draft.value.timeoutMs,
-      environmentName: env?.name ?? null,
+      environment: activeEnvironment.value,
     });
 
-    const lookup = env ? buildEnvironmentLookup(env.variables, false) : null;
-    const urlResolution = resolveExecutionUrl({
-      baseUrl: env?.baseUrl ?? '',
-      url: draft.value.url,
-      query: draft.value.query,
-      headers: draft.value.headers,
-      body: draft.value.body,
-      environment: env ? { baseUrl: env.baseUrl, name: env.name } : null,
-      lookup,
-    });
-
-    const headerMissing = lookup ? collectMissingVariablesInRows(draft.value.headers, lookup) : [];
-    const bodyMissing = lookup ? collectMissingVariablesInBody(draft.value.body, lookup) : [];
-
-    const allMissing = Array.from(new Set([
-      ...urlResolution.missingVariables,
-      ...headerMissing,
-      ...bodyMissing,
-    ]));
-
-    if (allMissing.length > 0) {
+    if (preparation.missingVariables.length > 0) {
+      const missing = preparation.missingVariables.join(', ');
       execution.value = {
         executionId,
         requestId: activeRequestId.value,
@@ -605,10 +581,10 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
           kind: 'idle',
           rawText: '',
           meta: null,
-          errorMessage: `存在未定义变量: ${allMissing.join(', ')}`,
+          errorMessage: `存在未定义变量: ${missing}`,
         }),
       };
-      throw new Error(`存在未定义变量: ${allMissing.join(', ')}`);
+      throw new Error(`存在未定义变量: ${missing}`);
     }
 
     execution.value = {
@@ -628,8 +604,8 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
       const result = await service.sendApiRequest({
         requestId: activeRequestId.value,
         executionId,
-        snapshot,
-        environmentId,
+        snapshot: preparation.snapshot,
+        environmentId: preparation.environmentId,
       });
 
       if (execution.value?.executionId !== executionId || controller.signal.aborted) {
@@ -762,13 +738,6 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
       timeoutMs: snapshot.timeoutMs,
     };
     execution.value = null;
-  }
-
-  async function loadAiModels(): Promise<void> {
-    // No backend command to list AI models; the active model label is surfaced
-    // by the response of generate_api_request_body. Callers may invoke this
-    // hook without effect to keep the public store surface stable.
-    void service;
   }
 
   async function generateAiBody(options: { prompt: string; reference: string; includeCurrentBody: boolean }): Promise<void> {
@@ -972,7 +941,6 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     loadHistory,
     clearHistory,
     applyHistoryToDraft,
-    loadAiModels,
     generateAiBody,
     cancelAiGeneration,
     applyAiCandidateToBody,

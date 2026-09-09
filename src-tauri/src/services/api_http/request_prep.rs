@@ -1,384 +1,32 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+//! 请求准备：变量解析、URL 构造、Header / Query / Body 编码。
+//! 纯数据变换层，不接触网络与 SQLite，便于单独测试。
 
-use futures_util::StreamExt;
-use nanoid::nanoid;
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue, CONTENT_TYPE};
-use reqwest::{Client, Method, Response};
-use tokio::sync::watch;
+use std::collections::HashMap;
+
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use url::Url;
 
 use crate::models::api_client::{
-    normalize_method, ApiEnvironment, BodyKind, ExecutionResult, ExecutionStatus, KeyValueRow,
-    RequestSnapshot, MAX_RESPONSE_BYTES,
+    normalize_method, ApiEnvironment, BodyKind, KeyValueRow, RequestSnapshot,
 };
 
-/// 构建好的实际请求，变量已解析
+/// 构建好的实际请求，变量已解析。
+/// 由 [`prepare_request`] 返回，再交给 [`super::client::ApiHttpClient::send`] 执行。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedRequest {
     pub method: String,
     pub url: String,
     pub headers: Vec<KeyValueRow>,
     pub body: Option<Vec<u8>>,
-    pub timeout: Duration,
+    pub timeout: std::time::Duration,
 }
 
-/// 执行中的请求登记表，按执行 ID 关联取消信号
-#[derive(Default)]
-pub struct ExecutionRegistry {
-    inflight: Mutex<HashMap<String, watch::Sender<bool>>>,
-}
-
-impl ExecutionRegistry {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    fn register(&self, execution_id: &str) -> Result<watch::Receiver<bool>, String> {
-        let (sender, receiver) = watch::channel(false);
-        let mut guard = self
-            .inflight
-            .lock()
-            .map_err(|_| "执行状态已损坏".to_string())?;
-        guard.insert(execution_id.to_string(), sender);
-        Ok(receiver)
-    }
-
-    fn unregister(&self, execution_id: &str) {
-        if let Ok(mut guard) = self.inflight.lock() {
-            guard.remove(execution_id);
-        }
-    }
-
-    /// 请求客户端停止等待。服务端可能已经执行，取消不代表已回滚。
-    pub fn cancel(&self, execution_id: &str) -> Result<bool, String> {
-        let guard = self
-            .inflight
-            .lock()
-            .map_err(|_| "执行状态已损坏".to_string())?;
-
-        match guard.get(execution_id) {
-            Some(sender) => {
-                let _ = sender.send(true);
-                Ok(true)
-            }
-            None => Ok(false),
-        }
-    }
-
-    pub fn is_inflight(&self, execution_id: &str) -> bool {
-        self.inflight
-            .lock()
-            .map(|guard| guard.contains_key(execution_id))
-            .unwrap_or(false)
-    }
-}
-
-/// 共享 HTTP 客户端。不自动跟随重定向，不持久化 Cookie，不自动重试。
-pub struct ApiHttpClient {
-    client: Client,
-    registry: Arc<ExecutionRegistry>,
-}
-
-impl ApiHttpClient {
-    pub fn new() -> Result<Self, String> {
-        // 默认即不持久化 Cookie：不启用 `cookies` 特性，不构造 CookieStore。
-        let client = Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .map_err(|error| format!("创建 HTTP 客户端失败: {error}"))?;
-
-        Ok(Self {
-            client,
-            registry: Arc::new(ExecutionRegistry::new()),
-        })
-    }
-
-    pub fn registry(&self) -> Arc<ExecutionRegistry> {
-        Arc::clone(&self.registry)
-    }
-
-    /// 发送一次请求。4xx/5xx 是正常响应；连接失败、超时、取消是执行错误。
-    pub async fn send(
-        &self,
-        execution_id: &str,
-        prepared: &PreparedRequest,
-    ) -> Result<ExecutionResult, String> {
-        let mut cancel = self.registry.register(execution_id)?;
-        let started = Instant::now();
-
-        let outcome = self
-            .execute(prepared, execution_id, started, &mut cancel)
-            .await;
-
-        self.registry.unregister(execution_id);
-        outcome
-    }
-
-    async fn execute(
-        &self,
-        prepared: &PreparedRequest,
-        execution_id: &str,
-        started: Instant,
-        cancel: &mut watch::Receiver<bool>,
-    ) -> Result<ExecutionResult, String> {
-        let method = Method::from_bytes(prepared.method.as_bytes())
-            .map_err(|error| format!("无法识别的 HTTP 方法: {error}"))?;
-
-        let mut builder = self
-            .client
-            .request(method, &prepared.url)
-            .timeout(prepared.timeout);
-
-        builder = builder.headers(build_header_map(&prepared.headers)?);
-
-        if let Some(body) = prepared.body.clone() {
-            builder = builder.body(body);
-        }
-
-        let send_future = builder.send();
-
-        let response = tokio::select! {
-            biased;
-            _ = cancel.changed() => {
-                return Ok(cancelled_result(execution_id, started));
-            }
-            result = send_future => result,
-        };
-
-        let response = match response {
-            Ok(response) => response,
-            Err(error) => {
-                return Ok(error_result(execution_id, started, error));
-            }
-        };
-
-        self.read_response(execution_id, response, started, cancel)
-            .await
-    }
-
-    /// 流式读取响应，超过上限即终止，不做无上限缓冲
-    async fn read_response(
-        &self,
-        execution_id: &str,
-        response: Response,
-        started: Instant,
-        cancel: &mut watch::Receiver<bool>,
-    ) -> Result<ExecutionResult, String> {
-        let status = response.status();
-        let response_headers = collect_headers(response.headers());
-        let content_type = response
-            .headers()
-            .get(CONTENT_TYPE)
-            .and_then(|value| value.to_str().ok())
-            .map(str::to_string);
-
-        let mut buffer: Vec<u8> = Vec::new();
-        let mut oversized = false;
-        let mut stream = response.bytes_stream();
-
-        loop {
-            let chunk = tokio::select! {
-                biased;
-                _ = cancel.changed() => {
-                    return Ok(cancelled_result(execution_id, started));
-                }
-                chunk = stream.next() => chunk,
-            };
-
-            let Some(chunk) = chunk else {
-                break;
-            };
-
-            let chunk = match chunk {
-                Ok(chunk) => chunk,
-                Err(error) => {
-                    return Ok(ExecutionResult {
-                        response_headers,
-                        status_code: Some(status.as_u16()),
-                        ..error_result(execution_id, started, error)
-                    });
-                }
-            };
-
-            let remaining = MAX_RESPONSE_BYTES.saturating_sub(buffer.len());
-            if chunk.len() > remaining {
-                buffer.extend_from_slice(&chunk[..remaining]);
-                oversized = true;
-                break;
-            }
-
-            buffer.extend_from_slice(&chunk);
-
-            if buffer.len() >= MAX_RESPONSE_BYTES {
-                oversized = true;
-                break;
-            }
-        }
-
-        let body_size_bytes = buffer.len();
-        let is_binary = is_binary_response(content_type.as_deref(), &buffer);
-        let body_text = if is_binary {
-            String::new()
-        } else {
-            String::from_utf8_lossy(&buffer).to_string()
-        };
-
-        let status_kind = if oversized {
-            ExecutionStatus::Oversize
-        } else if status.is_client_error() || status.is_server_error() {
-            ExecutionStatus::HttpError
-        } else {
-            ExecutionStatus::Success
-        };
-
-        Ok(ExecutionResult {
-            execution_id: execution_id.to_string(),
-            status: status_kind,
-            status_code: Some(status.as_u16()),
-            response_headers,
-            body_text,
-            body_size_bytes,
-            content_type,
-            is_binary,
-            is_oversized: oversized,
-            duration_ms: started.elapsed().as_millis() as u64,
-            error_message: if oversized {
-                Some(format!(
-                    "响应超过上限（{} MiB），已停止继续读取",
-                    MAX_RESPONSE_BYTES / (1024 * 1024)
-                ))
-            } else {
-                None
-            },
-            history_error: None,
-            history_id: None,
-        })
-    }
-}
-
-/// 生成一个执行 ID
-pub fn new_execution_id() -> String {
-    format!("aexe_{}", nanoid!(12))
-}
-
-fn cancelled_result(execution_id: &str, started: Instant) -> ExecutionResult {
-    ExecutionResult {
-        execution_id: execution_id.to_string(),
-        status: ExecutionStatus::Cancelled,
-        status_code: None,
-        response_headers: Vec::new(),
-        body_text: String::new(),
-        body_size_bytes: 0,
-        content_type: None,
-        is_binary: false,
-        is_oversized: false,
-        duration_ms: started.elapsed().as_millis() as u64,
-        error_message: Some("已取消等待，服务端可能已经执行".to_string()),
-        history_error: None,
-        history_id: None,
-    }
-}
-
-fn error_result(execution_id: &str, started: Instant, error: reqwest::Error) -> ExecutionResult {
-    let status = if error.is_timeout() {
-        ExecutionStatus::Timeout
-    } else {
-        ExecutionStatus::NetworkError
-    };
-
-    let message = if error.is_timeout() {
-        "请求超时".to_string()
-    } else if error.is_connect() {
-        format!("连接失败: {error}")
-    } else {
-        format!("请求失败: {error}")
-    };
-
-    ExecutionResult {
-        execution_id: execution_id.to_string(),
-        status,
-        status_code: None,
-        response_headers: Vec::new(),
-        body_text: String::new(),
-        body_size_bytes: 0,
-        content_type: None,
-        is_binary: false,
-        is_oversized: false,
-        duration_ms: started.elapsed().as_millis() as u64,
-        error_message: Some(message),
-        history_error: None,
-        history_id: None,
-    }
-}
-
-fn build_header_map(headers: &[KeyValueRow]) -> Result<HeaderMap, String> {
-    let mut map = HeaderMap::new();
-
-    for row in headers.iter().filter(|row| row.enabled) {
-        let name = row.key.trim();
-        if name.is_empty() {
-            continue;
-        }
-
-        let header_name = HeaderName::from_bytes(name.as_bytes())
-            .map_err(|_| format!("请求头名称不合法: {name}"))?;
-        let header_value = HeaderValue::from_str(row.value.trim())
-            .map_err(|_| format!("请求头 {name} 的值包含不支持的字符"))?;
-
-        map.append(header_name, header_value);
-    }
-
-    Ok(map)
-}
-
-fn collect_headers(headers: &HeaderMap) -> Vec<KeyValueRow> {
-    headers
-        .iter()
-        .map(|(name, value)| KeyValueRow {
-            id: String::new(),
-            enabled: true,
-            key: name.as_str().to_string(),
-            value: value.to_str().unwrap_or("<非文本值>").to_string(),
-        })
-        .collect()
-}
-
-/// 二进制响应仅提示类型和大小，不强制转换为文本
-fn is_binary_response(content_type: Option<&str>, body: &[u8]) -> bool {
-    if let Some(content_type) = content_type {
-        let lower = content_type.to_ascii_lowercase();
-        let textual = lower.starts_with("text/")
-            || lower.contains("json")
-            || lower.contains("xml")
-            || lower.contains("javascript")
-            || lower.contains("x-www-form-urlencoded");
-
-        if textual {
-            return false;
-        }
-
-        if lower.starts_with("image/")
-            || lower.starts_with("audio/")
-            || lower.starts_with("video/")
-            || lower.starts_with("application/octet-stream")
-            || lower.starts_with("application/pdf")
-            || lower.starts_with("application/zip")
-        {
-            return true;
-        }
-    }
-
-    // 未声明类型时按内容判断：出现 NUL 字节或无法解码为 UTF-8 视为二进制
-    body.contains(&0) || std::str::from_utf8(body).is_err()
-}
-
-/// 变量解析与请求构建的错误
+/// 请求准备阶段抛出的错误。包含变量缺失与所有合法 JSON / URL / Method 校验失败。
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PrepareError {
     /// 存在未定义变量，列出缺失变量名
     MissingVariables(Vec<String>),
+    /// 业务校验或格式错误（如方法、URL 协议、JSON 语法）
     Invalid(String),
 }
 
@@ -399,7 +47,7 @@ impl From<PrepareError> for String {
     }
 }
 
-/// 变量表：环境变量一级作用域，首版没有多层覆盖
+/// 变量表：环境变量一级作用域，首版没有多层覆盖。
 pub struct VariableScope {
     values: HashMap<String, String>,
     base_url: String,
@@ -437,7 +85,7 @@ impl VariableScope {
     }
 }
 
-/// `{{变量名}}` 文本替换。首版不推断或转换类型。
+/// `{{变量名}}` 文本替换。首版不推断或转换类型；字符串值需要正确的 JSON 引号与转义。
 pub fn resolve_variables(input: &str, scope: &VariableScope) -> Result<String, PrepareError> {
     let mut output = String::with_capacity(input.len());
     let mut missing: Vec<String> = Vec::new();
@@ -475,48 +123,8 @@ pub fn resolve_variables(input: &str, scope: &VariableScope) -> Result<String, P
     Ok(output)
 }
 
-fn resolve_rows(
-    rows: &[KeyValueRow],
-    scope: &VariableScope,
-    missing: &mut Vec<String>,
-) -> Vec<KeyValueRow> {
-    rows.iter()
-        .filter(|row| row.enabled)
-        .map(|row| {
-            let key = collect_missing(resolve_variables(&row.key, scope), missing)
-                .unwrap_or_else(|| row.key.clone());
-            let value = collect_missing(resolve_variables(&row.value, scope), missing)
-                .unwrap_or_else(|| row.value.clone());
-
-            KeyValueRow {
-                id: row.id.clone(),
-                enabled: true,
-                key,
-                value,
-            }
-        })
-        .collect()
-}
-
-fn collect_missing(
-    result: Result<String, PrepareError>,
-    missing: &mut Vec<String>,
-) -> Option<String> {
-    match result {
-        Ok(value) => Some(value),
-        Err(PrepareError::MissingVariables(names)) => {
-            for name in names {
-                if !missing.iter().any(|existing| existing == &name) {
-                    missing.push(name);
-                }
-            }
-            None
-        }
-        Err(PrepareError::Invalid(_)) => None,
-    }
-}
-
-/// 由请求快照与环境构建实际请求：解析变量、拼接 Query、补充 Content-Type
+/// 由请求快照与环境构建实际请求：解析变量、拼接 Query、补充 Content-Type。
+/// 出错时不会发出网络请求；所有错误以 [`PrepareError`] 返回。
 pub fn prepare_request(
     snapshot: &RequestSnapshot,
     environment: Option<&ApiEnvironment>,
@@ -592,8 +200,50 @@ pub fn prepare_request(
         url: url.to_string(),
         headers,
         body,
-        timeout: Duration::from_millis(snapshot.timeout_ms.max(1)),
+        timeout: std::time::Duration::from_millis(snapshot.timeout_ms.max(1)),
     })
+}
+
+/// 解析键值行中的 `{{变量}}`，把失败收集到 `missing` 中；不阻断其他行的解析。
+fn resolve_rows(
+    rows: &[KeyValueRow],
+    scope: &VariableScope,
+    missing: &mut Vec<String>,
+) -> Vec<KeyValueRow> {
+    rows.iter()
+        .filter(|row| row.enabled)
+        .map(|row| {
+            let key = collect_missing(resolve_variables(&row.key, scope), missing)
+                .unwrap_or_else(|| row.key.clone());
+            let value = collect_missing(resolve_variables(&row.value, scope), missing)
+                .unwrap_or_else(|| row.value.clone());
+
+            KeyValueRow {
+                id: row.id.clone(),
+                enabled: true,
+                key,
+                value,
+            }
+        })
+        .collect()
+}
+
+fn collect_missing(
+    result: Result<String, PrepareError>,
+    missing: &mut Vec<String>,
+) -> Option<String> {
+    match result {
+        Ok(value) => Some(value),
+        Err(PrepareError::MissingVariables(names)) => {
+            for name in names {
+                if !missing.iter().any(|existing| existing == &name) {
+                    missing.push(name);
+                }
+            }
+            None
+        }
+        Err(PrepareError::Invalid(_)) => None,
+    }
 }
 
 /// 绝对 URL 直接使用；相对路径通过所选环境的基础地址解析
@@ -680,6 +330,27 @@ fn with_default_content_type(
     let mut headers = headers;
     headers.push(KeyValueRow::new("Content-Type", default_value));
     headers
+}
+
+/// 把 prepared header 列表转换为 `HeaderMap`，丢弃 enabled=false、空键、含非法字符的值
+pub fn build_header_map(headers: &[KeyValueRow]) -> Result<HeaderMap, String> {
+    let mut map = HeaderMap::new();
+
+    for row in headers.iter().filter(|row| row.enabled) {
+        let name = row.key.trim();
+        if name.is_empty() {
+            continue;
+        }
+
+        let header_name = HeaderName::from_bytes(name.as_bytes())
+            .map_err(|_| format!("请求头名称不合法: {name}"))?;
+        let header_value = HeaderValue::from_str(row.value.trim())
+            .map_err(|_| format!("请求头 {name} 的值包含不支持的字符"))?;
+
+        map.append(header_name, header_value);
+    }
+
+    Ok(map)
 }
 
 #[cfg(test)]
@@ -1013,26 +684,6 @@ mod tests {
         .expect_err("unsupported method must be rejected");
 
         assert!(error.message().contains("不支持的 HTTP 方法"));
-    }
-
-    #[test]
-    fn binary_detection_uses_content_type_then_content() {
-        assert!(is_binary_response(Some("image/png"), b"\x89PNG"));
-        assert!(is_binary_response(Some("application/octet-stream"), b"abc"));
-        assert!(!is_binary_response(Some("application/json"), b"{}"));
-        assert!(!is_binary_response(
-            Some("text/plain; charset=utf-8"),
-            b"hello"
-        ));
-        assert!(is_binary_response(None, b"ab\0cd"));
-        assert!(!is_binary_response(None, "中文".as_bytes()));
-    }
-
-    #[test]
-    fn cancel_marks_unknown_execution_as_not_inflight() {
-        let registry = ExecutionRegistry::new();
-        assert!(!registry.is_inflight("missing"));
-        assert!(!registry.cancel("missing").expect("cancel should not fail"));
     }
 
     #[test]

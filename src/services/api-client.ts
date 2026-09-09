@@ -9,7 +9,6 @@ import type {
   ApiClientRequest,
   ApiClientRequestHistory,
   ApiClientRequestSnapshot,
-  ApiClientResponseKind,
 } from '@/types/api-client';
 
 interface TauriKeyValueRow {
@@ -621,38 +620,4 @@ export async function previewApiRequest(input: {
 export async function generateApiRequestBody(input: ApiAiGenerateInput): Promise<ApiAiGenerateResult> {
   const raw = await invoke<TauriAiGenerateResult>('generate_api_request_body', { input: toTauriAiInput(input) });
   return toFrontendAiResult(raw);
-}
-
-export interface ApiAiModelOption {
-  providerId: string;
-  modelId: string;
-  label: string;
-}
-
-export type EnvironmentSensitivity = 'unknown' | 'sensitive';
-
-export function buildEnvironmentSensitivity(env: ApiClientEnvironment | null): EnvironmentSensitivity {
-  if (!env) {
-    return 'unknown';
-  }
-  return 'unknown';
-}
-
-export function getExecutionKindFromStatus(status: ApiExecuteResult['status']): ApiClientResponseKind {
-  if (status === 'cancelled') {
-    return 'cancelled';
-  }
-  if (status === 'timeout') {
-    return 'timeout';
-  }
-  if (status === 'network_error') {
-    return 'network_error';
-  }
-  if (status === 'oversize') {
-    return 'oversize';
-  }
-  if (status === 'success') {
-    return 'success';
-  }
-  return 'http_error';
 }

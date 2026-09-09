@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChevronLeft, ChevronRight, FolderPlus, Network, Plus } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch as vueWatch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch as vueWatch } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
@@ -9,8 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
+import { useConfirm } from '@/composables/use-confirm';
 import { useApiClientStore } from '@/stores/api-client';
-import type { ApiClientHttpMethod, ApiClientKeyValueRow, ApiClientRequestBody } from '@/types/api-client';
+import type { ApiClientHttpMethod } from '@/types/api-client';
 import AiBodyGeneratorPanel from './components/AiBodyGeneratorPanel.vue';
 import ApiClientTree from './components/ApiClientTree.vue';
 import ApiRequestEditor from './components/ApiRequestEditor.vue';
@@ -28,66 +29,13 @@ const store = useApiClientStore();
 
 const showAiPanel = ref(true);
 const showHistoryPanel = ref(true);
-const showResponsePanel = ref(true);
 const includeCurrentBody = ref(false);
-
-interface PendingConfirm {
-  open: boolean;
-  title: string;
-  description: string;
-  confirmLabel: string;
-  cancelLabel: string;
-  destructive: boolean;
-  resolve: ((value: boolean) => void) | null;
-}
-
-const pendingConfirm = reactive<PendingConfirm>({
-  open: false,
-  title: '',
-  description: '',
-  confirmLabel: '确认',
-  cancelLabel: '取消',
-  destructive: false,
-  resolve: null,
-});
-
-function askConfirm(options: {
-  title: string;
-  description: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  destructive?: boolean;
-}): Promise<boolean> {
-  pendingConfirm.title = options.title;
-  pendingConfirm.description = options.description;
-  pendingConfirm.confirmLabel = options.confirmLabel ?? '确认';
-  pendingConfirm.cancelLabel = options.cancelLabel ?? '取消';
-  pendingConfirm.destructive = options.destructive ?? false;
-  pendingConfirm.resolve = null;
-  pendingConfirm.open = true;
-
-  return new Promise<boolean>(resolve => {
-    pendingConfirm.resolve = resolve;
-  });
-}
-
-function onConfirmDialogUpdate(open: boolean): void {
-  pendingConfirm.open = open;
-}
-
-function onConfirmDialogConfirm(): void {
-  pendingConfirm.resolve?.(true);
-  pendingConfirm.resolve = null;
-}
-
-function onConfirmDialogCancel(): void {
-  pendingConfirm.resolve?.(false);
-  pendingConfirm.resolve = null;
-}
 
 const createGroupDialogOpen = ref(false);
 const createRequestDialogOpen = ref(false);
 const createRequestGroupName = ref('');
+
+const confirm = useConfirm();
 
 const draft = computed(() => store.draft);
 const execution = computed(() => store.execution);
@@ -105,19 +53,21 @@ function handleError(error: unknown, fallback: string): void {
   toast.error(message);
 }
 
+async function runAsync(task: () => Promise<void>, fallbackMessage: string): Promise<void> {
+  try {
+    await task();
+  } catch (error) {
+    handleError(error, fallbackMessage);
+  }
+}
+
 async function bootstrapForProject(): Promise<void> {
   if (store.activeProjectId !== props.projectId) {
     try {
       await store.selectProject(props.projectId, { discardUnsaved: true });
     } catch (error) {
       handleError(error, '切换项目失败');
-      return;
     }
-  }
-  try {
-    await store.loadAiModels();
-  } catch {
-    // ignore: no backend list command; current model is reported per generation
   }
 }
 
@@ -161,7 +111,7 @@ async function handleSelectRequest(requestId: string): Promise<void> {
 }
 
 async function promptUnsavedChange(): Promise<boolean> {
-  const proceed = await askConfirm({
+  const proceed = await confirm.ask({
     title: '当前请求存在未保存修改',
     description: '切换将放弃当前编辑。请先保存或继续编辑。',
     confirmLabel: '放弃修改',
@@ -225,88 +175,82 @@ async function submitCreateRequest(payload: { name: string; method: ApiClientHtt
   }
 }
 
-async function handleDeleteProject(projectId: string): Promise<void> {
-  const project = store.projects.find(item => item.id === projectId);
-  const ok = await askConfirm({
-    title: '删除项目',
-    description: `确定删除项目「${project?.name ?? ''}」？此操作将一并删除该项目下的所有请求、分组和环境。`,
+async function confirmAndDelete(options: {
+  title: string;
+  description: string;
+  run: () => Promise<void>;
+  success: string;
+  errorMessage: string;
+  after?: () => void;
+}): Promise<void> {
+  const ok = await confirm.ask({
+    title: options.title,
+    description: options.description,
     confirmLabel: '删除',
     destructive: true,
   });
   if (!ok) {
     return;
   }
-  try {
-    await store.deleteProject(projectId);
-    toast.success('项目已删除');
-    void router.push('/api-client');
-  } catch (error) {
-    handleError(error, '删除项目失败');
-  }
+  await runAsync(async () => {
+    await options.run();
+    toast.success(options.success);
+    options.after?.();
+  }, options.errorMessage);
+}
+
+async function handleDeleteProject(projectId: string): Promise<void> {
+  const project = store.projects.find(item => item.id === projectId);
+  await confirmAndDelete({
+    title: '删除项目',
+    description: `确定删除项目「${project?.name ?? ''}」？此操作将一并删除该项目下的所有请求、分组和环境。`,
+    run: () => store.deleteProject(projectId),
+    success: '项目已删除',
+    errorMessage: '删除项目失败',
+    after: () => {
+      void router.push('/api-client');
+    },
+  });
 }
 
 async function handleDeleteGroup(groupId: string): Promise<void> {
   const group = store.groups.find(item => item.id === groupId);
-  const ok = await askConfirm({
+  await confirmAndDelete({
     title: '删除分组',
     description: `确定删除分组「${group?.name ?? ''}」？该分组下的请求与历史也将一并删除。`,
-    confirmLabel: '删除',
-    destructive: true,
+    run: () => store.deleteGroup(groupId),
+    success: '分组已删除',
+    errorMessage: '删除分组失败',
   });
-  if (!ok) {
-    return;
-  }
-  try {
-    await store.deleteGroup(groupId);
-    toast.success('分组已删除');
-  } catch (error) {
-    handleError(error, '删除分组失败');
-  }
 }
 
 async function handleDeleteRequest(requestId: string): Promise<void> {
   const request = store.requests.find(item => item.id === requestId);
-  const ok = await askConfirm({
+  await confirmAndDelete({
     title: '删除请求',
     description: `确定删除请求「${request?.name ?? ''}」及其历史？`,
-    confirmLabel: '删除',
-    destructive: true,
+    run: () => store.deleteRequest(requestId),
+    success: '请求已删除',
+    errorMessage: '删除请求失败',
   });
-  if (!ok) {
-    return;
-  }
-  try {
-    await store.deleteRequest(requestId);
-    toast.success('请求已删除');
-  } catch (error) {
-    handleError(error, '删除请求失败');
-  }
 }
 
 async function handleSaveDraft(): Promise<void> {
-  try {
+  await runAsync(async () => {
     await store.saveDraft();
     toast.success('请求已保存');
-  } catch (error) {
-    handleError(error, '保存失败');
-  }
+  }, '保存失败');
 }
 
 async function handleSend(): Promise<void> {
-  try {
-    await store.executeRequest();
-  } catch (error) {
-    handleError(error, '发送失败');
-  }
+  await runAsync(() => store.executeRequest(), '发送失败');
 }
 
 async function handleCancelExecution(): Promise<void> {
-  try {
+  await runAsync(async () => {
     await store.cancelExecution();
     toast.success('已取消当前请求');
-  } catch (error) {
-    handleError(error, '取消失败');
-  }
+  }, '取消失败');
 }
 
 function handlePasteUrl(): void {
@@ -326,23 +270,15 @@ function handleOpenAi(): void {
 }
 
 async function handleGenerateAi(): Promise<void> {
-  try {
-    await store.generateAiBody({
-      prompt: draft.value?.aiPrompt ?? '',
-      reference: draft.value?.aiReference ?? '',
-      includeCurrentBody: includeCurrentBody.value,
-    });
-  } catch (error) {
-    handleError(error, '生成失败');
-  }
+  await runAsync(() => store.generateAiBody({
+    prompt: draft.value?.aiPrompt ?? '',
+    reference: draft.value?.aiReference ?? '',
+    includeCurrentBody: includeCurrentBody.value,
+  }), '生成失败');
 }
 
 async function handleCancelAi(): Promise<void> {
-  try {
-    await store.cancelAiGeneration();
-  } catch (error) {
-    handleError(error, '取消失败');
-  }
+  await runAsync(() => store.cancelAiGeneration(), '取消失败');
 }
 
 function handleApplyAi(): void {
@@ -357,7 +293,7 @@ function handleRestoreHistory(historyId: string): void {
 }
 
 async function handleClearHistory(): Promise<void> {
-  const ok = await askConfirm({
+  const ok = await confirm.ask({
     title: '清空历史',
     description: '确定清空当前请求的所有历史？',
     confirmLabel: '清空',
@@ -372,34 +308,6 @@ async function handleClearHistory(): Promise<void> {
   } catch (error) {
     handleError(error, '清空历史失败');
   }
-}
-
-function updateDraftName(value: string): void {
-  store.updateDraftName(value);
-}
-
-function updateDraftMethod(value: ApiClientHttpMethod): void {
-  store.updateDraftMethod(value);
-}
-
-function updateDraftUrl(value: string): void {
-  store.updateDraftUrl(value);
-}
-
-function updateDraftTimeoutMs(value: number): void {
-  store.updateDraftTimeoutMs(value);
-}
-
-function updateDraftQuery(rows: ApiClientKeyValueRow[]): void {
-  store.updateDraftQuery(rows);
-}
-
-function updateDraftHeaders(rows: ApiClientKeyValueRow[]): void {
-  store.updateDraftHeaders(rows);
-}
-
-function updateDraftBody(body: ApiClientRequestBody): void {
-  store.updateDraftBody(body);
 }
 
 function updateAiPrompt(value: string): void {
@@ -446,8 +354,8 @@ const activeProject = computed(() => store.activeProject);
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col">
-    <div class="flex items-center justify-between border-b bg-card px-4 py-3">
+  <div class="flex h-full min-h-0 flex-col overflow-hidden">
+    <div class="flex shrink-0 items-center justify-between border-b bg-card px-4 py-3">
       <div class="flex items-center gap-2">
         <Button variant="ghost" size="sm" @click="handleBack">
           <ChevronLeft class="size-4" />
@@ -471,38 +379,40 @@ const activeProject = computed(() => store.activeProject);
       </div>
     </div>
 
-    <Alert v-if="!store.activeProjectId" variant="destructive" class="m-4">
+    <Alert v-if="!store.activeProjectId" variant="destructive" class="m-4 shrink-0">
       <AlertTitle>项目不可用</AlertTitle>
       <AlertDescription>
         请返回项目列表后重新进入。
       </AlertDescription>
     </Alert>
 
-    <div v-else class="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_minmax(0,360px)]">
-      <ApiClientTree
-        :projects="store.projects"
-        :groups="store.groups"
-        :requests="store.requestSearchResults"
-        :search-keyword="store.requestListFilter"
-        :active-project-id="store.activeProjectId"
-        :active-group-id="store.activeGroupId"
-        :active-request-id="store.activeRequestId"
-        :is-loading-projects="store.isLoadingProjects"
-        :is-loading-groups="store.isLoadingGroups"
-        :is-loading-requests="store.isLoadingRequests"
-        :deleting-project-id="store.isDeletingProject"
-        :deleting-group-id="store.isDeletingGroup"
-        :deleting-request-id="store.isDeletingRequest"
-        @update:search-keyword="store.setSearchKeyword"
-        @select-project="handleSelectProject"
-        @select-group="handleSelectGroup"
-        @select-request="handleSelectRequest"
-        @create-group="openCreateGroupDialog"
-        @create-request="handleTreeCreateRequest"
-        @delete-project="handleDeleteProject"
-        @delete-group="handleDeleteGroup"
-        @delete-request="handleDeleteRequest"
-      />
+    <div v-else class="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_360px] grid-rows-[minmax(0,1fr)] overflow-hidden">
+      <div class="min-h-0 overflow-hidden border-r bg-card">
+        <ApiClientTree
+          :projects="store.projects"
+          :groups="store.groups"
+          :requests="store.requestSearchResults"
+          :search-keyword="store.requestListFilter"
+          :active-project-id="store.activeProjectId"
+          :active-group-id="store.activeGroupId"
+          :active-request-id="store.activeRequestId"
+          :is-loading-projects="store.isLoadingProjects"
+          :is-loading-groups="store.isLoadingGroups"
+          :is-loading-requests="store.isLoadingRequests"
+          :deleting-project-id="store.isDeletingProject"
+          :deleting-group-id="store.isDeletingGroup"
+          :deleting-request-id="store.isDeletingRequest"
+          @update:search-keyword="store.setSearchKeyword"
+          @select-project="handleSelectProject"
+          @select-group="handleSelectGroup"
+          @select-request="handleSelectRequest"
+          @create-group="openCreateGroupDialog"
+          @create-request="handleTreeCreateRequest"
+          @delete-project="handleDeleteProject"
+          @delete-group="handleDeleteGroup"
+          @delete-request="handleDeleteRequest"
+        />
+      </div>
 
       <ScrollArea class="h-full">
         <div class="flex flex-col gap-4 p-4">
@@ -539,13 +449,13 @@ const activeProject = computed(() => store.activeProject);
             :draft-body="draft.body"
             :environments="store.environments"
             :active-environment-id="activeEnvironmentId"
-            @update:draft-name="updateDraftName"
-            @update:draft-method="updateDraftMethod"
-            @update:draft-url="updateDraftUrl"
-            @update:draft-timeout-ms="updateDraftTimeoutMs"
-            @update:draft-query="updateDraftQuery"
-            @update:draft-headers="updateDraftHeaders"
-            @update:draft-body="updateDraftBody"
+            @update:draft-name="store.updateDraftName"
+            @update:draft-method="store.updateDraftMethod"
+            @update:draft-url="store.updateDraftUrl"
+            @update:draft-timeout-ms="store.updateDraftTimeoutMs"
+            @update:draft-query="store.updateDraftQuery"
+            @update:draft-headers="store.updateDraftHeaders"
+            @update:draft-body="store.updateDraftBody"
             @save="handleSaveDraft"
             @send="handleSend"
             @cancel="handleCancelExecution"
@@ -560,64 +470,76 @@ const activeProject = computed(() => store.activeProject);
           </div>
 
           <ApiResponsePanel
-            v-if="showResponsePanel && draft"
+            v-if="draft"
             :response="responseView"
             :is-loading="isResponseLoading"
           />
-
-          <RequestHistoryPanel
-            v-if="showHistoryPanel && draft"
-            :histories="store.history"
-            :is-loading="store.isLoadingHistory"
-            :is-clearing="store.isClearingHistory"
-            @restore="handleRestoreHistory"
-            @clear="handleClearHistory"
-          />
         </div>
       </ScrollArea>
 
-      <ScrollArea v-if="showAiPanel" class="h-full border-l bg-card">
-        <div class="flex flex-col gap-4 p-4">
-          <AiBodyGeneratorPanel
-            v-if="draft"
-            :candidate="aiCandidate"
-            :is-generating="store.isGeneratingAi"
-            :current-body="draft.body"
-            :prompt="draft.aiPrompt"
-            :reference="draft.aiReference"
-            :include-current-body="includeCurrentBody"
-            :current-model-label="aiCurrentModelLabel"
-            @update:prompt="updateAiPrompt"
-            @update:reference="updateAiReference"
-            @update:include-current-body="includeCurrentBody = $event"
-            @generate="handleGenerateAi"
-            @cancel="handleCancelAi"
-            @apply="handleApplyAi"
-            @edit="store.editAiCandidateContent($event)"
-          />
+      <div class="flex min-h-0 flex-col overflow-hidden border-l bg-card">
+        <ScrollArea v-if="showHistoryPanel" class="min-h-0 shrink basis-1/2 border-b">
+          <div class="flex flex-col gap-4 p-4">
+            <RequestHistoryPanel
+              v-if="draft"
+              :histories="store.history"
+              :is-loading="store.isLoadingHistory"
+              :is-clearing="store.isClearingHistory"
+              @restore="handleRestoreHistory"
+              @clear="handleClearHistory"
+            />
+            <Card v-else>
+              <CardHeader>
+                <CardTitle>历史</CardTitle>
+                <CardDescription>选择请求后查看最近 100 次执行快照。</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </ScrollArea>
 
-          <Card v-else>
-            <CardHeader>
-              <CardTitle>AI 生成</CardTitle>
-              <CardDescription>选择请求后启用 AI 请求体生成。</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </ScrollArea>
+        <ScrollArea v-if="showAiPanel" class="min-h-0 shrink basis-1/2 grow">
+          <div class="flex flex-col gap-4 p-4">
+            <AiBodyGeneratorPanel
+              v-if="draft"
+              :candidate="aiCandidate"
+              :is-generating="store.isGeneratingAi"
+              :current-body="draft.body"
+              :prompt="draft.aiPrompt"
+              :reference="draft.aiReference"
+              :include-current-body="includeCurrentBody"
+              :current-model-label="aiCurrentModelLabel"
+              @update:prompt="updateAiPrompt"
+              @update:reference="updateAiReference"
+              @update:include-current-body="includeCurrentBody = $event"
+              @generate="handleGenerateAi"
+              @cancel="handleCancelAi"
+              @apply="handleApplyAi"
+              @edit="store.editAiCandidateContent($event)"
+            />
+
+            <Card v-else>
+              <CardHeader>
+                <CardTitle>AI 生成</CardTitle>
+                <CardDescription>选择请求后启用 AI 请求体生成。</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </ScrollArea>
+      </div>
     </div>
 
     <Spinner v-if="store.isLoadingGroups || store.isLoadingRequests" class="pointer-events-none fixed right-6 top-6" />
 
     <ConfirmDialog
-      :open="pendingConfirm.open"
-      :title="pendingConfirm.title"
-      :description="pendingConfirm.description"
-      :confirm-label="pendingConfirm.confirmLabel"
-      :cancel-label="pendingConfirm.cancelLabel"
-      :destructive="pendingConfirm.destructive"
-      @update:open="onConfirmDialogUpdate"
-      @confirm="onConfirmDialogConfirm"
-      @cancel="onConfirmDialogCancel"
+      :open="confirm.state.open"
+      :title="confirm.state.title"
+      :description="confirm.state.description"
+      :confirm-label="confirm.state.confirmLabel"
+      :cancel-label="confirm.state.cancelLabel"
+      :destructive="confirm.state.destructive"
+      @update:open="confirm.onOpenChange"
+      @confirm="confirm.onConfirm"
+      @cancel="confirm.onCancel"
     />
 
     <CreateGroupDialog

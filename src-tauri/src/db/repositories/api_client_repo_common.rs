@@ -1,9 +1,14 @@
 //! API Client 仓库之间的共享辅助：删除摘要、事务、键值行 JSON、
-//! 行映射、跨表加载函数。所有 `pub(crate)` 成员仅供同模块的仓库使用。
+//! 跨表加载函数。所有 `pub(crate)` 成员仅供同模块的仓库使用。
+//!
+//! 与具体表绑定的行映射（`map_project`/`map_group`/`map_environment`）
+//! 与单表加载（`load_project`/`load_group`）分别下沉到对应的仓库文件。
+//! `load_environment` 跨表使用，保留在此。
 
-use rusqlite::{params, Connection, OptionalExtension, Row, Transaction};
+use rusqlite::{params, Connection, OptionalExtension, Transaction};
 
-use crate::models::api_client::{ApiEnvironment, ApiGroup, ApiProject, KeyValueRow};
+use crate::db::repositories::api_environment_repo::map_environment;
+use crate::models::api_client::{ApiEnvironment, KeyValueRow};
 
 /// 删除项目或分组时返回的关联数量，供前端在确认框中展示
 ///
@@ -104,78 +109,9 @@ pub(crate) fn from_json(value: &str) -> Result<Vec<KeyValueRow>, String> {
     serde_json::from_str(value).map_err(|error| format!("解析键值行失败: {error}"))
 }
 
-pub(crate) fn map_project(row: &Row<'_>) -> rusqlite::Result<ApiProject> {
-    Ok(ApiProject {
-        id: row.get(0)?,
-        name: row.get(1)?,
-        description: row.get(2)?,
-        sort: row.get(3)?,
-        created_at: row.get(4)?,
-        updated_at: row.get(5)?,
-    })
-}
-
-pub(crate) fn map_group(row: &Row<'_>) -> rusqlite::Result<ApiGroup> {
-    Ok(ApiGroup {
-        id: row.get(0)?,
-        project_id: row.get(1)?,
-        parent_group_id: row.get(2)?,
-        name: row.get(3)?,
-        sort: row.get(4)?,
-        created_at: row.get(5)?,
-        updated_at: row.get(6)?,
-    })
-}
-
-pub(crate) fn map_environment(row: &Row<'_>) -> rusqlite::Result<Result<ApiEnvironment, String>> {
-    let variables_json: String = row.get(4)?;
-    let environment = ApiEnvironment {
-        id: row.get(0)?,
-        project_id: row.get(1)?,
-        name: row.get(2)?,
-        base_url: row.get(3)?,
-        variables: Vec::new(),
-        created_at: row.get(5)?,
-        updated_at: row.get(6)?,
-    };
-
-    Ok((|| {
-        Ok(ApiEnvironment {
-            variables: from_json(&variables_json)?,
-            ..environment
-        })
-    })())
-}
-
-pub(crate) fn load_project(
-    connection: &Connection,
-    project_id: &str,
-) -> Result<ApiProject, String> {
-    connection
-        .query_row(
-            "SELECT id, name, description, sort, created_at, updated_at
-             FROM api_projects WHERE id = ?1",
-            params![project_id],
-            map_project,
-        )
-        .optional()
-        .map_err(sql_error)?
-        .ok_or_else(|| format!("未找到 id 为 {project_id} 的项目"))
-}
-
-pub(crate) fn load_group(connection: &Connection, group_id: &str) -> Result<ApiGroup, String> {
-    connection
-        .query_row(
-            "SELECT id, project_id, parent_group_id, name, sort, created_at, updated_at
-             FROM api_groups WHERE id = ?1",
-            params![group_id],
-            map_group,
-        )
-        .optional()
-        .map_err(sql_error)?
-        .ok_or_else(|| format!("未找到 id 为 {group_id} 的分组"))
-}
-
+/// 由环境 ID 加载环境行：被 `api_environment_repo::upsert` 自身和
+/// `api_request_repo::resolve_environment`（跨表归属校验）共同使用。
+/// 行映射复用了仓库本地的 [`map_environment`] 以避免重复 SQL。
 pub(crate) fn load_environment(
     connection: &Connection,
     environment_id: &str,

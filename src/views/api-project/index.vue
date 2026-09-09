@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Loader2, Network, Pencil, Plus, Trash2 } from 'lucide-vue-next';
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 import { useRouter } from 'vue-router';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
@@ -9,70 +9,18 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
+import { useConfirm } from '@/composables/use-confirm';
 import { useApiClientStore } from '@/stores/api-client';
 import ProjectFormDialog from './components/ProjectFormDialog.vue';
 
 const router = useRouter();
 const store = useApiClientStore();
+const confirm = useConfirm();
 
 const createDialogOpen = ref(false);
 const editDialogOpen = ref(false);
 const editingProjectId = ref<string | null>(null);
 const backendError = ref<string | null>(null);
-
-interface PendingConfirm {
-  open: boolean;
-  title: string;
-  description: string;
-  confirmLabel: string;
-  cancelLabel: string;
-  destructive: boolean;
-  resolve: ((value: boolean) => void) | null;
-}
-
-const pendingConfirm = reactive<PendingConfirm>({
-  open: false,
-  title: '',
-  description: '',
-  confirmLabel: '确认',
-  cancelLabel: '取消',
-  destructive: false,
-  resolve: null,
-});
-
-function askConfirm(options: {
-  title: string;
-  description: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  destructive?: boolean;
-}): Promise<boolean> {
-  pendingConfirm.title = options.title;
-  pendingConfirm.description = options.description;
-  pendingConfirm.confirmLabel = options.confirmLabel ?? '确认';
-  pendingConfirm.cancelLabel = options.cancelLabel ?? '取消';
-  pendingConfirm.destructive = options.destructive ?? false;
-  pendingConfirm.resolve = null;
-  pendingConfirm.open = true;
-
-  return new Promise<boolean>(resolve => {
-    pendingConfirm.resolve = resolve;
-  });
-}
-
-function onConfirmDialogUpdate(open: boolean): void {
-  pendingConfirm.open = open;
-}
-
-function onConfirmDialogConfirm(): void {
-  pendingConfirm.resolve?.(true);
-  pendingConfirm.resolve = null;
-}
-
-function onConfirmDialogCancel(): void {
-  pendingConfirm.resolve?.(false);
-  pendingConfirm.resolve = null;
-}
 
 const sortedProjects = computed(() => [...store.projects].sort((a, b) => a.sort - b.sort));
 
@@ -135,7 +83,7 @@ const editingProject = computed(() => {
 
 async function handleDeleteProject(projectId: string): Promise<void> {
   const project = store.projects.find(item => item.id === projectId);
-  const ok = await askConfirm({
+  const ok = await confirm.ask({
     title: '删除项目',
     description: `确定删除项目「${project?.name ?? ''}」？此操作将一并删除该项目下的所有请求、分组和环境。`,
     confirmLabel: '删除',
@@ -294,15 +242,15 @@ onBeforeUnmount(() => {
     <Spinner v-if="store.isLoadingProjects" class="pointer-events-none fixed right-6 top-6" />
 
     <ConfirmDialog
-      :open="pendingConfirm.open"
-      :title="pendingConfirm.title"
-      :description="pendingConfirm.description"
-      :confirm-label="pendingConfirm.confirmLabel"
-      :cancel-label="pendingConfirm.cancelLabel"
-      :destructive="pendingConfirm.destructive"
-      @update:open="onConfirmDialogUpdate"
-      @confirm="onConfirmDialogConfirm"
-      @cancel="onConfirmDialogCancel"
+      :open="confirm.state.open"
+      :title="confirm.state.title"
+      :description="confirm.state.description"
+      :confirm-label="confirm.state.confirmLabel"
+      :cancel-label="confirm.state.cancelLabel"
+      :destructive="confirm.state.destructive"
+      @update:open="confirm.onOpenChange"
+      @confirm="confirm.onConfirm"
+      @cancel="confirm.onCancel"
     />
 
     <ProjectFormDialog
