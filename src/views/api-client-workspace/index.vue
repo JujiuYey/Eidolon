@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, ChevronRight, FolderPlus, Network, Plus } from 'lucide-vue-next';
+import { ChevronLeft, FolderPlus, History, Network, Plus, Sparkles } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch as vueWatch } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
@@ -27,8 +27,8 @@ const props = defineProps<{
 const router = useRouter();
 const store = useApiClientStore();
 
-const showAiPanel = ref(true);
-const showHistoryPanel = ref(true);
+const showAiPanel = ref(false);
+const showHistoryPanel = ref(false);
 const includeCurrentBody = ref(false);
 
 const createGroupDialogOpen = ref(false);
@@ -71,29 +71,8 @@ async function bootstrapForProject(): Promise<void> {
   }
 }
 
-async function handleSelectProject(projectId: string): Promise<void> {
-  if (store.isDirty) {
-    const proceed = await promptUnsavedChange();
-    if (!proceed) {
-      return;
-    }
-  }
-  if (projectId !== props.projectId) {
-    void router.push('/api-client');
-  }
-}
-
-async function handleSelectGroup(_groupId: string): Promise<void> {
-  if (!draft.value) {
-    return;
-  }
-  if (store.isDirty) {
-    const proceed = await promptUnsavedChange();
-    if (!proceed) {
-      return;
-    }
-  }
-  store.selectEnvironment(store.activeEnvironmentId);
+function handleSelectGroup(groupId: string): void {
+  store.selectGroup(groupId);
 }
 
 async function handleSelectRequest(requestId: string): Promise<void> {
@@ -199,20 +178,6 @@ async function confirmAndDelete(options: {
   }, options.errorMessage);
 }
 
-async function handleDeleteProject(projectId: string): Promise<void> {
-  const project = store.projects.find(item => item.id === projectId);
-  await confirmAndDelete({
-    title: '删除项目',
-    description: `确定删除项目「${project?.name ?? ''}」？此操作将一并删除该项目下的所有请求、分组和环境。`,
-    run: () => store.deleteProject(projectId),
-    success: '项目已删除',
-    errorMessage: '删除项目失败',
-    after: () => {
-      void router.push('/api-client');
-    },
-  });
-}
-
 async function handleDeleteGroup(groupId: string): Promise<void> {
   const group = store.groups.find(item => item.id === groupId);
   await confirmAndDelete({
@@ -267,6 +232,21 @@ function handleSelectEnvironment(value: string): void {
 
 function handleOpenAi(): void {
   showAiPanel.value = true;
+  showHistoryPanel.value = false;
+}
+
+function handleToggleAiPanel(): void {
+  showAiPanel.value = !showAiPanel.value;
+  if (showAiPanel.value) {
+    showHistoryPanel.value = false;
+  }
+}
+
+function handleToggleHistoryPanel(): void {
+  showHistoryPanel.value = !showHistoryPanel.value;
+  if (showHistoryPanel.value) {
+    showAiPanel.value = false;
+  }
 }
 
 async function handleGenerateAi(): Promise<void> {
@@ -368,12 +348,12 @@ const activeProject = computed(() => store.activeProject);
         <span class="text-xs text-muted-foreground">分组、请求、响应与 AI 生成</span>
       </div>
       <div class="flex items-center gap-2">
-        <Button variant="ghost" size="sm" @click="showAiPanel = !showAiPanel">
-          <component :is="showAiPanel ? ChevronRight : ChevronLeft" class="size-4" />
+        <Button :variant="showAiPanel ? 'default' : 'outline'" size="sm" @click="handleToggleAiPanel">
+          <Sparkles class="size-4" />
           AI 面板
         </Button>
-        <Button variant="ghost" size="sm" @click="showHistoryPanel = !showHistoryPanel">
-          <component :is="showHistoryPanel ? ChevronRight : ChevronLeft" class="size-4" />
+        <Button :variant="showHistoryPanel ? 'default' : 'outline'" size="sm" @click="handleToggleHistoryPanel">
+          <History class="size-4" />
           历史
         </Button>
       </div>
@@ -386,29 +366,28 @@ const activeProject = computed(() => store.activeProject);
       </AlertDescription>
     </Alert>
 
-    <div v-else class="grid min-h-0 flex-1 grid-cols-[280px_minmax(0,1fr)_360px] grid-rows-[minmax(0,1fr)] overflow-hidden">
+    <div
+      v-else
+      class="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-hidden"
+      :class="showHistoryPanel || showAiPanel ? 'grid-cols-[280px_minmax(0,1fr)_360px]' : 'grid-cols-[280px_minmax(0,1fr)]'"
+    >
       <div class="min-h-0 overflow-hidden border-r bg-card">
         <ApiClientTree
-          :projects="store.projects"
+          :project-name="store.activeProject?.name ?? ''"
           :groups="store.groups"
           :requests="store.requestSearchResults"
           :search-keyword="store.requestListFilter"
-          :active-project-id="store.activeProjectId"
           :active-group-id="store.activeGroupId"
           :active-request-id="store.activeRequestId"
-          :is-loading-projects="store.isLoadingProjects"
           :is-loading-groups="store.isLoadingGroups"
           :is-loading-requests="store.isLoadingRequests"
-          :deleting-project-id="store.isDeletingProject"
           :deleting-group-id="store.isDeletingGroup"
           :deleting-request-id="store.isDeletingRequest"
           @update:search-keyword="store.setSearchKeyword"
-          @select-project="handleSelectProject"
           @select-group="handleSelectGroup"
           @select-request="handleSelectRequest"
           @create-group="openCreateGroupDialog"
           @create-request="handleTreeCreateRequest"
-          @delete-project="handleDeleteProject"
           @delete-group="handleDeleteGroup"
           @delete-request="handleDeleteRequest"
         />
@@ -477,54 +456,52 @@ const activeProject = computed(() => store.activeProject);
         </div>
       </ScrollArea>
 
-      <div class="flex min-h-0 flex-col overflow-hidden border-l bg-card">
-        <ScrollArea v-if="showHistoryPanel" class="min-h-0 shrink basis-1/2 border-b">
-          <div class="flex flex-col gap-4 p-4">
-            <RequestHistoryPanel
-              v-if="draft"
-              :histories="store.history"
-              :is-loading="store.isLoadingHistory"
-              :is-clearing="store.isClearingHistory"
-              @restore="handleRestoreHistory"
-              @clear="handleClearHistory"
-            />
-            <Card v-else>
-              <CardHeader>
-                <CardTitle>历史</CardTitle>
-                <CardDescription>选择请求后查看最近 100 次执行快照。</CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        </ScrollArea>
+      <div v-if="showHistoryPanel || showAiPanel" class="flex min-h-0 flex-1 flex-col overflow-hidden bg-card">
+        <div v-if="showHistoryPanel && !showAiPanel" class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
+          <RequestHistoryPanel
+            v-if="draft"
+            class="min-h-0 flex-1"
+            :histories="store.history"
+            :is-loading="store.isLoadingHistory"
+            :is-clearing="store.isClearingHistory"
+            @restore="handleRestoreHistory"
+            @clear="handleClearHistory"
+          />
+          <Card v-else>
+            <CardHeader>
+              <CardTitle>历史</CardTitle>
+              <CardDescription>选择请求后查看最近 100 次执行快照。</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
 
-        <ScrollArea v-if="showAiPanel" class="min-h-0 shrink basis-1/2 grow">
-          <div class="flex flex-col gap-4 p-4">
-            <AiBodyGeneratorPanel
-              v-if="draft"
-              :candidate="aiCandidate"
-              :is-generating="store.isGeneratingAi"
-              :current-body="draft.body"
-              :prompt="draft.aiPrompt"
-              :reference="draft.aiReference"
-              :include-current-body="includeCurrentBody"
-              :current-model-label="aiCurrentModelLabel"
-              @update:prompt="updateAiPrompt"
-              @update:reference="updateAiReference"
-              @update:include-current-body="includeCurrentBody = $event"
-              @generate="handleGenerateAi"
-              @cancel="handleCancelAi"
-              @apply="handleApplyAi"
-              @edit="store.editAiCandidateContent($event)"
-            />
+        <div v-else-if="showAiPanel" class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
+          <AiBodyGeneratorPanel
+            v-if="draft"
+            class="min-h-0 flex-1"
+            :candidate="aiCandidate"
+            :is-generating="store.isGeneratingAi"
+            :current-body="draft.body"
+            :prompt="draft.aiPrompt"
+            :reference="draft.aiReference"
+            :include-current-body="includeCurrentBody"
+            :current-model-label="aiCurrentModelLabel"
+            @update:prompt="updateAiPrompt"
+            @update:reference="updateAiReference"
+            @update:include-current-body="includeCurrentBody = $event"
+            @generate="handleGenerateAi"
+            @cancel="handleCancelAi"
+            @apply="handleApplyAi"
+            @edit="store.editAiCandidateContent($event)"
+          />
 
-            <Card v-else>
-              <CardHeader>
-                <CardTitle>AI 生成</CardTitle>
-                <CardDescription>选择请求后启用 AI 请求体生成。</CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-        </ScrollArea>
+          <Card v-else>
+            <CardHeader>
+              <CardTitle>AI 生成</CardTitle>
+              <CardDescription>选择请求后启用 AI 请求体生成。</CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
       </div>
     </div>
 

@@ -100,7 +100,7 @@ function handleGenerate(): void {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 rounded-lg border bg-card p-4">
+  <div class="flex h-full min-h-0 flex-col gap-3 rounded-lg border bg-card p-4">
     <div class="flex items-center gap-2">
       <Sparkles class="size-4 text-primary" />
       <h3 class="text-sm font-semibold">
