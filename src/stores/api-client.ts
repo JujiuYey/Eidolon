@@ -2,9 +2,6 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import * as apiClientService from '@/services/api-client';
 import type {
-  ApiExecuteResult,
-} from '@/services/api-client';
-import type {
   ApiClientAiCandidate,
   ApiClientEnvironment,
   ApiClientGroup,
@@ -16,6 +13,7 @@ import type {
   ApiClientRequestHistory,
   ApiClientRequestSnapshot,
   ApiClientResponseView,
+  ApiExecuteResult,
 } from '@/types/api-client';
 import {
   applyCandidateToBody,
@@ -278,6 +276,26 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     } finally {
       isDeletingGroup.value = null;
     }
+  }
+
+  function selectGroup(groupId: string): void {
+    if (activeGroupId.value === groupId) {
+      return;
+    }
+    const projectId = activeProjectId.value;
+    if (!projectId) {
+      return;
+    }
+    const group = groups.value.find(item => item.id === groupId && item.projectId === projectId);
+    if (!group) {
+      return;
+    }
+    activeGroupId.value = groupId;
+    activeRequestId.value = null;
+    lastSavedRequestSnapshot.value = null;
+    draft.value = null;
+    clearExecutionState();
+    clearAiState();
   }
 
   async function selectRequest(requestId: string, options: { discardUnsaved?: boolean } = {}): Promise<void> {
@@ -912,6 +930,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     createGroup,
     renameGroup,
     deleteGroup,
+    selectGroup,
     selectRequest,
     createRequest,
     saveDraft,

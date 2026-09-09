@@ -10,8 +10,8 @@ import type {
   ApiClientRequest,
   ApiClientRequestHistory,
   ApiClientRequestSnapshot,
+  ApiSendRequestInput,
 } from '@/types/api-client';
-import type { ApiSendRequestInput } from '@/services/api-client';
 
 function bindStore(service: ApiClientService) {
   const useBound = defineStore('api-client-test', () => createApiClientStore({ service }));
@@ -720,6 +720,77 @@ describe('selectRequest refuses when dirty without explicit discard', () => {
 
     await store.selectRequest('request-2', { discardUnsaved: true });
     assert.equal(store.activeRequestId, 'request-2');
+  });
+});
+
+describe('selectGroup updates active group and clears request context', () => {
+  it('updates activeGroupId and clears activeRequestId/draft/execution', async () => {
+    const state = buildService();
+    const originalList = state.service.listApiGroups;
+    state.service.listApiGroups = async (projectId: string) => {
+      const items = await originalList(projectId);
+      items.push(makeGroup({ id: 'group-2', projectId }));
+      return items;
+    };
+
+    const store = bindStore(state.service);
+    await store.selectProject('project-1', { discardUnsaved: true });
+    await store.selectRequest('request-1', { discardUnsaved: true });
+
+    assert.equal(store.activeGroupId, 'group-1');
+    assert.equal(store.activeRequestId, 'request-1');
+    assert.ok(store.draft);
+
+    store.selectGroup('group-2');
+
+    assert.equal(store.activeGroupId, 'group-2');
+    assert.equal(store.activeRequestId, null);
+    assert.equal(store.draft, null);
+    assert.equal(store.lastSavedRequestSnapshot, null);
+    assert.equal(store.execution, null);
+  });
+
+  it('is a no-op when the group does not belong to the active project', async () => {
+    const state = buildService();
+    state.service.listApiGroups = async (projectId: string) => {
+      return [makeGroup({ id: 'group-1', projectId }), makeGroup({ id: 'group-other', projectId: 'project-other' })];
+    };
+
+    const store = bindStore(state.service);
+    await store.selectProject('project-1', { discardUnsaved: true });
+    await store.selectRequest('request-1', { discardUnsaved: true });
+
+    store.selectGroup('group-other');
+
+    assert.equal(store.activeGroupId, 'group-1', 'must not leak active group id across projects');
+    assert.equal(store.activeRequestId, 'request-1');
+    assert.ok(store.draft);
+  });
+
+  it('clears running AI candidate state when switching groups', async () => {
+    const state = buildService();
+    state.setGenerateImpl(async () => ({
+      content: '{"a":1}',
+      is_json_valid: true,
+      json_error: null,
+      model_label: 'm',
+    }));
+    const originalList = state.service.listApiGroups;
+    state.service.listApiGroups = async (projectId: string) => {
+      const items = await originalList(projectId);
+      items.push(makeGroup({ id: 'group-2', projectId }));
+      return items;
+    };
+
+    const store = bindStore(state.service);
+    await store.selectProject('project-1', { discardUnsaved: true });
+    await store.selectRequest('request-1', { discardUnsaved: true });
+    await store.generateAiBody({ prompt: 'p', reference: '', includeCurrentBody: false });
+    assert.ok(store.aiCandidate);
+
+    store.selectGroup('group-2');
+
+    assert.equal(store.aiCandidate, null);
   });
 });
 

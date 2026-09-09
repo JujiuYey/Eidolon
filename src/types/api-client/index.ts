@@ -157,3 +157,47 @@ export interface ApiClientAiCandidate {
   errorMessage: string | null;
   modelLabel: string;
 }
+
+export interface ApiExecuteResult {
+  executionId: string;
+  status: ApiClientHistoryExecutionStatus;
+  statusCode: number | null;
+  durationMs: number;
+  sizeBytes: number;
+  contentType: string | null;
+  responseHeaders: ApiClientKeyValueRow[];
+  responseBody: string;
+  responseTruncated: boolean;
+  isBinary: boolean;
+  oversize: boolean;
+  connectionFailed: boolean;
+  timedOut: boolean;
+  cancelled: boolean;
+  errorMessage: string | null;
+  historyId: string | null;
+  historyError: string | null;
+}
+
+export interface ApiSendRequestInput {
+  requestId: string;
+  executionId: string;
+  snapshot: ApiClientRequestSnapshot;
+  environmentId: string | null;
+}
+
+export interface ApiAiGenerateInput {
+  prompt: string;
+  reference: string;
+  includeCurrentBody: boolean;
+  currentBody: string | null;
+  requestName: string;
+  method: string;
+  url: string;
+}
+
+export interface ApiAiGenerateResult {
+  content: string;
+  isJsonValid: boolean;
+  jsonError: string | null;
+  modelLabel: string;
+}
