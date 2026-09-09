@@ -5,7 +5,7 @@ import { applyTheme, applyThemeColor, DEFAULT_THEME_COLOR, isThemeColor } from '
 
 function createDefaultSettings(): AppSettings {
   return {
-    theme: 'system',
+    theme: 'light',
     themeColor: DEFAULT_THEME_COLOR,
   };
 }
@@ -14,7 +14,7 @@ function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
   return {
     theme: settings.theme === 'light' || settings.theme === 'dark' || settings.theme === 'system'
       ? settings.theme
-      : 'system',
+      : 'light',
     themeColor: isThemeColor(settings.themeColor) ? settings.themeColor : DEFAULT_THEME_COLOR,
   };
 }
