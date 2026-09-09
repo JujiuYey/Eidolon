@@ -6,7 +6,7 @@ import { toast } from 'vue-sonner';
 import { PROVIDER_REGISTRY } from '@/config/provider-registry';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { listAgentProfiles } from '@/services/agent-profile-storage';
+import { listAgentProfiles } from '@/services';
 import type { AgentProfile } from '@/types';
 
 const router = useRouter();

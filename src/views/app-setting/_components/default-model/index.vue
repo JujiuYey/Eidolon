@@ -4,12 +4,10 @@ import { Info, SlidersHorizontal } from 'lucide-vue-next';
 import { PROVIDER_REGISTRY } from '@/config/provider-registry';
 import {
   listDefaultModelSettings,
-  upsertDefaultModelSetting,
-} from '@/services/default_model';
-import {
   listProviderModels,
   listProviderSettings,
-} from '@/services/provider_config';
+  upsertDefaultModelSetting,
+} from '@/services';
 import type { DefaultModelKey, DefaultModelSetting } from '@/types/default-model';
 import type { ProviderModel, ProviderSetting } from '@/types/provider';
 import { Button } from '@/components/ui/button';

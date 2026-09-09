@@ -18,7 +18,7 @@ import {
   deleteMcpService,
   discoverMcpService,
   upsertMcpService,
-} from '@/services/mcp_service';
+} from '@/services';
 import type {
   McpDiscoveredResource,
   McpDiscoveredResourceTemplate,

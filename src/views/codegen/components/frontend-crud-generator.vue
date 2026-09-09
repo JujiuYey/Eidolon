@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { open } from '@tauri-apps/plugin-dialog';
 import { FolderOpen, Sparkles } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
-import { generateFrontendCrud } from '@/services/codegen';
+import { generateFrontendCrud } from '@/services';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';

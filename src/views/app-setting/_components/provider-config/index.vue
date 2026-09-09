@@ -4,7 +4,7 @@ import { PROVIDER_REGISTRY } from '@/config/provider-registry';
 import {
   listProviderModels,
   listProviderSettings,
-} from '@/services/provider_config';
+} from '@/services';
 import type {
   ProviderModel,
   ProviderRegistryItem,

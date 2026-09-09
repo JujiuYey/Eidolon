@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import {
   getAgentProfile,
   upsertAgentProfile,
-} from '@/services/agent-profile-storage';
+} from '@/services';
 import type {
   AgentProfile,
   AgentProfileInput,

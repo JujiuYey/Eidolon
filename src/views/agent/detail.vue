@@ -6,10 +6,10 @@ import AgentConversationPanel from './components/AgentConversationPanel.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
-  listAgentConversationMessages,
+  getAgentProfile,
+  listLegacyAgentConversationMessages,
   saveAgentConversationMessages,
-} from '@/services/agent-profile';
-import { getAgentProfile } from '@/services/agent-profile-storage';
+} from '@/services';
 import type { AgentMessage, AgentProfile } from '@/types';
 
 const route = useRoute();
@@ -72,7 +72,7 @@ function loadMessages() {
     return;
   }
 
-  const storedMessages = listAgentConversationMessages(profile.value.id);
+  const storedMessages = listLegacyAgentConversationMessages(profile.value.id);
   messages.value = storedMessages.length > 0
     ? storedMessages
     : [buildInitialMessage(profile.value)];

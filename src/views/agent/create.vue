@@ -2,7 +2,7 @@
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 import AgentProfileEditor from './components/AgentProfileEditor.vue';
-import { upsertAgentProfile } from '@/services/agent-profile-storage';
+import { upsertAgentProfile } from '@/services';
 import type { AgentProfileInput } from '@/types';
 
 const router = useRouter();

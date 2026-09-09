@@ -7,7 +7,7 @@ import {
   listAgentConversationMessages,
   listRecentAgentConversations,
   sendAgentConversationMessage,
-} from '@/services/agent-conversation';
+} from '@/services';
 import type { AgentWorkspaceConversation, AgentWorkspaceMessage } from '@/types';
 
 const DEFAULT_RECENT_CONVERSATION_LIMIT = 12;

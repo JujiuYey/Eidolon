@@ -28,12 +28,12 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { listDefaultModelSettings } from '@/services/default_model';
-import { listMcpServices } from '@/services/mcp_service';
 import {
+  listDefaultModelSettings,
+  listMcpServices,
   listProviderModels,
   listProviderSettings,
-} from '@/services/provider_config';
+} from '@/services';
 import type {
   AgentProfile,
   AgentProfileInput,

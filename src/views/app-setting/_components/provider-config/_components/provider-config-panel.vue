@@ -30,7 +30,7 @@ import {
   deleteProviderSetting,
   replaceProviderModels,
   upsertProviderSetting,
-} from '@/services/provider_config';
+} from '@/services';
 import type {
   ProviderModel,
   ProviderModelCapabilities,

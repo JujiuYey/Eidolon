@@ -6,7 +6,7 @@ import {
   deleteMcpService,
   listMcpServices,
   upsertMcpService,
-} from '@/services/mcp_service';
+} from '@/services';
 import type { McpService } from '@/types/mcp-service';
 import { getErrorMessage } from '@/utils/helpers';
 import McpServiceForm from './mcp-service-form.vue';
