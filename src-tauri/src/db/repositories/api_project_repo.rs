@@ -10,7 +10,7 @@ use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use crate::db::api_client::ApiClientDatabase;
 use crate::db::repositories::api_client_repo_common::{
-    begin, next_sort, require_name, sql_error, DeletionSummary,
+    begin, next_sort, require_name, require_project, sql_error, DeletionSummary,
 };
 use crate::models::api_client::ApiProject;
 
@@ -42,6 +42,21 @@ impl<'a> ApiProjectRepository<'a> {
                 .map_err(sql_error)?;
 
             Ok(projects)
+        })
+    }
+
+    /// 读取单个项目；未命中返回 `Ok(None)`，调用方据此判断 not-found
+    pub fn get(&self, project_id: &str) -> Result<Option<ApiProject>, String> {
+        self.database.with_connection(|connection| {
+            connection
+                .query_row(
+                    "SELECT id, name, description, sort, created_at, updated_at
+                     FROM api_projects WHERE id = ?1",
+                    params![project_id],
+                    map_project,
+                )
+                .optional()
+                .map_err(sql_error)
         })
     }
 
@@ -102,26 +117,6 @@ impl<'a> ApiProjectRepository<'a> {
         })
     }
 
-    pub fn rename(&self, project_id: &str, name: &str) -> Result<ApiProject, String> {
-        let name = require_name(name, "项目名称")?;
-
-        self.database.with_connection(|connection| {
-            let now = Utc::now().timestamp_millis();
-            let affected = connection
-                .execute(
-                    "UPDATE api_projects SET name = ?1, updated_at = ?2 WHERE id = ?3",
-                    params![name, now, project_id],
-                )
-                .map_err(sql_error)?;
-
-            if affected == 0 {
-                return Err(format!("未找到 id 为 {project_id} 的项目"));
-            }
-
-            load_project(connection, project_id)
-        })
-    }
-
     /// 同时更新项目名称与描述。`description` 允许为空字符串
     pub fn update(
         &self,
@@ -172,10 +167,14 @@ impl<'a> ApiProjectRepository<'a> {
         })
     }
 
-    /// 删除前预览关联数量，不修改数据
-    pub fn preview_deletion(&self, project_id: &str) -> Result<DeletionSummary, String> {
+    /// 删除前评估关联数量，不修改数据。
+    ///
+    /// 必须确认项目存在；缺失的 `project_id` 会返回 not-found 错误，
+    /// 而不是静默地返回全零计数，避免 UI 在误传 ID 时给出误导性提示
+    pub fn deletion_impact(&self, project_id: &str) -> Result<DeletionSummary, String> {
         self.database.with_connection(|connection| {
             let transaction = begin(connection)?;
+            require_project(&transaction, project_id)?;
             let summary = project_deletion_summary(&transaction, project_id)?;
             transaction.rollback().map_err(sql_error)?;
             Ok(summary)
@@ -285,7 +284,80 @@ mod tests {
     }
 
     #[test]
-    fn rename_and_delete_project_reports_cascade_counts() {
+    fn get_returns_existing_project_and_none_when_missing() {
+        let database = in_memory();
+        let project_repo = ApiProjectRepository::new(&database);
+        let project = project_repo
+            .create("订单系统", "订单相关接口")
+            .expect("project should be created");
+
+        let fetched = project_repo.get(&project.id).expect("get should succeed");
+        let fetched = fetched.expect("project should exist");
+        assert_eq!(fetched.id, project.id);
+        assert_eq!(fetched.name, "订单系统");
+        assert_eq!(fetched.description, "订单相关接口");
+
+        let missing = project_repo.get("apj_missing").expect("get should succeed");
+        assert!(missing.is_none(), "missing id must surface as Ok(None)");
+    }
+
+    #[test]
+    fn update_rejects_blank_name_and_missing_project() {
+        let database = in_memory();
+        let project_repo = ApiProjectRepository::new(&database);
+        let project = project_repo
+            .create("订单系统", "订单相关接口")
+            .expect("project should be created");
+
+        let blank = project_repo
+            .update(&project.id, "   ", "")
+            .expect_err("blank name must be rejected");
+        assert!(blank.contains("项目名称"), "got {blank}");
+
+        let missing = project_repo
+            .update("apj_missing", "新名称", "新描述")
+            .expect_err("missing id must be rejected");
+        assert!(
+            missing.contains("apj_missing"),
+            "missing id error must identify the id: {missing}"
+        );
+    }
+
+    #[test]
+    fn update_is_the_single_path_for_name_changes() {
+        let database = in_memory();
+        let project_repo = ApiProjectRepository::new(&database);
+        let project = project_repo
+            .create("订单系统", "订单相关接口")
+            .expect("project should be created");
+
+        let updated = project_repo
+            .update(&project.id, "订单服务", "正式环境")
+            .expect("update should succeed");
+        assert_eq!(updated.name, "订单服务");
+        assert_eq!(updated.description, "正式环境");
+        assert!(
+            updated.updated_at >= project.updated_at,
+            "update should refresh updated_at"
+        );
+    }
+
+    #[test]
+    fn deletion_impact_rejects_missing_project() {
+        let database = in_memory();
+        let project_repo = ApiProjectRepository::new(&database);
+
+        let error = project_repo
+            .deletion_impact("apj_missing")
+            .expect_err("missing id must not silently return zeros");
+        assert!(
+            error.contains("apj_missing"),
+            "not-found error must identify the id: {error}"
+        );
+    }
+
+    #[test]
+    fn update_delete_deletion_impact_reports_cascade_counts() {
         let database = in_memory();
         let project_repo = ApiProjectRepository::new(&database);
         let project = project_repo.create("订单系统", "").expect("project");
@@ -300,16 +372,11 @@ mod tests {
             .create(&groups[0].id, "订单详情")
             .expect("request two");
 
-        let preview = project_repo
-            .preview_deletion(&project.id)
-            .expect("preview should succeed");
-        assert_eq!(preview.deleted_groups, 1);
-        assert_eq!(preview.deleted_requests, 2);
-
-        let renamed = project_repo
-            .rename(&project.id, "订单服务")
-            .expect("rename should succeed");
-        assert_eq!(renamed.name, "订单服务");
+        let impact = project_repo
+            .deletion_impact(&project.id)
+            .expect("deletion impact should succeed");
+        assert_eq!(impact.deleted_groups, 1);
+        assert_eq!(impact.deleted_requests, 2);
 
         let updated = project_repo
             .update(&project.id, "订单服务", "正式环境")

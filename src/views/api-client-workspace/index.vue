@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronLeft, FolderPlus, History, Network, Plus, Sparkles } from 'lucide-vue-next';
+import { FolderPlus, Network, Plus } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch as vueWatch } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
@@ -19,6 +19,8 @@ import ApiResponsePanel from './components/ApiResponsePanel.vue';
 import CreateGroupDialog from './components/CreateGroupDialog.vue';
 import CreateRequestDialog from './components/CreateRequestDialog.vue';
 import RequestHistoryPanel from './components/RequestHistoryPanel.vue';
+import EnvironmentManagerDialog from './components/EnvironmentManagerDialog.vue';
+import WorkspaceToolbar from './components/WorkspaceToolbar.vue';
 
 const props = defineProps<{
   projectId: string;
@@ -33,6 +35,7 @@ const includeCurrentBody = ref(false);
 
 const createGroupDialogOpen = ref(false);
 const createRequestDialogOpen = ref(false);
+const environmentDialogOpen = ref(false);
 const createRequestGroupName = ref('');
 
 const confirm = useConfirm();
@@ -335,29 +338,15 @@ const activeProject = computed(() => store.activeProject);
 
 <template>
   <div class="flex h-full min-h-0 flex-col overflow-hidden">
-    <div class="flex shrink-0 items-center justify-between border-b bg-card px-4 py-3">
-      <div class="flex items-center gap-2">
-        <Button variant="ghost" size="sm" @click="handleBack">
-          <ChevronLeft class="size-4" />
-          返回项目
-        </Button>
-        <Network class="size-5 text-primary" />
-        <h1 class="text-base font-semibold">
-          {{ activeProject?.name ?? '接口请求工具' }}
-        </h1>
-        <span class="text-xs text-muted-foreground">分组、请求、响应与 AI 生成</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <Button :variant="showAiPanel ? 'default' : 'outline'" size="sm" @click="handleToggleAiPanel">
-          <Sparkles class="size-4" />
-          AI 面板
-        </Button>
-        <Button :variant="showHistoryPanel ? 'default' : 'outline'" size="sm" @click="handleToggleHistoryPanel">
-          <History class="size-4" />
-          历史
-        </Button>
-      </div>
-    </div>
+    <WorkspaceToolbar
+      :project-name="activeProject?.name ?? ''"
+      :show-ai-panel="showAiPanel"
+      :show-history-panel="showHistoryPanel"
+      @back="handleBack"
+      @toggle-ai="handleToggleAiPanel"
+      @toggle-history="handleToggleHistoryPanel"
+      @open-environments="environmentDialogOpen = true"
+    />
 
     <Alert v-if="!store.activeProjectId" variant="destructive" class="m-4 shrink-0">
       <AlertTitle>项目不可用</AlertTitle>
@@ -531,6 +520,11 @@ const activeProject = computed(() => store.activeProject);
       :group-name="createRequestGroupName"
       @update:open="(value: boolean) => createRequestDialogOpen = value"
       @submit="submitCreateRequest"
+    />
+
+    <EnvironmentManagerDialog
+      :open="environmentDialogOpen"
+      @update:open="(value: boolean) => environmentDialogOpen = value"
     />
   </div>
 </template>

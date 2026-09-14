@@ -8,16 +8,16 @@ export async function listApiProjects(): Promise<ApiClientProject[]> {
   return raw.map(toFrontendProject);
 }
 
+export async function getApiProject(projectId: string): Promise<ApiClientProject | null> {
+  const raw = await invoke<TauriProject | null>('get_api_project', { projectId });
+  return raw ? toFrontendProject(raw) : null;
+}
+
 export async function createApiProject(name: string, description: string): Promise<ApiClientProject> {
   const raw = await invoke<TauriProject>('create_api_project', {
     name,
     description,
   });
-  return toFrontendProject(raw);
-}
-
-export async function renameApiProject(projectId: string, name: string): Promise<ApiClientProject> {
-  const raw = await invoke<TauriProject>('rename_api_project', { projectId, name });
   return toFrontendProject(raw);
 }
 
@@ -30,8 +30,8 @@ export async function updateApiProject(
   return toFrontendProject(raw);
 }
 
-export async function previewApiProjectDeletion(projectId: string): Promise<{ deletedRequests: number; deletedHistories: number }> {
-  const raw = await invoke<TauriDeletionSummary>('preview_api_project_deletion', { projectId });
+export async function getApiProjectDeletionImpact(projectId: string): Promise<{ deletedRequests: number; deletedHistories: number }> {
+  const raw = await invoke<TauriDeletionSummary>('get_api_project_deletion_impact', { projectId });
   return {
     deletedRequests: raw.deleted_requests,
     deletedHistories: raw.deleted_histories,

@@ -88,6 +88,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
   const isDeletingProject = ref<string | null>(null);
   const isDeletingGroup = ref<string | null>(null);
   const isDeletingRequest = ref<string | null>(null);
+  const isMutatingEnvironment = ref(false);
 
   const execution = ref<RequestExecution | null>(null);
   const executionAbortController = ref<AbortController | null>(null);
@@ -205,12 +206,6 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
   async function createProject(name: string, description: string): Promise<ApiClientProject> {
     const project = await service.createApiProject(name, description);
     projects.value = [...projects.value, project];
-    return project;
-  }
-
-  async function renameProject(projectId: string, name: string): Promise<ApiClientProject> {
-    const project = await service.renameApiProject(projectId, name);
-    projects.value = projects.value.map(existing => (existing.id === projectId ? project : existing));
     return project;
   }
 
@@ -536,6 +531,36 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
   function selectEnvironment(environmentId: string | null): void {
     activeEnvironmentId.value = environmentId;
     clearExecutionState();
+  }
+
+  async function upsertEnvironment(env: ApiClientEnvironment): Promise<void> {
+    isMutatingEnvironment.value = true;
+    try {
+      const persisted = await service.upsertApiEnvironment(env);
+      const index = environments.value.findIndex(existing => existing.id === persisted.id);
+      if (index === -1) {
+        environments.value = [...environments.value, persisted];
+      } else {
+        const next = environments.value.slice();
+        next[index] = persisted;
+        environments.value = next;
+      }
+    } finally {
+      isMutatingEnvironment.value = false;
+    }
+  }
+
+  async function removeEnvironment(environmentId: string): Promise<void> {
+    isMutatingEnvironment.value = true;
+    try {
+      await service.deleteApiEnvironment(environmentId);
+      environments.value = environments.value.filter(env => env.id !== environmentId);
+      if (activeEnvironmentId.value === environmentId) {
+        selectEnvironment(environments.value[0]?.id ?? null);
+      }
+    } finally {
+      isMutatingEnvironment.value = false;
+    }
   }
 
   function discardDraftChanges(): void {
@@ -903,6 +928,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     isDeletingProject,
     isDeletingGroup,
     isDeletingRequest,
+    isMutatingEnvironment,
     execution,
     aiCandidate,
     aiCurrentModelLabel,
@@ -924,7 +950,6 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     loadEnvironments,
     selectProject,
     createProject,
-    renameProject,
     updateProject,
     deleteProject,
     createGroup,
@@ -954,6 +979,8 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     removeHeaderRow,
     removeFormRow,
     selectEnvironment,
+    upsertEnvironment,
+    removeEnvironment,
     discardDraftChanges,
     executeRequest,
     cancelExecution,

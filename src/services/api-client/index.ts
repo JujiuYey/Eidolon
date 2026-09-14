@@ -24,9 +24,9 @@ export {
 export {
   createApiProject,
   deleteApiProject,
+  getApiProject,
+  getApiProjectDeletionImpact,
   listApiProjects,
-  previewApiProjectDeletion,
-  renameApiProject,
   updateApiProject,
 } from './projects';
 export {

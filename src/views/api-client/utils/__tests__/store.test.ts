@@ -166,16 +166,22 @@ function buildService(): ServiceState {
       calls.push({ method: 'createApiProject', args: [name, description] });
       return makeProject({ name, description });
     },
-    renameApiProject: async (projectId: string, name: string) => {
-      calls.push({ method: 'renameApiProject', args: [projectId, name] });
-      return makeProject({ id: projectId, name });
+    getApiProject: async (projectId: string) => {
+      calls.push({ method: 'getApiProject', args: [projectId] });
+      if (projectId === 'missing') {
+        return null;
+      }
+      return makeProject({ id: projectId });
     },
     updateApiProject: async (projectId: string, name: string, description: string) => {
       calls.push({ method: 'updateApiProject', args: [projectId, name, description] });
       return makeProject({ id: projectId, name, description });
     },
-    previewApiProjectDeletion: async (projectId: string) => {
-      calls.push({ method: 'previewApiProjectDeletion', args: [projectId] });
+    getApiProjectDeletionImpact: async (projectId: string) => {
+      calls.push({ method: 'getApiProjectDeletionImpact', args: [projectId] });
+      if (projectId === 'missing') {
+        throw new Error('未找到 id 为 missing 的项目');
+      }
       return { deletedRequests: 0, deletedHistories: 0 };
     },
     deleteApiProject: async (projectId: string) => {
@@ -377,7 +383,7 @@ describe('updateProject persists name and description via update_api_project', (
     assert.deepEqual(updateCalls[0]!.args, [initial.id, '新名称', '新描述']);
 
     const renameCalls = state.calls.filter(call => call.method === 'renameApiProject');
-    assert.equal(renameCalls.length, 0, 'must not fall back to rename + local patch');
+    assert.equal(renameCalls.length, 0, 'rename is gone: update must be the single path');
 
     assert.equal(updated.name, '新名称');
     assert.equal(updated.description, '新描述');
@@ -403,6 +409,35 @@ describe('updateProject persists name and description via update_api_project', (
     const persisted = store.projects.find(item => item.id === initial.id);
     assert.ok(persisted);
     assert.notEqual(persisted.name, '名称', 'local state must not be mutated when the command fails');
+  });
+});
+
+describe('api project resource contract', () => {
+  it('get returns null for missing project id', async () => {
+    const state = buildService();
+    const project = await state.service.getApiProject('missing');
+    assert.equal(project, null);
+    const getCalls = state.calls.filter(call => call.method === 'getApiProject');
+    assert.equal(getCalls.length, 1);
+    assert.deepEqual(getCalls[0]!.args, ['missing']);
+  });
+
+  it('deletion impact surfaces not-found error instead of zero counts', async () => {
+    const state = buildService();
+    await assert.rejects(
+      () => state.service.getApiProjectDeletionImpact('missing'),
+      /未找到 id 为 missing 的项目/,
+    );
+    const impactCalls = state.calls.filter(call => call.method === 'getApiProjectDeletionImpact');
+    assert.equal(impactCalls.length, 1);
+    assert.deepEqual(impactCalls[0]!.args, ['missing']);
+  });
+
+  it('deletion impact returns summary for an existing project', async () => {
+    const state = buildService();
+    state.service.getApiProjectDeletionImpact = async () => ({ deletedRequests: 2, deletedHistories: 5 });
+    const impact = await state.service.getApiProjectDeletionImpact('project-1');
+    assert.deepEqual(impact, { deletedRequests: 2, deletedHistories: 5 });
   });
 });
 

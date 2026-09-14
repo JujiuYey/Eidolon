@@ -87,9 +87,9 @@ pub fn error_result(
     let message = if error.is_timeout() {
         "请求超时".to_string()
     } else if error.is_connect() {
-        format!("连接失败: {error}")
+        "连接失败".to_string()
     } else {
-        format!("请求失败: {error}")
+        "请求失败".to_string()
     };
 
     ExecutionResult {

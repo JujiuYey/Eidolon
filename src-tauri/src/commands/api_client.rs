@@ -17,21 +17,20 @@ pub fn list_api_projects(
 }
 
 #[tauri::command]
+pub fn get_api_project(
+    database: tauri::State<'_, ApiClientDatabase>,
+    project_id: String,
+) -> Result<Option<ApiProject>, String> {
+    ApiProjectRepository::new(&database).get(&project_id)
+}
+
+#[tauri::command]
 pub fn create_api_project(
     database: tauri::State<'_, ApiClientDatabase>,
     name: String,
     description: Option<String>,
 ) -> Result<ApiProject, String> {
     ApiProjectRepository::new(&database).create(&name, description.unwrap_or_default().as_str())
-}
-
-#[tauri::command]
-pub fn rename_api_project(
-    database: tauri::State<'_, ApiClientDatabase>,
-    project_id: String,
-    name: String,
-) -> Result<ApiProject, String> {
-    ApiProjectRepository::new(&database).rename(&project_id, &name)
 }
 
 #[tauri::command]
@@ -45,11 +44,11 @@ pub fn update_api_project(
 }
 
 #[tauri::command]
-pub fn preview_api_project_deletion(
+pub fn get_api_project_deletion_impact(
     database: tauri::State<'_, ApiClientDatabase>,
     project_id: String,
 ) -> Result<DeletionSummary, String> {
-    ApiProjectRepository::new(&database).preview_deletion(&project_id)
+    ApiProjectRepository::new(&database).deletion_impact(&project_id)
 }
 
 #[tauri::command]

@@ -52,10 +52,10 @@ pub fn run() {
             commands::codegen::generate_go_crud,
             // API client commands
             commands::api_client::list_api_projects,
+            commands::api_client::get_api_project,
             commands::api_client::create_api_project,
-            commands::api_client::rename_api_project,
             commands::api_client::update_api_project,
-            commands::api_client::preview_api_project_deletion,
+            commands::api_client::get_api_project_deletion_impact,
             commands::api_client::delete_api_project,
             commands::api_client::list_api_groups,
             commands::api_client::create_api_group,
