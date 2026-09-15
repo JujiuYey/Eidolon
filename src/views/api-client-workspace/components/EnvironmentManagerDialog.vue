@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { Layers, Loader2, Plus, Trash2 } from 'lucide-vue-next';
+import { AlertCircle, Layers, Loader2, Plus, Trash2 } from 'lucide-vue-next';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -214,7 +214,7 @@ watch(
 
 <template>
   <Dialog :open="props.open" @update:open="handleOpenChange">
-    <DialogContent class="flex max-h-[85vh] flex-col gap-0 sm:max-w-3xl">
+    <DialogContent class="flex h-[600px] max-h-[85vh] flex-col gap-0 sm:max-w-3xl">
       <DialogHeader>
         <DialogTitle class="flex items-center gap-2">
           <Layers class="size-4 text-primary" />
@@ -261,9 +261,14 @@ watch(
           </div>
 
           <ScrollArea v-else class="min-h-0 flex-1 pr-1">
-            <div class="flex flex-col gap-4 pb-1">
-              <div v-if="isCreating" class="rounded-md border border-dashed bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                正在创建新环境，填写后点击底部“保存”。
+            <div class="flex flex-col gap-4 p-2">
+              <div
+                v-if="isCreating"
+                class="flex items-start gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-medium text-primary"
+                role="status"
+              >
+                <AlertCircle class="mt-0.5 size-3.5 shrink-0" />
+                <span>正在创建新环境，填写后点击底部“创建环境”以保存。</span>
               </div>
               <div class="grid gap-2">
                 <Label for="env-name">名称</Label>
@@ -300,9 +305,8 @@ watch(
 
       <DialogFooter class="mt-3 flex items-center justify-between gap-2 sm:justify-between">
         <Button
-          variant="ghost"
+          variant="destructive"
           size="sm"
-          class="text-destructive hover:bg-destructive/10 hover:text-destructive"
           :disabled="!isEditingExisting || saving || store.isMutatingEnvironment"
           @click="handleDelete"
         >
