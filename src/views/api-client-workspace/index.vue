@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { FolderPlus, Network, Plus } from 'lucide-vue-next';
+import { Network } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch as vueWatch } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
@@ -106,21 +105,56 @@ async function promptUnsavedChange(): Promise<boolean> {
   store.discardDraftChanges();
   return true;
 }
+const pendingCreateGroupParent = ref<{ id: string; name: string } | null>(null);
+const renamingGroupId = ref<string | null>(null);
 
-function openCreateGroupDialog(): void {
+function openCreateGroupDialog(parentContext?: { id: string; name: string }): void {
+  pendingCreateGroupParent.value = parentContext ?? null;
   createGroupDialogOpen.value = true;
 }
 
-async function submitCreateGroup(payload: { name: string }): Promise<void> {
+function handleTreeCreateGroup(payload: { parentGroupId: string | null; parentGroupName: string | null }): void {
+  if (payload.parentGroupId && payload.parentGroupName) {
+    openCreateGroupDialog({ id: payload.parentGroupId, name: payload.parentGroupName });
+  } else {
+    openCreateGroupDialog();
+  }
+}
+
+async function submitCreateGroup(payload: { name: string; parentGroupId: string | null }): Promise<void> {
   if (!store.activeProjectId) {
     return;
   }
   try {
-    await store.createGroup(payload.name);
+    await store.createGroup({
+      projectId: store.activeProjectId,
+      name: payload.name,
+      parentGroupId: payload.parentGroupId,
+    });
     createGroupDialogOpen.value = false;
+    pendingCreateGroupParent.value = null;
     toast.success(`已创建分组 ${payload.name}`);
   } catch (error) {
     handleError(error, '创建分组失败');
+  }
+}
+
+async function handleRenameGroup(payload: { groupId: string; name: string }): Promise<void> {
+  renamingGroupId.value = payload.groupId;
+  try {
+    await store.renameGroup(payload.groupId, payload.name);
+    toast.success('分组已重命名');
+  } catch (error) {
+    handleError(error, '重命名分组失败');
+  } finally {
+    renamingGroupId.value = null;
+  }
+}
+
+function onCreateGroupDialogOpenChange(open: boolean): void {
+  createGroupDialogOpen.value = open;
+  if (!open) {
+    pendingCreateGroupParent.value = null;
   }
 }
 
@@ -372,11 +406,12 @@ const activeProject = computed(() => store.activeProject);
           :is-loading-requests="store.isLoadingRequests"
           :deleting-group-id="store.isDeletingGroup"
           :deleting-request-id="store.isDeletingRequest"
-          @update:search-keyword="store.setSearchKeyword"
+          :renaming-group-id="renamingGroupId"
           @select-group="handleSelectGroup"
           @select-request="handleSelectRequest"
-          @create-group="openCreateGroupDialog"
+          @create-group="handleTreeCreateGroup"
           @create-request="handleTreeCreateRequest"
+          @rename-group="handleRenameGroup"
           @delete-group="handleDeleteGroup"
           @delete-request="handleDeleteRequest"
         />
@@ -384,25 +419,6 @@ const activeProject = computed(() => store.activeProject);
 
       <ScrollArea class="h-full">
         <div class="flex flex-col gap-4 p-4">
-          <Card>
-            <CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-              <div>
-                <CardTitle>新建内容</CardTitle>
-                <CardDescription>使用弹窗在当前项目下创建分组或请求。</CardDescription>
-              </div>
-              <div class="flex gap-2">
-                <Button variant="outline" size="sm" @click="openCreateGroupDialog">
-                  <FolderPlus class="size-4" />
-                  新建分组
-                </Button>
-                <Button size="sm" :disabled="!store.activeGroupId" @click="store.activeGroupId && openCreateRequestDialog(store.activeGroupId, store.groups.find(item => item.id === store.activeGroupId)?.name ?? '')">
-                  <Plus class="size-4" />
-                  新建请求
-                </Button>
-              </div>
-            </CardHeader>
-          </Card>
-
           <ApiRequestEditor
             v-if="draft"
             :is-sending="isSending"
@@ -511,10 +527,11 @@ const activeProject = computed(() => store.activeProject);
     <CreateGroupDialog
       :open="createGroupDialogOpen"
       :project-name="store.activeProject?.name"
-      @update:open="(value: boolean) => createGroupDialogOpen = value"
+      :parent-group-id="pendingCreateGroupParent?.id ?? null"
+      :parent-group-name="pendingCreateGroupParent?.name ?? null"
+      @update:open="onCreateGroupDialogOpenChange"
       @submit="submitCreateGroup"
     />
-
     <CreateRequestDialog
       :open="createRequestDialogOpen"
       :group-name="createRequestGroupName"

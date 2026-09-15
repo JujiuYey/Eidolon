@@ -551,7 +551,7 @@ mod tests {
         assert!(error.contains("其他项目"), "got {error}");
 
         let same_project_group = group_repo
-            .create(&first_project_id, "订单查询")
+            .create(&first_project_id, None, "订单查询")
             .expect("group should be created");
         let moved = ApiRequestRepository::new(&database)
             .move_to_group(&request.id, &same_project_group.id)

@@ -192,9 +192,13 @@ function buildService(): ServiceState {
       calls.push({ method: 'listApiGroups', args: [projectId] });
       return [makeGroup({ projectId })];
     },
-    createApiGroup: async (projectId: string, name: string) => {
-      calls.push({ method: 'createApiGroup', args: [projectId, name] });
-      return makeGroup({ projectId, name });
+    createApiGroup: async (input: { projectId: string; name: string; parentGroupId?: string | null }) => {
+      calls.push({ method: 'createApiGroup', args: [input] });
+      return makeGroup({ projectId: input.projectId, name: input.name, parentGroupId: input.parentGroupId ?? null });
+    },
+    moveApiGroup: async (input: { groupId: string; parentGroupId: string | null }) => {
+      calls.push({ method: 'moveApiGroup', args: [input] });
+      return makeGroup({ id: input.groupId, parentGroupId: input.parentGroupId });
     },
     renameApiGroup: async (groupId: string, name: string) => {
       calls.push({ method: 'renameApiGroup', args: [groupId, name] });
@@ -911,5 +915,85 @@ describe('cancelExecution transitions running state to cancelled', () => {
     assert.equal(store.execution?.responseView.kind, 'cancelled');
     const saveCalls = state.calls.filter(call => call.method === 'updateApiRequest');
     assert.equal(saveCalls.length, 0);
+  });
+});
+
+describe('createGroup threads parentGroupId to the service', () => {
+  it('passes parentGroupId through to createApiGroup when provided', async () => {
+    const state = buildService();
+    const store = bindStore(state.service);
+    await store.selectProject('project-1', { discardUnsaved: true });
+
+    const created = await store.createGroup({ projectId: 'project-1', name: 'Child', parentGroupId: 'parent-1' });
+
+    assert.equal(created.parentGroupId, 'parent-1');
+    assert.equal(created.name, 'Child');
+    const createCalls = state.calls.filter(call => call.method === 'createApiGroup');
+    assert.equal(createCalls.length, 1);
+    assert.deepEqual(createCalls[0]!.args, [{ projectId: 'project-1', name: 'Child', parentGroupId: 'parent-1' }]);
+  });
+
+  it('defaults parentGroupId to null when omitted', async () => {
+    const state = buildService();
+    const store = bindStore(state.service);
+    await store.selectProject('project-1', { discardUnsaved: true });
+
+    const created = await store.createGroup({ projectId: 'project-1', name: 'Root' });
+
+    assert.equal(created.parentGroupId, null);
+    const createCalls = state.calls.filter(call => call.method === 'createApiGroup');
+    assert.equal(createCalls.length, 1);
+    assert.deepEqual(createCalls[0]!.args, [{ projectId: 'project-1', name: 'Root', parentGroupId: null }]);
+  });
+});
+
+describe('moveGroup delegates to service and refreshes groups', () => {
+  it('calls moveApiGroup then reloads groups from listApiGroups', async () => {
+    const state = buildService();
+    const store = bindStore(state.service);
+    await store.selectProject('project-1', { discardUnsaved: true });
+    state.calls.length = 0;
+
+    await store.moveGroup({ groupId: 'group-1', parentGroupId: 'parent-2' });
+
+    const moveCalls = state.calls.filter(call => call.method === 'moveApiGroup');
+    assert.equal(moveCalls.length, 1);
+    assert.deepEqual(moveCalls[0]!.args, [{ groupId: 'group-1', parentGroupId: 'parent-2' }]);
+    const listCalls = state.calls.filter(call => call.method === 'listApiGroups');
+    assert.equal(listCalls.length, 1);
+    assert.deepEqual(listCalls[0]!.args, ['project-1']);
+  });
+
+  it('passes null parentGroupId through to the service when moving to root', async () => {
+    const state = buildService();
+    const store = bindStore(state.service);
+    await store.selectProject('project-1', { discardUnsaved: true });
+    state.calls.length = 0;
+
+    await store.moveGroup({ groupId: 'group-1', parentGroupId: null });
+
+    const moveCalls = state.calls.filter(call => call.method === 'moveApiGroup');
+    assert.equal(moveCalls.length, 1);
+    assert.deepEqual(moveCalls[0]!.args, [{ groupId: 'group-1', parentGroupId: null }]);
+  });
+});
+
+describe('renameGroup delegates to rename_api_group and replaces the group', () => {
+  it('passes groupId and name through to renameApiGroup and updates the cached group', async () => {
+    const state = buildService();
+    const store = bindStore(state.service);
+    await store.selectProject('project-1', { discardUnsaved: true });
+    state.calls.length = 0;
+
+    const renamed = await store.renameGroup('group-1', '新名称');
+
+    const renameCalls = state.calls.filter(call => call.method === 'renameApiGroup');
+    assert.equal(renameCalls.length, 1);
+    assert.deepEqual(renameCalls[0]!.args, ['group-1', '新名称']);
+    assert.equal(renamed.name, '新名称');
+
+    const persisted = store.groups.find(item => item.id === 'group-1');
+    assert.ok(persisted);
+    assert.equal(persisted?.name, '新名称');
   });
 });

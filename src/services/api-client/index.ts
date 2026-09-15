@@ -13,6 +13,7 @@ export {
   createApiGroup,
   deleteApiGroup,
   listApiGroups,
+  moveApiGroup,
   renameApiGroup,
   reorderApiGroups,
 } from './groups';

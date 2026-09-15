@@ -72,8 +72,13 @@ pub fn create_api_group(
     database: tauri::State<'_, ApiClientDatabase>,
     project_id: String,
     name: String,
+    parent_group_id: Option<String>,
 ) -> Result<ApiGroup, String> {
-    ApiGroupRepository::new(&database).create(&project_id, &name)
+    ApiGroupRepository::new(&database).create(
+        &project_id,
+        parent_group_id.as_deref(),
+        &name,
+    )
 }
 
 #[tauri::command]
@@ -86,20 +91,20 @@ pub fn rename_api_group(
 }
 
 #[tauri::command]
+pub fn move_api_group(
+    database: tauri::State<'_, ApiClientDatabase>,
+    group_id: String,
+    parent_group_id: Option<String>,
+) -> Result<ApiGroup, String> {
+    ApiGroupRepository::new(&database).move_to(&group_id, parent_group_id.as_deref())
+}
+
+#[tauri::command]
 pub fn delete_api_group(
     database: tauri::State<'_, ApiClientDatabase>,
     group_id: String,
 ) -> Result<DeletionSummary, String> {
     ApiGroupRepository::new(&database).delete(&group_id)
-}
-
-#[tauri::command]
-pub fn reorder_api_groups(
-    database: tauri::State<'_, ApiClientDatabase>,
-    project_id: String,
-    group_ids: Vec<String>,
-) -> Result<Vec<ApiGroup>, String> {
-    ApiGroupRepository::new(&database).reorder(&project_id, &group_ids)
 }
 
 #[tauri::command]

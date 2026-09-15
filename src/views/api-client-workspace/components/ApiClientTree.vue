@@ -1,10 +1,19 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronRight, Folder, FolderOpen, Plus, Search, Trash2 } from 'lucide-vue-next';
+import { ChevronDown, ChevronRight, Folder, FolderOpen, MoreHorizontal, Pencil, Plus, PlusCircle, Search, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
 import type { ApiClientGroup, ApiClientRequest } from '@/types/api-client';
+import { buildGroupTree, flattenGroupTree } from './build-group-tree';
+import type { GroupTreeNode } from './build-group-tree';
 
 interface Props {
   projectName: string;
@@ -17,6 +26,7 @@ interface Props {
   isLoadingRequests: boolean;
   deletingGroupId: string | null;
   deletingRequestId: string | null;
+  renamingGroupId?: string | null;
 }
 
 const props = defineProps<Props>();
@@ -25,15 +35,20 @@ const emit = defineEmits<{
   (e: 'update:searchKeyword', value: string): void;
   (e: 'selectGroup', groupId: string): void;
   (e: 'selectRequest', requestId: string): void;
-  (e: 'createGroup'): void;
+  (e: 'createGroup', payload: { parentGroupId: string | null; parentGroupName: string | null }): void;
   (e: 'createRequest', payload: { groupId: string; groupName: string }): void;
+  (e: 'renameGroup', payload: { groupId: string; name: string }): void;
   (e: 'deleteGroup', groupId: string): void;
   (e: 'deleteRequest', requestId: string): void;
 }>();
 
 const expandedGroups = ref<Set<string>>(new Set());
+const renameTargetId = ref<string | null>(null);
+const renameDraft = ref('');
+const renameInputRef = ref<HTMLInputElement | null>(null);
 
-const groupsSorted = computed(() => [...props.groups].sort((a, b) => a.sort - b.sort));
+const trimmedKeyword = computed(() => props.searchKeyword.trim().toLowerCase());
+
 const requestsByGroup = computed(() => {
   const map = new Map<string, ApiClientRequest[]>();
   for (const request of props.requests) {
@@ -47,8 +62,6 @@ const requestsByGroup = computed(() => {
   return map;
 });
 
-const trimmedKeyword = computed(() => props.searchKeyword.trim().toLowerCase());
-
 const filteredRequestsByGroup = computed(() => {
   const keyword = trimmedKeyword.value;
   if (!keyword) {
@@ -61,35 +74,98 @@ const filteredRequestsByGroup = computed(() => {
   return filtered;
 });
 
-function toggleGroup(groupId: string): void {
-  if (expandedGroups.value.has(groupId)) {
-    expandedGroups.value.delete(groupId);
-  } else {
-    expandedGroups.value.add(groupId);
+const treeRoots = computed<GroupTreeNode[]>(() => buildGroupTree(props.groups));
+const treeNodes = computed<GroupTreeNode[]>(() => flattenGroupTree(treeRoots.value));
+
+// A group is visible during search if its own name matches, any of its direct
+// requests match, or any descendant group has a matching request or name. The
+// latter is propagated bottom-up so ancestors stay expanded.
+const visibleGroupIds = computed<Set<string>>(() => {
+  const keyword = trimmedKeyword.value;
+  if (!keyword) {
+    return new Set(treeNodes.value.map(node => node.group.id));
   }
-  expandedGroups.value = new Set(expandedGroups.value);
+  const directMatches = new Set<string>();
+  for (const node of treeNodes.value) {
+    if (node.group.name.toLowerCase().includes(keyword)) {
+      directMatches.add(node.group.id);
+    }
+  }
+  const visible = new Set<string>();
+  const sortedByDepth = [...treeNodes.value].sort((a, b) => b.depth - a.depth);
+  const groupById = new Map<string, ApiClientGroup>();
+  for (const group of props.groups) {
+    groupById.set(group.id, group);
+  }
+  for (const node of sortedByDepth) {
+    const hasMatch = directMatches.has(node.group.id)
+      || (filteredRequestsByGroup.value.get(node.group.id)?.length ?? 0) > 0;
+    if (!hasMatch) {
+      continue;
+    }
+    visible.add(node.group.id);
+    let parentId: string | null | undefined = node.group.parentGroupId;
+    while (parentId) {
+      if (visible.has(parentId)) {
+        break;
+      }
+      visible.add(parentId);
+      parentId = groupById.get(parentId)?.parentGroupId;
+    }
+  }
+  return visible;
+});
+
+function isGroupVisible(groupId: string): boolean {
+  if (!props.searchKeyword.trim()) {
+    return true;
+  }
+  return visibleGroupIds.value.has(groupId);
+}
+
+function toggleGroup(groupId: string): void {
+  const next = new Set(expandedGroups.value);
+  if (next.has(groupId)) {
+    next.delete(groupId);
+  } else {
+    next.add(groupId);
+  }
+  expandedGroups.value = next;
 }
 
 function ensureGroupExpanded(groupId: string): void {
-  if (!expandedGroups.value.has(groupId)) {
-    expandedGroups.value.add(groupId);
-    expandedGroups.value = new Set(expandedGroups.value);
+  if (expandedGroups.value.has(groupId)) {
+    return;
   }
+  const next = new Set(expandedGroups.value);
+  next.add(groupId);
+  expandedGroups.value = next;
 }
 
-function selectGroup(groupId: string): void {
+function handleGroupClick(group: ApiClientGroup): void {
+  toggleGroup(group.id);
+  ensureGroupExpanded(group.id);
+  emit('selectGroup', group.id);
+}
+
+function handleRequestClick(request: ApiClientRequest, groupId: string): void {
+  emit('selectRequest', request.id);
   ensureGroupExpanded(groupId);
-  emit('selectGroup', groupId);
 }
 
-function selectRequest(requestId: string, groupId: string): void {
-  emit('selectRequest', requestId);
-  ensureGroupExpanded(groupId);
-}
-
-function handleDeleteGroup(groupId: string, event: Event): void {
+function handleCreateRoot(event: Event): void {
   event.stopPropagation();
-  emit('deleteGroup', groupId);
+  emit('createGroup', { parentGroupId: null, parentGroupName: null });
+}
+
+function handleCreateChild(parentId: string, parentName: string, event: Event): void {
+  event.stopPropagation();
+  emit('createGroup', { parentGroupId: parentId, parentGroupName: parentName });
+}
+
+function handleCreateRequest(groupId: string, groupName: string, event: Event): void {
+  event.stopPropagation();
+  emit('createRequest', { groupId, groupName });
 }
 
 function handleDeleteRequest(requestId: string, event: Event): void {
@@ -97,14 +173,39 @@ function handleDeleteRequest(requestId: string, event: Event): void {
   emit('deleteRequest', requestId);
 }
 
-function handleCreateGroup(event: Event): void {
+function handleDeleteGroup(groupId: string, event: Event): void {
   event.stopPropagation();
-  emit('createGroup');
+  emit('deleteGroup', groupId);
 }
 
-function handleCreateRequest(groupId: string, groupName: string, event: Event): void {
-  event.stopPropagation();
-  emit('createRequest', { groupId, groupName });
+function startRename(group: ApiClientGroup): void {
+  renameTargetId.value = group.id;
+  renameDraft.value = group.name;
+  ensureGroupExpanded(group.id);
+  queueMicrotask(() => {
+    renameInputRef.value?.focus();
+    renameInputRef.value?.select();
+  });
+}
+
+function commitRename(groupId: string): void {
+  const trimmed = renameDraft.value.trim();
+  const original = props.groups.find(item => item.id === groupId)?.name ?? '';
+  renameTargetId.value = null;
+  renameDraft.value = '';
+  if (trimmed === '' || trimmed === original) {
+    return;
+  }
+  emit('renameGroup', { groupId, name: trimmed });
+}
+
+function cancelRename(): void {
+  renameTargetId.value = null;
+  renameDraft.value = '';
+}
+
+function indentStyle(depth: number): { paddingLeft: string } {
+  return { paddingLeft: `${(depth - 1) * 16 + 8}px` };
 }
 </script>
 
@@ -135,8 +236,8 @@ function handleCreateRequest(groupId: string, groupName: string, event: Event): 
       <button
         type="button"
         class="inline-flex size-9 items-center justify-center rounded-md border bg-background text-foreground transition-colors hover:bg-accent"
-        aria-label="新建分组"
-        @click="handleCreateGroup($event)"
+        aria-label="新建根分组"
+        @click="handleCreateRoot($event)"
       >
         <Plus class="size-4" />
       </button>
@@ -149,95 +250,134 @@ function handleCreateRequest(groupId: string, groupName: string, event: Event): 
 
     <ScrollArea v-else class="min-h-0 flex-1">
       <ul class="flex flex-col gap-1 pr-2">
-        <li
-          v-for="group of groupsSorted"
-          v-show="!searchKeyword || (filteredRequestsByGroup.get(group.id)?.length ?? 0) > 0 || group.name.toLowerCase().includes(trimmedKeyword)"
-          :key="group.id"
-          class="flex flex-col gap-1"
-        >
-          <div
-            class="group flex items-center gap-1 rounded-md px-2 py-1 hover:bg-accent"
-            :class="{ 'bg-accent': group.id === activeGroupId }"
-          >
-            <button
-              type="button"
-              class="flex flex-1 items-center gap-1 text-left text-sm"
-              @click="toggleGroup(group.id); selectGroup(group.id)"
-            >
-              <ChevronDown v-if="expandedGroups.has(group.id)" class="size-4 text-muted-foreground" />
-              <ChevronRight v-else class="size-4 text-muted-foreground" />
-              <Folder class="size-4 text-muted-foreground" />
-              <span class="truncate">{{ group.name }}</span>
-            </button>
-            <button
-              type="button"
-              class="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100"
-              :aria-label="`新建请求 ${group.name}`"
-              @click="handleCreateRequest(group.id, group.name, $event)"
-            >
-              <Plus class="size-3.5" />
-            </button>
-            <button
-              type="button"
-              class="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-destructive group-hover:opacity-100 disabled:opacity-50"
-              :disabled="deletingGroupId === group.id"
-              :aria-label="`删除分组 ${group.name}`"
-              @click="handleDeleteGroup(group.id, $event)"
-            >
-              <Trash2 class="size-3.5" />
-            </button>
-          </div>
-
-          <ul v-if="expandedGroups.has(group.id)" class="flex flex-col gap-1 pl-4">
-            <li v-if="isLoadingRequests" class="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground">
-              <Spinner /> 加载请求…
-            </li>
-
-            <li
-              v-for="request of filteredRequestsByGroup.get(group.id) ?? []"
-              v-else
-              :key="request.id"
-              class="group flex items-center gap-1 rounded-md px-2 py-1 hover:bg-accent"
-              :class="{ 'bg-accent': request.id === activeRequestId }"
+        <template v-for="node of treeNodes" :key="node.group.id">
+          <li v-show="isGroupVisible(node.group.id)" class="flex flex-col gap-1">
+            <div
+              class="group flex items-center gap-1 rounded-md py-1 pr-2 hover:bg-accent"
+              :class="{ 'bg-accent': node.group.id === activeGroupId }"
+              :style="indentStyle(node.depth)"
             >
               <button
+                v-if="renameTargetId !== node.group.id"
                 type="button"
-                class="flex flex-1 items-center gap-2 text-left text-xs"
-                @click="selectRequest(request.id, group.id)"
+                class="flex flex-1 items-center gap-1 text-left text-sm"
+                @click="handleGroupClick(node.group)"
               >
-                <span class="font-mono text-[10px] font-semibold text-primary">{{ request.method }}</span>
-                <span class="truncate">{{ request.name }}</span>
+                <ChevronDown v-if="expandedGroups.has(node.group.id)" class="size-4 shrink-0 text-muted-foreground" />
+                <ChevronRight v-else class="size-4 shrink-0 text-muted-foreground" />
+                <Folder class="size-4 shrink-0 text-muted-foreground" />
+                <span class="truncate">{{ node.group.name }}</span>
               </button>
-              <button
-                type="button"
-                class="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-destructive group-hover:opacity-100 disabled:opacity-50"
-                :disabled="deletingRequestId === request.id"
-                :aria-label="`删除请求 ${request.name}`"
-                @click="handleDeleteRequest(request.id, $event)"
+              <form
+                v-else
+                class="flex flex-1 items-center gap-1"
+                @submit.prevent="commitRename(node.group.id)"
               >
-                <Trash2 class="size-3" />
-              </button>
-            </li>
+                <ChevronDown v-if="expandedGroups.has(node.group.id)" class="size-4 shrink-0 text-muted-foreground" />
+                <ChevronRight v-else class="size-4 shrink-0 text-muted-foreground" />
+                <Folder class="size-4 shrink-0 text-muted-foreground" />
+                <Input
+                  ref="renameInputRef"
+                  v-model="renameDraft"
+                  class="h-6 flex-1 px-1 text-sm"
+                  @blur="commitRename(node.group.id)"
+                  @keydown.esc.prevent="cancelRename"
+                />
+              </form>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <button
+                    type="button"
+                    class="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100"
+                    :aria-label="`分组操作 ${node.group.name}`"
+                    @click.stop
+                  >
+                    <MoreHorizontal class="size-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" class="min-w-[160px]">
+                  <DropdownMenuItem
+                    :disabled="!!renamingGroupId && renamingGroupId === node.group.id"
+                    @select="handleCreateChild(node.group.id, node.group.name, $event)"
+                  >
+                    <PlusCircle class="mr-2 size-3.5" />
+                    新建子分组
+                  </DropdownMenuItem>
+                  <DropdownMenuItem @select="handleCreateRequest(node.group.id, node.group.name, $event)">
+                    <Plus class="mr-2 size-3.5" />
+                    新建请求
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    :disabled="renameTargetId === node.group.id"
+                    @select="startRename(node.group)"
+                  >
+                    <Pencil class="mr-2 size-3.5" />
+                    重命名
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    :disabled="deletingGroupId === node.group.id"
+                    class="text-destructive focus:text-destructive"
+                    @select="handleDeleteGroup(node.group.id, $event)"
+                  >
+                    <Trash2 class="mr-2 size-3.5" />
+                    删除
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
-            <li
-              v-if="(filteredRequestsByGroup.get(group.id) ?? []).length === 0 && !isLoadingRequests"
-              class="px-2 py-1 text-[11px] text-muted-foreground"
-            >
-              <span v-if="searchKeyword">无匹配请求</span>
-              <span v-else>暂无请求</span>
-            </li>
-          </ul>
-        </li>
+            <ul v-if="expandedGroups.has(node.group.id) && isGroupVisible(node.group.id)" class="flex flex-col gap-1">
+              <li v-if="isLoadingRequests" class="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground">
+                <Spinner /> 加载请求…
+              </li>
+
+              <li
+                v-for="request of filteredRequestsByGroup.get(node.group.id) ?? []"
+                v-else
+                :key="request.id"
+                class="group flex items-center gap-1 rounded-md px-2 py-1 hover:bg-accent"
+                :class="{ 'bg-accent': request.id === activeRequestId }"
+              >
+                <button
+                  type="button"
+                  class="flex flex-1 items-center gap-2 text-left text-xs"
+                  @click="handleRequestClick(request, node.group.id)"
+                >
+                  <span class="font-mono text-[10px] font-semibold text-primary">{{ request.method }}</span>
+                  <span class="truncate">{{ request.name }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-destructive group-hover:opacity-100 disabled:opacity-50"
+                  :disabled="deletingRequestId === request.id"
+                  :aria-label="`删除请求 ${request.name}`"
+                  @click.stop="handleDeleteRequest(request.id, $event)"
+                >
+                  <Trash2 class="size-3" />
+                </button>
+              </li>
+
+              <li
+                v-if="(filteredRequestsByGroup.get(node.group.id) ?? []).length === 0 && !isLoadingRequests"
+                class="px-2 py-1 text-[11px] text-muted-foreground"
+              >
+                <span v-if="searchKeyword">无匹配请求</span>
+                <span v-else>暂无请求</span>
+              </li>
+            </ul>
+          </li>
+        </template>
 
         <li
-          v-if="groupsSorted.length === 0 && !isLoadingGroups"
+          v-if="props.groups.length === 0 && !isLoadingGroups"
           class="flex flex-col gap-2 rounded-md border border-dashed bg-muted/20 px-2 py-3 text-center text-[11px] text-muted-foreground"
         >
           当前项目暂无分组
           <button
             type="button"
             class="mx-auto inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-[11px] text-foreground hover:bg-accent"
-            @click="handleCreateGroup($event)"
+            @click="handleCreateRoot($event)"
           >
             <Plus class="size-3" />
             新建分组

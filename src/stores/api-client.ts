@@ -237,13 +237,25 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     }
   }
 
-  async function createGroup(name: string): Promise<ApiClientGroup> {
+  async function createGroup(input: { projectId: string; name: string; parentGroupId?: string | null }): Promise<ApiClientGroup> {
+    const group = await service.createApiGroup({
+      projectId: input.projectId,
+      name: input.name,
+      parentGroupId: input.parentGroupId ?? null,
+    });
+    groups.value = [...groups.value, group];
+    return group;
+  }
+
+  async function moveGroup(input: { groupId: string; parentGroupId: string | null }): Promise<void> {
     if (!activeProjectId.value) {
       throw new Error('请先选择项目');
     }
-    const group = await service.createApiGroup(activeProjectId.value, name);
-    groups.value = [...groups.value, group];
-    return group;
+    await service.moveApiGroup({
+      groupId: input.groupId,
+      parentGroupId: input.parentGroupId ?? null,
+    });
+    groups.value = await service.listApiGroups(activeProjectId.value);
   }
 
   async function renameGroup(groupId: string, name: string): Promise<ApiClientGroup> {
@@ -954,6 +966,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     deleteProject,
     createGroup,
     renameGroup,
+    moveGroup,
     deleteGroup,
     selectGroup,
     selectRequest,

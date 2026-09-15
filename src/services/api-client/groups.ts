@@ -3,13 +3,36 @@ import type { ApiClientGroup } from '@/types/api-client';
 import { toFrontendGroup } from './mappers';
 import type { TauriDeletionSummary, TauriGroup } from './types';
 
+export interface CreateApiGroupInput {
+  projectId: string;
+  name: string;
+  parentGroupId?: string | null;
+}
+
+export interface MoveApiGroupInput {
+  groupId: string;
+  parentGroupId: string | null;
+}
+
 export async function listApiGroups(projectId: string): Promise<ApiClientGroup[]> {
   const raw = await invoke<TauriGroup[]>('list_api_groups', { projectId });
   return raw.map(toFrontendGroup);
 }
 
-export async function createApiGroup(projectId: string, name: string): Promise<ApiClientGroup> {
-  const raw = await invoke<TauriGroup>('create_api_group', { projectId, name });
+export async function createApiGroup(input: CreateApiGroupInput): Promise<ApiClientGroup> {
+  const raw = await invoke<TauriGroup>('create_api_group', {
+    projectId: input.projectId,
+    name: input.name,
+    parentGroupId: input.parentGroupId ?? null,
+  });
+  return toFrontendGroup(raw);
+}
+
+export async function moveApiGroup(input: MoveApiGroupInput): Promise<ApiClientGroup> {
+  const raw = await invoke<TauriGroup>('move_api_group', {
+    groupId: input.groupId,
+    parentGroupId: input.parentGroupId ?? null,
+  });
   return toFrontendGroup(raw);
 }
 

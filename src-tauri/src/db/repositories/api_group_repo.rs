@@ -1,7 +1,7 @@
 //! `api_groups` 表仓库。
 //!
-//! 分组位于项目之下，首版只有一层；删除分组通过外键级联清除其下
-//! 请求与历史，关联数量由 `delete` 返回供 UI 展示。
+//! 分组位于项目之下，支持 N 级嵌套；删除分组通过外键级联清除其下
+//! 请求与历史，以及所有后代分组；关联数量由 `delete` 返回供 UI 展示。
 
 use chrono::Utc;
 use nanoid::nanoid;
@@ -9,7 +9,8 @@ use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use crate::db::api_client::ApiClientDatabase;
 use crate::db::repositories::api_client_repo_common::{
-    begin, next_sort, require_name, require_project, sql_error, DeletionSummary,
+    begin, group_project_id, next_sort, require_name, require_project, sql_error,
+    DeletionSummary,
 };
 use crate::models::api_client::ApiGroup;
 
@@ -41,12 +42,26 @@ impl<'a> ApiGroupRepository<'a> {
         })
     }
 
-    pub fn create(&self, project_id: &str, name: &str) -> Result<ApiGroup, String> {
+    pub fn create(
+        &self,
+        project_id: &str,
+        parent_group_id: Option<&str>,
+        name: &str,
+    ) -> Result<ApiGroup, String> {
         let name = require_name(name, "分组名称")?;
 
         self.database.with_connection(|connection| {
             let transaction = begin(connection)?;
             require_project(&transaction, project_id)?;
+
+            if let Some(parent_id) = parent_group_id {
+                let parent_project = group_project_id(&transaction, parent_id)?;
+                if parent_project != project_id {
+                    return Err(format!(
+                        "父分组 {parent_id} 不属于项目 {project_id}"
+                    ));
+                }
+            }
 
             let now = Utc::now().timestamp_millis();
             let sort = next_sort(
@@ -58,7 +73,7 @@ impl<'a> ApiGroupRepository<'a> {
             let group = ApiGroup {
                 id: format!("agr_{}", nanoid!(10)),
                 project_id: project_id.to_string(),
-                parent_group_id: None,
+                parent_group_id: parent_group_id.map(|value| value.to_string()),
                 name,
                 sort,
                 created_at: now,
@@ -68,10 +83,11 @@ impl<'a> ApiGroupRepository<'a> {
             transaction
                 .execute(
                     "INSERT INTO api_groups (id, project_id, parent_group_id, name, sort, created_at, updated_at)
-                     VALUES (?1, ?2, NULL, ?3, ?4, ?5, ?6)",
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
                     params![
                         group.id,
                         group.project_id,
+                        group.parent_group_id,
                         group.name,
                         group.sort,
                         group.created_at,
@@ -82,6 +98,70 @@ impl<'a> ApiGroupRepository<'a> {
 
             transaction.commit().map_err(sql_error)?;
             Ok(group)
+        })
+    }
+
+    /// 调整父分组：`Some(parent_id)` 表示移入该父分组之下，`None` 表示提升为顶级。
+    /// 拒绝自指、跨项目与成环；移动后保持原 `sort`，仅顶级重排会被 `reorder` 影响。
+    pub fn move_to(
+        &self,
+        group_id: &str,
+        parent_group_id: Option<&str>,
+    ) -> Result<ApiGroup, String> {
+        self.database.with_connection(|connection| {
+            let transaction = begin(connection)?;
+
+            let current = load_group(&transaction, group_id)?;
+
+            let new_parent = parent_group_id.map(|value| value.to_string());
+
+            if let Some(parent_id) = new_parent.as_deref() {
+                if parent_id == group_id {
+                    return Err("分组不能将自身设为父分组".to_string());
+                }
+
+                let parent_project = group_project_id(&transaction, parent_id)?;
+                if parent_project != current.project_id {
+                    return Err(format!(
+                        "父分组 {parent_id} 不属于项目 {}",
+                        current.project_id
+                    ));
+                }
+
+                // 沿父链向上走，若任何祖先等于 group_id 即成环。
+                let mut cursor: Option<String> = Some(parent_id.to_string());
+                while let Some(ancestor_id) = cursor.as_deref() {
+                    if ancestor_id == group_id {
+                        return Err(format!(
+                            "将分组 {group_id} 移入父分组 {parent_id} 会产生循环"
+                        ));
+                    }
+                    let next: Option<String> = transaction
+                        .query_row(
+                            "SELECT parent_group_id FROM api_groups WHERE id = ?1",
+                            params![ancestor_id],
+                            |row| row.get(0),
+                        )
+                        .optional()
+                        .map_err(sql_error)?
+                        .flatten();
+                    cursor = next;
+                }
+            }
+
+            let now = Utc::now().timestamp_millis();
+            let affected = transaction
+                .execute(
+                    "UPDATE api_groups SET parent_group_id = ?1, updated_at = ?2 WHERE id = ?3",
+                    params![new_parent, now, group_id],
+                )
+                .map_err(sql_error)?;
+            if affected == 0 {
+                return Err(format!("未找到 id 为 {group_id} 的分组"));
+            }
+
+            transaction.commit().map_err(sql_error)?;
+            load_group(connection, group_id)
         })
     }
 
@@ -219,9 +299,8 @@ mod tests {
         let repo = ApiGroupRepository::new(&database);
 
         let group = repo
-            .create(&project_id, "订单查询")
+            .create(&project_id, None, "订单查询")
             .expect("group should be created");
-        assert_eq!(group.project_id, project_id);
         assert_eq!(group.parent_group_id, None);
 
         let renamed = repo
@@ -240,9 +319,8 @@ mod tests {
         let group_repo = ApiGroupRepository::new(&database);
         let initial = group_repo.list(&project_id).expect("groups");
         let default_group = initial[0].clone();
-        let second = group_repo.create(&project_id, "订单查询").expect("group b");
-        let third = group_repo.create(&project_id, "订单统计").expect("group c");
-
+        let second = group_repo.create(&project_id, None, "订单查询").expect("group b");
+        let third = group_repo.create(&project_id, None, "订单统计").expect("group c");
         let reordered = group_repo
             .reorder(
                 &project_id,
@@ -274,5 +352,140 @@ mod tests {
             .reorder(&other_project.id, &[second.id.clone()])
             .expect_err("group from another project must be rejected");
         assert!(error.contains("不属于项目"), "got {error}");
+    }
+
+    #[test]
+    fn create_child_group_attaches_parent() {
+        let (database, project_id) = seeded();
+        let repo = ApiGroupRepository::new(&database);
+
+        let parent = repo
+            .create(&project_id, None, "订单")
+            .expect("parent should be created");
+        let child = repo
+            .create(&project_id, Some(&parent.id), "订单查询")
+            .expect("child should be created");
+
+        assert_eq!(child.parent_group_id.as_deref(), Some(parent.id.as_str()));
+        assert_eq!(child.project_id, project_id);
+
+        // 在项目下按 sort 列出仍能看到父子两行。
+        let listed = repo.list(&project_id).expect("list groups");
+        let listed_ids: Vec<&str> =
+            listed.iter().map(|group| group.id.as_str()).collect();
+        assert!(listed_ids.contains(&parent.id.as_str()));
+        assert!(listed_ids.contains(&child.id.as_str()));
+    }
+
+    #[test]
+    fn move_group_to_child_then_back_to_root() {
+        let (database, project_id) = seeded();
+        let repo = ApiGroupRepository::new(&database);
+
+        let parent = repo
+            .create(&project_id, None, "订单")
+            .expect("parent");
+        let child = repo
+            .create(&project_id, None, "订单查询")
+            .expect("child");
+
+        let moved = repo
+            .move_to(&child.id, Some(&parent.id))
+            .expect("move into parent should succeed");
+        assert_eq!(moved.parent_group_id.as_deref(), Some(parent.id.as_str()));
+
+        let promoted = repo
+            .move_to(&child.id, None)
+            .expect("move to root should succeed");
+        assert_eq!(promoted.parent_group_id, None);
+    }
+
+    #[test]
+    fn move_group_rejects_self_parent() {
+        let (database, project_id) = seeded();
+        let repo = ApiGroupRepository::new(&database);
+
+        let group = repo
+            .create(&project_id, None, "订单")
+            .expect("group");
+
+        let error = repo
+            .move_to(&group.id, Some(&group.id))
+            .expect_err("self-parent must be rejected");
+        assert!(error.contains("不能将自身设为父分组"), "got {error}");
+    }
+
+    #[test]
+    fn move_group_rejects_cycle() {
+        let (database, project_id) = seeded();
+        let repo = ApiGroupRepository::new(&database);
+
+        let root = repo.create(&project_id, None, "root").expect("root");
+        let middle = repo
+            .create(&project_id, Some(&root.id), "middle")
+            .expect("middle");
+        let leaf = repo
+            .create(&project_id, Some(&middle.id), "leaf")
+            .expect("leaf");
+
+        // 试图把 root 移入 leaf，应被识别为成环（leaf -> middle -> root）。
+        let error = repo
+            .move_to(&root.id, Some(&leaf.id))
+            .expect_err("cycle must be rejected");
+        assert!(error.contains("循环"), "got {error}");
+
+        // 链路结构应保持不变。
+        let root_after = repo.list(&project_id).expect("list").into_iter()
+            .find(|group| group.id == root.id)
+            .expect("root still present");
+        assert_eq!(root_after.parent_group_id, None);
+    }
+
+    #[test]
+    fn move_group_rejects_cross_project_parent() {
+        let (database, project_id) = seeded();
+        let repo = ApiGroupRepository::new(&database);
+
+        let other_project = ApiProjectRepository::new(&database)
+            .create("库存系统", "")
+            .expect("other project");
+        let other_default = repo.list(&other_project.id).expect("list other")[0]
+            .id
+ .clone();
+
+        let group = repo
+            .create(&project_id, None, "订单")
+            .expect("group");
+
+        let error = repo
+            .move_to(&group.id, Some(&other_default))
+            .expect_err("cross-project parent must be rejected");
+        assert!(error.contains("不属于项目"), "got {error}");
+    }
+
+    #[test]
+    fn delete_group_cascades_to_descendants() {
+        let (database, project_id) = seeded();
+        let repo = ApiGroupRepository::new(&database);
+
+        let parent = repo
+            .create(&project_id, None, "订单")
+            .expect("parent");
+        let child = repo
+            .create(&project_id, Some(&parent.id), "订单查询")
+            .expect("child");
+        let grand = repo
+            .create(&project_id, Some(&child.id), "订单详情")
+            .expect("grand");
+
+        let deleted = repo.delete(&parent.id).expect("delete should succeed");
+        assert_eq!(deleted.deleted_groups, 1);
+
+        let remaining = repo.list(&project_id).expect("list");
+        let remaining_ids: Vec<&str> =
+            remaining.iter().map(|group| group.id.as_str()).collect();
+        assert!(!remaining_ids.contains(&parent.id.as_str()));
+        assert!(!remaining_ids.contains(&child.id.as_str()));
+        assert!(!remaining_ids.contains(&grand.id.as_str()));
     }
 }

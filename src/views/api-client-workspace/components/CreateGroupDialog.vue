@@ -16,13 +16,15 @@ import { Label } from '@/components/ui/label';
 interface Props {
   open: boolean;
   projectName?: string;
+  parentGroupName?: string | null;
+  parentGroupId?: string | null;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void;
-  (e: 'submit', payload: { name: string }): void;
+  (e: 'submit', payload: { name: string; parentGroupId: string | null }): void;
   (e: 'cancel'): void;
 }>();
 
@@ -32,6 +34,12 @@ const nameInputRef = ref<HTMLInputElement | null>(null);
 
 const trimmedName = computed(() => name.value.trim());
 const canSubmit = computed(() => trimmedName.value.length > 0 && !submitting.value);
+
+const isChild = computed(() => props.parentGroupId != null && props.parentGroupId !== '');
+
+const dialogTitle = computed(() => (isChild.value && props.parentGroupName
+  ? `新建子分组 — ${props.parentGroupName}`
+  : '新建分组'));
 
 function reset(): void {
   name.value = '';
@@ -60,7 +68,10 @@ function onSubmit(): void {
     return;
   }
   submitting.value = true;
-  emit('submit', { name: trimmedName.value });
+  emit('submit', {
+    name: trimmedName.value,
+    parentGroupId: isChild.value ? (props.parentGroupId ?? null) : null,
+  });
 }
 </script>
 
@@ -70,10 +81,13 @@ function onSubmit(): void {
       <DialogHeader>
         <div class="flex items-center gap-2">
           <FolderPlus class="size-5 text-primary" />
-          <DialogTitle>新建分组</DialogTitle>
+          <DialogTitle>{{ dialogTitle }}</DialogTitle>
         </div>
         <DialogDescription>
-          <span v-if="projectName">将在项目「{{ projectName }}」下创建分组。</span>
+          <span v-if="isChild && parentGroupName">
+            将在分组「{{ parentGroupName }}」下创建子分组。
+          </span>
+          <span v-else-if="projectName">将在项目「{{ projectName }}」下创建分组。</span>
           <span v-else>将创建一个新分组。</span>
         </DialogDescription>
       </DialogHeader>
