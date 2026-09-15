@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FolderPlus } from 'lucide-vue-next';
+import { Pencil } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,16 +15,14 @@ import { Label } from '@/components/ui/label';
 
 interface Props {
   open: boolean;
-  projectName?: string;
-  parentGroupName?: string | null;
-  parentGroupId?: string | null;
+  currentName?: string | null;
 }
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void;
-  (e: 'submit', payload: { name: string; parentGroupId: string | null }): void;
+  (e: 'submit', payload: { name: string }): void;
   (e: 'cancel'): void;
 }>();
 
@@ -32,13 +30,12 @@ const name = ref('');
 const submitting = ref(false);
 
 const trimmedName = computed(() => name.value.trim());
-const canSubmit = computed(() => trimmedName.value.length > 0 && !submitting.value);
-
-const isChild = computed(() => props.parentGroupId != null && props.parentGroupId !== '');
-
-const dialogTitle = computed(() => (isChild.value && props.parentGroupName
-  ? `新建子分组 — ${props.parentGroupName}`
-  : '新建分组'));
+const originalName = computed(() => (props.currentName ?? '').trim());
+const canSubmit = computed(() =>
+  trimmedName.value.length > 0
+  && trimmedName.value !== originalName.value
+  && !submitting.value,
+);
 
 function reset(): void {
   name.value = '';
@@ -57,10 +54,7 @@ function onSubmit(): void {
     return;
   }
   submitting.value = true;
-  emit('submit', {
-    name: trimmedName.value,
-    parentGroupId: isChild.value ? (props.parentGroupId ?? null) : null,
-  });
+  emit('submit', { name: trimmedName.value });
 }
 </script>
 
@@ -69,15 +63,11 @@ function onSubmit(): void {
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
         <div class="flex items-center gap-2">
-          <FolderPlus class="size-5 text-primary" />
-          <DialogTitle>{{ dialogTitle }}</DialogTitle>
+          <Pencil class="size-5 text-primary" />
+          <DialogTitle>重命名分组</DialogTitle>
         </div>
         <DialogDescription>
-          <span v-if="isChild && parentGroupName">
-            将在分组「{{ parentGroupName }}」下创建子分组。
-          </span>
-          <span v-else-if="projectName">将在项目「{{ projectName }}」下创建分组。</span>
-          <span v-else>将创建一个新分组。</span>
+          修改分组名称；保存后立即生效。
         </DialogDescription>
       </DialogHeader>
 
@@ -85,7 +75,7 @@ function onSubmit(): void {
         <div class="flex flex-col gap-1">
           <Label for="rename-group-name" class="mb-1">分组名称</Label>
           <Input
-            id="create-group-name"
+            id="rename-group-name"
             v-model="name"
             placeholder="例如：订单管理"
             :disabled="submitting"
@@ -103,7 +93,7 @@ function onSubmit(): void {
             取消
           </Button>
           <Button type="submit" :disabled="!canSubmit">
-            创建
+            保存
           </Button>
         </DialogFooter>
       </form>

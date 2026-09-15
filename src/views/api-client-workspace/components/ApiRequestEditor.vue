@@ -6,7 +6,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { ApiClientEnvironment, ApiClientHttpMethod, ApiClientRequestBody } from '@/types/api-client';
 import { API_CLIENT_HTTP_METHODS } from '@/types/api-client';
@@ -147,26 +147,27 @@ void store;
           @update:model-value="handleNameInput"
         />
 
-        <NativeSelect
-          v-model="methodProxy"
-          class="min-w-[100px]"
-        >
-          <NativeSelectOption v-for="method of API_CLIENT_HTTP_METHODS" :key="method" :value="method">
-            {{ method }}
-          </NativeSelectOption>
-        </NativeSelect>
+        <Select v-model="methodProxy">
+          <SelectTrigger class="min-w-[100px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="method of API_CLIENT_HTTP_METHODS" :key="method" :value="method">
+              {{ method }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
 
-        <NativeSelect
-          v-model="environmentProxy"
-          class="min-w-[140px]"
-        >
-          <NativeSelectOption value="">
-            选择环境
-          </NativeSelectOption>
-          <NativeSelectOption v-for="env of environments" :key="env.id" :value="env.id">
-            {{ env.name }}
-          </NativeSelectOption>
-        </NativeSelect>
+        <Select v-model="environmentProxy">
+          <SelectTrigger class="min-w-[140px]">
+            <SelectValue placeholder="选择环境" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="env of environments" :key="env.id" :value="env.id">
+              {{ env.name }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
 
         <Button variant="outline" :disabled="isSaving || isSending" @click="onSave">
           <Loader2 v-if="isSaving" class="size-4 animate-spin" />
@@ -232,8 +233,8 @@ void store;
       </Alert>
     </div>
 
-    <Tabs default-value="params" class="rounded-lg border bg-card">
-      <TabsList class="border-b">
+    <Tabs default-value="params" class="rounded-lg bg-card">
+      <TabsList>
         <TabsTrigger value="params">
           Params
         </TabsTrigger>
@@ -245,7 +246,7 @@ void store;
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="params" class="p-4">
+      <TabsContent value="params">
         <KeyValueEditor
           :model-value="draftQuery"
           add-label="新增参数"
@@ -254,7 +255,7 @@ void store;
         />
       </TabsContent>
 
-      <TabsContent value="headers" class="p-4">
+      <TabsContent value="headers">
         <KeyValueEditor
           :model-value="draftHeaders"
           add-label="新增 Header"
@@ -263,7 +264,7 @@ void store;
         />
       </TabsContent>
 
-      <TabsContent value="body" class="p-4">
+      <TabsContent value="body">
         <BodyEditor
           :model-value="draftBody"
           @update:model-value="(body: ApiClientRequestBody) => emit('update:draftBody', body)"

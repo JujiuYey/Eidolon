@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronRight, Folder, FolderOpen, MoreHorizontal, Pencil, Plus, PlusCircle, Search, Trash2 } from 'lucide-vue-next';
+import { ChevronDown, ChevronRight, Folder, FolderInput, FolderOpen, MoreHorizontal, Pencil, Plus, PlusCircle, Search, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -37,15 +40,14 @@ const emit = defineEmits<{
   (e: 'selectRequest', requestId: string): void;
   (e: 'createGroup', payload: { parentGroupId: string | null; parentGroupName: string | null }): void;
   (e: 'createRequest', payload: { groupId: string; groupName: string }): void;
-  (e: 'renameGroup', payload: { groupId: string; name: string }): void;
+  (e: 'requestRename', groupId: string): void;
   (e: 'deleteGroup', groupId: string): void;
+  (e: 'moveRequest', payload: { requestId: string; targetGroupId: string }): void;
   (e: 'deleteRequest', requestId: string): void;
 }>();
 
 const expandedGroups = ref<Set<string>>(new Set());
-const renameTargetId = ref<string | null>(null);
-const renameDraft = ref('');
-const renameInputRef = ref<HTMLInputElement | null>(null);
+const moveRequestId = ref<string | null>(null);
 
 const trimmedKeyword = computed(() => props.searchKeyword.trim().toLowerCase());
 
@@ -76,6 +78,14 @@ const filteredRequestsByGroup = computed(() => {
 
 const treeRoots = computed<GroupTreeNode[]>(() => buildGroupTree(props.groups));
 const treeNodes = computed<GroupTreeNode[]>(() => flattenGroupTree(treeRoots.value));
+
+// Excludes the request's current group so users can't "move" to where it already
+// lives. Renders the project as a flat, depth-aware list inside the sub-menu.
+function movableGroupTargets(currentGroupId: string): Array<{ id: string; name: string; depth: number }> {
+  return treeNodes.value
+    .filter(node => node.group.id !== currentGroupId)
+    .map(node => ({ id: node.group.id, name: node.group.name, depth: node.depth }));
+}
 
 // A group is visible during search if its own name matches, any of its direct
 // requests match, or any descendant group has a matching request or name. The
@@ -144,7 +154,6 @@ function ensureGroupExpanded(groupId: string): void {
 
 function handleGroupClick(group: ApiClientGroup): void {
   toggleGroup(group.id);
-  ensureGroupExpanded(group.id);
   emit('selectGroup', group.id);
 }
 
@@ -178,30 +187,15 @@ function handleDeleteGroup(groupId: string, event: Event): void {
   emit('deleteGroup', groupId);
 }
 
-function startRename(group: ApiClientGroup): void {
-  renameTargetId.value = group.id;
-  renameDraft.value = group.name;
-  ensureGroupExpanded(group.id);
-  queueMicrotask(() => {
-    renameInputRef.value?.focus();
-    renameInputRef.value?.select();
-  });
-}
-
-function commitRename(groupId: string): void {
-  const trimmed = renameDraft.value.trim();
-  const original = props.groups.find(item => item.id === groupId)?.name ?? '';
-  renameTargetId.value = null;
-  renameDraft.value = '';
-  if (trimmed === '' || trimmed === original) {
+function handleMoveRequest(requestId: string, targetGroupId: string): void {
+  if (moveRequestId.value === requestId) {
     return;
   }
-  emit('renameGroup', { groupId, name: trimmed });
+  emit('moveRequest', { requestId, targetGroupId });
 }
 
-function cancelRename(): void {
-  renameTargetId.value = null;
-  renameDraft.value = '';
+function handleRenameRequest(groupId: string): void {
+  emit('requestRename', groupId);
 }
 
 function indentStyle(depth: number): { paddingLeft: string } {
@@ -210,7 +204,7 @@ function indentStyle(depth: number): { paddingLeft: string } {
 </script>
 
 <template>
-  <div class="flex h-full flex-col gap-3 border-r bg-card p-3">
+  <div class="flex h-full flex-col gap-3 bg-card p-3">
     <div class="flex items-start gap-2 rounded-md border bg-background px-3 py-2">
       <FolderOpen class="mt-0.5 size-4 shrink-0 text-primary" />
       <div class="min-w-0 flex-1">
@@ -258,7 +252,6 @@ function indentStyle(depth: number): { paddingLeft: string } {
               :style="indentStyle(node.depth)"
             >
               <button
-                v-if="renameTargetId !== node.group.id"
                 type="button"
                 class="flex flex-1 items-center gap-1 text-left text-sm"
                 @click="handleGroupClick(node.group)"
@@ -268,22 +261,6 @@ function indentStyle(depth: number): { paddingLeft: string } {
                 <Folder class="size-4 shrink-0 text-muted-foreground" />
                 <span class="truncate">{{ node.group.name }}</span>
               </button>
-              <form
-                v-else
-                class="flex flex-1 items-center gap-1"
-                @submit.prevent="commitRename(node.group.id)"
-              >
-                <ChevronDown v-if="expandedGroups.has(node.group.id)" class="size-4 shrink-0 text-muted-foreground" />
-                <ChevronRight v-else class="size-4 shrink-0 text-muted-foreground" />
-                <Folder class="size-4 shrink-0 text-muted-foreground" />
-                <Input
-                  ref="renameInputRef"
-                  v-model="renameDraft"
-                  class="h-6 flex-1 px-1 text-sm"
-                  @blur="commitRename(node.group.id)"
-                  @keydown.esc.prevent="cancelRename"
-                />
-              </form>
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
                   <button
@@ -308,10 +285,7 @@ function indentStyle(depth: number): { paddingLeft: string } {
                     新建请求
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    :disabled="renameTargetId === node.group.id"
-                    @select="startRename(node.group)"
-                  >
+                  <DropdownMenuItem @select="handleRenameRequest(node.group.id)">
                     <Pencil class="mr-2 size-3.5" />
                     重命名
                   </DropdownMenuItem>
@@ -336,8 +310,9 @@ function indentStyle(depth: number): { paddingLeft: string } {
                 v-for="request of filteredRequestsByGroup.get(node.group.id) ?? []"
                 v-else
                 :key="request.id"
-                class="group flex items-center gap-1 rounded-md px-2 py-1 hover:bg-accent"
+                class="group flex items-center gap-1 rounded-md pr-2 py-1 hover:bg-accent"
                 :class="{ 'bg-accent': request.id === activeRequestId }"
+                :style="{ paddingLeft: `${node.depth * 16 + 8}px` }"
               >
                 <button
                   type="button"
@@ -347,20 +322,55 @@ function indentStyle(depth: number): { paddingLeft: string } {
                   <span class="font-mono text-[10px] font-semibold text-primary">{{ request.method }}</span>
                   <span class="truncate">{{ request.name }}</span>
                 </button>
-                <button
-                  type="button"
-                  class="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-destructive group-hover:opacity-100 disabled:opacity-50"
-                  :disabled="deletingRequestId === request.id"
-                  :aria-label="`删除请求 ${request.name}`"
-                  @click.stop="handleDeleteRequest(request.id, $event)"
-                >
-                  <Trash2 class="size-3" />
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger as-child>
+                    <button
+                      type="button"
+                      class="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-foreground group-hover:opacity-100 disabled:opacity-50"
+                      :disabled="moveRequestId === request.id || deletingRequestId === request.id"
+                      :aria-label="`更多操作 ${request.name}`"
+                      @click.stop
+                    >
+                      <MoreHorizontal class="size-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" class="min-w-[180px]">
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger :disabled="moveRequestId === request.id">
+                        <FolderInput class="mr-2 size-3.5" />
+                        移动到…
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent class="max-h-[280px] min-w-[200px] overflow-y-auto">
+                        <DropdownMenuItem
+                          v-for="target of movableGroupTargets(request.groupId)"
+                          :key="target.id"
+                          :disabled="moveRequestId === request.id"
+                          @select="handleMoveRequest(request.id, target.id)"
+                        >
+                          <span :style="indentStyle(target.depth)" class="truncate">{{ target.name }}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem v-if="movableGroupTargets(request.groupId).length === 0" disabled>
+                          暂无可选分组
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      :disabled="deletingRequestId === request.id"
+                      class="text-destructive focus:text-destructive"
+                      @select="handleDeleteRequest(request.id, $event)"
+                    >
+                      <Trash2 class="mr-2 size-3.5" />
+                      删除
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </li>
 
               <li
                 v-if="(filteredRequestsByGroup.get(node.group.id) ?? []).length === 0 && !isLoadingRequests"
-                class="px-2 py-1 text-[11px] text-muted-foreground"
+                class="pr-2 py-1 text-[11px] text-muted-foreground"
+                :style="{ paddingLeft: `${node.depth * 16 + 8}px` }"
               >
                 <span v-if="searchKeyword">无匹配请求</span>
                 <span v-else>暂无请求</span>

@@ -2,7 +2,7 @@
 import { AlertTriangle } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import type { ApiClientBodyKind, ApiClientRequestBody } from '@/types/api-client';
@@ -91,23 +91,25 @@ function updateForm(rows: ApiClientRequestBody['form']): void {
   <div class="flex flex-col gap-3">
     <div class="flex items-center gap-3">
       <span class="text-sm font-medium text-foreground">Body 类型</span>
-      <NativeSelect
-        v-model="kindProxy"
-        class="min-w-[140px]"
-      >
-        <NativeSelectOption value="none">
-          无请求体
-        </NativeSelectOption>
-        <NativeSelectOption value="json">
-          JSON
-        </NativeSelectOption>
-        <NativeSelectOption value="text">
-          原始文本
-        </NativeSelectOption>
-        <NativeSelectOption value="form">
-          URL 编码表单
-        </NativeSelectOption>
-      </NativeSelect>
+      <Select v-model="kindProxy">
+        <SelectTrigger class="min-w-[140px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">
+            无请求体
+          </SelectItem>
+          <SelectItem value="json">
+            JSON
+          </SelectItem>
+          <SelectItem value="text">
+            原始文本
+          </SelectItem>
+          <SelectItem value="form">
+            URL 编码表单
+          </SelectItem>
+        </SelectContent>
+      </Select>
     </div>
 
     <Tabs :model-value="currentKind" class="w-full">

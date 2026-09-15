@@ -17,6 +17,7 @@ import ApiRequestEditor from './components/ApiRequestEditor.vue';
 import ApiResponsePanel from './components/ApiResponsePanel.vue';
 import CreateGroupDialog from './components/CreateGroupDialog.vue';
 import CreateRequestDialog from './components/CreateRequestDialog.vue';
+import RenameGroupDialog from './components/RenameGroupDialog.vue';
 import RequestHistoryPanel from './components/RequestHistoryPanel.vue';
 import EnvironmentManagerDialog from './components/EnvironmentManagerDialog.vue';
 import WorkspaceToolbar from './components/WorkspaceToolbar.vue';
@@ -106,7 +107,9 @@ async function promptUnsavedChange(): Promise<boolean> {
   return true;
 }
 const pendingCreateGroupParent = ref<{ id: string; name: string } | null>(null);
+const renameGroupDialogOpen = ref(false);
 const renamingGroupId = ref<string | null>(null);
+const renamingGroupCurrentName = ref<string>('');
 
 function openCreateGroupDialog(parentContext?: { id: string; name: string }): void {
   pendingCreateGroupParent.value = parentContext ?? null;
@@ -139,16 +142,28 @@ async function submitCreateGroup(payload: { name: string; parentGroupId: string 
   }
 }
 
-async function handleRenameGroup(payload: { groupId: string; name: string }): Promise<void> {
-  renamingGroupId.value = payload.groupId;
-  try {
-    await store.renameGroup(payload.groupId, payload.name);
-    toast.success('分组已重命名');
-  } catch (error) {
-    handleError(error, '重命名分组失败');
-  } finally {
-    renamingGroupId.value = null;
+function handleRenameGroup(groupId: string): void {
+  const group = store.groups.find(item => item.id === groupId);
+  if (!group) {
+    return;
   }
+  renamingGroupId.value = groupId;
+  renamingGroupCurrentName.value = group.name;
+  renameGroupDialogOpen.value = true;
+}
+
+async function submitRenameGroup(payload: { name: string }): Promise<void> {
+  const groupId = renamingGroupId.value;
+  if (!groupId) {
+    return;
+  }
+  await runAsync(async () => {
+    await store.renameGroup(groupId, payload.name);
+    renameGroupDialogOpen.value = false;
+    renamingGroupId.value = null;
+    renamingGroupCurrentName.value = '';
+    toast.success('分组已重命名');
+  }, '重命名分组失败');
 }
 
 function onCreateGroupDialogOpenChange(open: boolean): void {
@@ -235,6 +250,18 @@ async function handleDeleteRequest(requestId: string): Promise<void> {
     success: '请求已删除',
     errorMessage: '删除请求失败',
   });
+}
+
+async function handleMoveRequest(payload: { requestId: string; targetGroupId: string }): Promise<void> {
+  const request = store.requests.find(item => item.id === payload.requestId);
+  const targetGroup = store.groups.find(item => item.id === payload.targetGroupId);
+  if (!request || !targetGroup) {
+    return;
+  }
+  await runAsync(async () => {
+    await store.moveRequest(payload.requestId, payload.targetGroupId);
+    toast.success(`已移动到「${targetGroup.name}」`);
+  }, '移动请求失败');
 }
 
 async function handleSaveDraft(): Promise<void> {
@@ -394,7 +421,7 @@ const activeProject = computed(() => store.activeProject);
       class="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-hidden"
       :class="showHistoryPanel || showAiPanel ? 'grid-cols-[280px_minmax(0,1fr)_360px]' : 'grid-cols-[280px_minmax(0,1fr)]'"
     >
-      <div class="min-h-0 overflow-hidden border-r bg-card">
+      <div class="min-h-0 overflow-hidden bg-card">
         <ApiClientTree
           :project-name="store.activeProject?.name ?? ''"
           :groups="store.groups"
@@ -406,14 +433,14 @@ const activeProject = computed(() => store.activeProject);
           :is-loading-requests="store.isLoadingRequests"
           :deleting-group-id="store.isDeletingGroup"
           :deleting-request-id="store.isDeletingRequest"
-          :renaming-group-id="renamingGroupId"
           @select-group="handleSelectGroup"
           @select-request="handleSelectRequest"
           @create-group="handleTreeCreateGroup"
           @create-request="handleTreeCreateRequest"
-          @rename-group="handleRenameGroup"
+          @request-rename="handleRenameGroup"
           @delete-group="handleDeleteGroup"
           @delete-request="handleDeleteRequest"
+          @move-request="handleMoveRequest"
         />
       </div>
 
@@ -531,6 +558,12 @@ const activeProject = computed(() => store.activeProject);
       :parent-group-name="pendingCreateGroupParent?.name ?? null"
       @update:open="onCreateGroupDialogOpenChange"
       @submit="submitCreateGroup"
+    />
+    <RenameGroupDialog
+      :open="renameGroupDialogOpen"
+      :current-name="renamingGroupCurrentName"
+      @update:open="(value: boolean) => { renameGroupDialogOpen = value; if (!value) { renamingGroupId = null; renamingGroupCurrentName = ''; } }"
+      @submit="submitRenameGroup"
     />
     <CreateRequestDialog
       :open="createRequestDialogOpen"
