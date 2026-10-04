@@ -1,4 +1,4 @@
-export type DefaultModelKey = 'assistant' | 'quick' | 'translation' | 'embedding';
+export type DefaultModelKey = 'assistant' | 'quick' | 'translation' | 'embedding' | 'weekly_report_polish';
 
 export interface DefaultModelSetting {
   key: DefaultModelKey;

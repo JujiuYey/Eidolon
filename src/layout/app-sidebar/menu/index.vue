@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { Component } from 'vue';
-import { Mail, Bot, Sparkles, Network } from 'lucide-vue-next';
+import { Mail, Bot, NotebookPen, Sparkles, Network } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
 import AppSidebarRecentConversations from '../recent-conversations/index.vue';
 
@@ -20,6 +20,12 @@ const menus: Menu[] = [
     key: 'mail',
     icon: Mail,
     path: '/mail',
+  },
+  {
+    title: '周报',
+    key: 'weekly-report',
+    icon: NotebookPen,
+    path: '/weekly-report',
   },
   {
     title: '智能体管理',

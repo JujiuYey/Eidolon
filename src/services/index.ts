@@ -78,3 +78,15 @@ export {
   testAiConnection,
   upsertProviderSetting,
 } from './provider_config';
+
+export {
+  addWeeklyReportRepo,
+  deleteWeeklyReport,
+  exportWeeklyReport,
+  fetchWeeklyReportCommits,
+  listWeeklyReportRepos,
+  listWeeklyReports,
+  polishWeeklyReport,
+  removeWeeklyReportRepo,
+  saveWeeklyReport,
+} from './weekly-report';

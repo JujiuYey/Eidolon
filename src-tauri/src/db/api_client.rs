@@ -10,6 +10,7 @@ pub const DATABASE_FILENAME: &str = "api-client.sqlite";
 const MIGRATIONS: &[(i64, &str)] = &[
     (1, include_str!("migrations/0001_init.sql")),
     (2, include_str!("migrations/0002_email.sql")),
+    (3, include_str!("migrations/0003_weekly_report.sql")),
 ];
 
 /// API Client 专用数据库，与 `LocalJsonStore` 相互独立
@@ -191,6 +192,8 @@ mod tests {
                     "schema_migrations",
                     "sent_emails",
                     "smtp_accounts",
+                    "wr_repo",
+                    "wr_report",
                 ] {
                     assert!(
                         tables.iter().any(|name| name == expected),
@@ -227,7 +230,7 @@ mod tests {
         second
             .with_connection(|connection| {
                 let versions = applied_versions(connection)?;
-                assert_eq!(versions, vec![1, 2]);
+                assert_eq!(versions, vec![1, 2, 3]);
 
                 let count: i64 = connection
                     .query_row("SELECT COUNT(*) FROM api_projects", [], |row| row.get(0))

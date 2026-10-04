@@ -47,6 +47,10 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/codegen/index.vue'),
       },
       {
+        path: '/weekly-report',
+        component: () => import('@/views/weekly-report/index.vue'),
+      },
+      {
         path: '/api-client',
         component: () => import('@/views/api-project/index.vue'),
       },

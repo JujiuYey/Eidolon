@@ -96,6 +96,11 @@ const cards: DefaultModelCard[] = [
     title: 'Embedding 模型',
     description: '向量检索、语义召回与知识索引时使用的模型',
   },
+  {
+    key: 'weekly_report_polish',
+    title: '周报润色模型',
+    description: '周报页面的 AI 润色功能使用的模型，把提交记录聚合的草稿改写成通顺段落',
+  },
 ];
 
 const providerSettings = ref<ProviderSetting[]>([]);
@@ -110,6 +115,7 @@ const selectedModels = reactive<Record<DefaultModelCard['key'], string>>({
   quick: '',
   translation: '',
   embedding: '',
+  weekly_report_polish: '',
 });
 
 const parameterForms = reactive<Record<DefaultModelCard['key'], ModelParameterForm>>({
@@ -117,6 +123,7 @@ const parameterForms = reactive<Record<DefaultModelCard['key'], ModelParameterFo
   quick: createDefaultParameterForm(),
   translation: createDefaultParameterForm(),
   embedding: createDefaultParameterForm(),
+  weekly_report_polish: createDefaultParameterForm(),
 });
 
 const parameterDraft = ref<ModelParameterForm>(createDefaultParameterForm());

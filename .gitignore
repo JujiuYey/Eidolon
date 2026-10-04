@@ -24,3 +24,5 @@ dist-ssr
 
 .specstory/
 .cursorindexingignore
+# AI assistant local state
+.zcode/

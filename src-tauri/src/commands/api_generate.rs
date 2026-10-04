@@ -51,17 +51,17 @@ pub struct GeneratedBodyCandidate {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-struct GenerationTarget {
-    model_id: String,
-    api_key: String,
-    base_url: String,
+pub(crate) struct GenerationTarget {
+    pub(crate) model_id: String,
+    pub(crate) api_key: String,
+    pub(crate) base_url: String,
     provider_id: String,
     temperature: Option<f64>,
     max_tokens: Option<u64>,
 }
 
 impl GenerationTarget {
-    fn label(&self) -> String {
+    pub(crate) fn label(&self) -> String {
         format!("{} / {}", self.provider_id, self.model_id)
     }
 }
@@ -75,7 +75,12 @@ pub async fn generate_api_request_body(
     let target = {
         let default_repo = DefaultModelSettingRepository::new(&store);
         let provider_repo = ProviderSettingRepository::new(&store);
-        resolve_generation_target(&default_repo.list()?, &provider_repo.list()?)?
+        resolve_generation_target(
+            &default_repo.list()?,
+            &provider_repo.list()?,
+            BODY_GENERATION_MODEL_KEY,
+            "请先在“默认模型”中配置请求体生成模型，配置前仍可手动编辑和发送请求",
+        )?
     };
 
     let user_prompt = build_generation_prompt(&input)?;
@@ -111,17 +116,18 @@ pub async fn generate_api_request_body(
     Ok(build_candidate(&content, &target.label()))
 }
 
-/// 请求体生成使用独立默认模型键，不复用也不改写聊天默认模型
-fn resolve_generation_target(
+/// 按 默认模型键 + 服务商配置 解析出可用的生成目标。各 AI 功能共用，
+/// 通过 `model_key` 与 `missing_message` 区分用途（如请求体生成、周报润色）
+pub(crate) fn resolve_generation_target(
     default_settings: &[DefaultModelSetting],
     provider_settings: &[ProviderSetting],
+    model_key: &str,
+    missing_message: &str,
 ) -> Result<GenerationTarget, String> {
     let default_setting = default_settings
         .iter()
-        .find(|setting| setting.key == BODY_GENERATION_MODEL_KEY)
-        .ok_or_else(|| {
-            "请先在“默认模型”中配置请求体生成模型，配置前仍可手动编辑和发送请求".to_string()
-        })?;
+        .find(|setting| setting.key == model_key)
+        .ok_or_else(|| missing_message.to_string())?;
 
     let provider_setting = provider_settings
         .iter()
@@ -315,9 +321,13 @@ mod tests {
 
     #[test]
     fn generation_uses_its_own_default_model_key_not_the_chat_one() {
-        let error =
-            resolve_generation_target(&[default_setting("assistant")], &[provider("deepseek")])
-                .expect_err("chat default model must not be reused");
+        let error = resolve_generation_target(
+            &[default_setting("assistant")],
+            &[provider("deepseek")],
+            BODY_GENERATION_MODEL_KEY,
+            "请先配置请求体生成模型",
+        )
+        .expect_err("chat default model must not be reused");
         assert!(error.contains("请求体生成模型"), "got {error}");
 
         let target = resolve_generation_target(
@@ -326,6 +336,8 @@ mod tests {
                 default_setting(BODY_GENERATION_MODEL_KEY),
             ],
             &[provider("deepseek")],
+            BODY_GENERATION_MODEL_KEY,
+            "请先配置请求体生成模型",
         )
         .expect("dedicated key should resolve");
 
@@ -337,9 +349,23 @@ mod tests {
 
     #[test]
     fn generation_requires_an_enabled_provider_with_credentials() {
-        let missing = resolve_generation_target(&[default_setting(BODY_GENERATION_MODEL_KEY)], &[])
-            .expect_err("provider setting is required");
+        let missing = resolve_generation_target(
+            &[default_setting(BODY_GENERATION_MODEL_KEY)],
+            &[],
+            BODY_GENERATION_MODEL_KEY,
+            "请先配置请求体生成模型",
+        )
+        .expect_err("provider setting is required");
         assert!(missing.contains("模型服务配置"), "got {missing}");
+
+        let absent_key = resolve_generation_target(
+            &[default_setting("assistant")],
+            &[provider("deepseek")],
+            "another_key",
+            "请先在“默认模型”中配置周报润色模型",
+        )
+        .expect_err("missing key must surface the caller's message");
+        assert!(absent_key.contains("周报润色模型"), "got {absent_key}");
 
         let disabled = resolve_generation_target(
             &[default_setting(BODY_GENERATION_MODEL_KEY)],
@@ -347,6 +373,8 @@ mod tests {
                 enabled: false,
                 ..provider("deepseek")
             }],
+            BODY_GENERATION_MODEL_KEY,
+            "请先配置请求体生成模型",
         )
         .expect_err("disabled provider must be rejected");
         assert!(disabled.contains("已被禁用"), "got {disabled}");
@@ -357,6 +385,8 @@ mod tests {
                 api_key: "  ".to_string(),
                 ..provider("deepseek")
             }],
+            BODY_GENERATION_MODEL_KEY,
+            "请先配置请求体生成模型",
         )
         .expect_err("empty api key must be rejected");
         assert!(no_key.contains("API Key"), "got {no_key}");

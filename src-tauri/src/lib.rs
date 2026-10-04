@@ -92,6 +92,16 @@ pub fn run() {
             commands::email::delete_sent_email,
             commands::email::clear_sent_emails,
             commands::api_generate::generate_api_request_body,
+            // Weekly report commands
+            commands::weekly_report::list_weekly_report_repos,
+            commands::weekly_report::add_weekly_report_repo,
+            commands::weekly_report::remove_weekly_report_repo,
+            commands::weekly_report::fetch_weekly_report_commits,
+            commands::weekly_report::list_weekly_reports,
+            commands::weekly_report::save_weekly_report,
+            commands::weekly_report::delete_weekly_report,
+            commands::weekly_report::export_weekly_report,
+            commands::weekly_report::polish_weekly_report,
         ])
         .setup(|app| {
             // 窗口启动时自动最大化

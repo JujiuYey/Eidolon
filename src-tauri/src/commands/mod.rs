@@ -11,3 +11,4 @@ pub mod email;
 pub mod mcp_service;
 pub mod model_config;
 pub mod test_connection;
+pub mod weekly_report;
