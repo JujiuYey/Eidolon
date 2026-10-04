@@ -1,12 +1,21 @@
 <script lang="ts" setup>
+import { onMounted } from 'vue';
+import { toast } from 'vue-sonner';
+import { useMailStore } from '@/stores/mail';
+import { getErrorMessage } from '@/utils/helpers';
 import Mail from './components/Mail.vue';
-import { accounts, mails } from './data/mails';
+
+const store = useMailStore();
+
+onMounted(async () => {
+  try {
+    await store.loadAll();
+  } catch (error) {
+    toast.error(getErrorMessage(error, '加载邮件数据失败'));
+  }
+});
 </script>
 
 <template>
-  <Mail
-    :accounts="accounts"
-    :mails="mails"
-    :nav-collapsed-size="4"
-  />
+  <Mail />
 </template>

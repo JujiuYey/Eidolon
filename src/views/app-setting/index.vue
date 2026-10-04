@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { Component } from 'vue';
-import { Palette, HardDrive, Sparkles, Database, Server, Brain } from 'lucide-vue-next';
+import { Palette, HardDrive, Sparkles, Database, Server, Brain, Mail } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -10,6 +10,7 @@ import DataConfig from './_components/data-config/index.vue';
 import DefaultModel from './_components/default-model/index.vue';
 import McpService from './_components/mcp-service/index.vue';
 import ProviderConfig from './_components/provider-config/index.vue';
+import SmtpConfig from './_components/smtp-config/index.vue';
 
 interface SettingMenu {
   title: string;
@@ -45,6 +46,11 @@ const menus: SettingMenu[] = [
     title: 'MCP服务',
     key: 'mcp-service',
     icon: Server,
+  },
+  {
+    title: '邮件账户',
+    key: 'smtp-config',
+    icon: Mail,
   },
   {
     title: 'Skills',
@@ -110,6 +116,7 @@ function handleClick(key: string) {
         <AppConfig v-if="activeKey === 'app-config'" />
         <DataConfig v-if="activeKey === 'data'" />
         <McpService v-if="activeKey === 'mcp-service'" />
+        <SmtpConfig v-if="activeKey === 'smtp-config'" />
       </div>
     </main>
   </div>

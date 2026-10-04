@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { Component } from 'vue';
-import { MessageCircle, Bot, Sparkles, Network } from 'lucide-vue-next';
+import { Mail, Bot, Sparkles, Network } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
 import AppSidebarRecentConversations from '../recent-conversations/index.vue';
 
@@ -16,10 +16,10 @@ const route = useRoute();
 
 const menus: Menu[] = [
   {
-    title: '开始',
-    key: 'index',
-    icon: MessageCircle,
-    path: '/index',
+    title: '邮件',
+    key: 'mail',
+    icon: Mail,
+    path: '/mail',
   },
   {
     title: '智能体管理',

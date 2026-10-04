@@ -1,11 +1,8 @@
 <script lang="ts" setup>
-import type { Mail } from '../data/mails';
-
 import { refDebounced } from '@vueuse/core';
-import {
-  Search,
-} from 'lucide-vue-next';
+import { Search } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,214 +11,170 @@ import {
   ResizablePanelGroup,
 } from '@/components/ui/resizable';
 import { Separator } from '@/components/ui/separator';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useMailStore } from '@/stores/mail';
+import type { SentEmail } from '@/types/mail';
 import AccountSwitcher from './AccountSwitcher.vue';
-import MailDisplay from './MailDisplay.vue';
-import MailList from './MailList.vue';
+import ComposePanel from './ComposePanel.vue';
 import Nav from './Nav.vue';
 import type { LinkProp } from './Nav.vue';
+import SentDisplay from './SentDisplay.vue';
+import SentList from './SentList.vue';
+import TemplateManagerDialog from './TemplateManagerDialog.vue';
+import TemplatePicker from './TemplatePicker.vue';
 
-interface MailProps {
-  accounts: Array<{
-    label: string;
-    email: string;
-    icon: string;
-  }>;
-  mails: Mail[];
-  defaultLayout?: number[];
-  defaultCollapsed?: boolean;
-  navCollapsedSize: number;
-}
+const store = useMailStore();
+const router = useRouter();
 
-const props = withDefaults(defineProps<MailProps>(), {
-  defaultCollapsed: false,
-  defaultLayout: () => [265, 440, 655],
-});
-
-const isCollapsed = ref(props.defaultCollapsed);
-const firstMail = props.mails[0];
-const selectedMail = ref<string | undefined>(firstMail ? firstMail.id : undefined);
+const isCollapsed = ref(false);
+const templateManagerOpen = ref(false);
 const searchValue = ref('');
 const debouncedSearch = refDebounced(searchValue, 250);
 
-const filteredMailList = computed(() => {
-  let output: Mail[] = [];
-  const searchValue = debouncedSearch.value?.trim();
-  if (!searchValue) {
-    output = props.mails;
-  } else {
-    output = props.mails.filter(item => {
-      return item.name.includes(debouncedSearch.value)
-        || item.email.includes(debouncedSearch.value)
-        || item.name.includes(debouncedSearch.value)
-        || item.subject.includes(debouncedSearch.value)
-        || item.text.includes(debouncedSearch.value);
-    });
+const filteredSentList = computed(() => {
+  const keyword = debouncedSearch.value?.trim().toLowerCase();
+  if (!keyword) {
+    return store.sentEmails;
   }
 
-  return output;
+  return store.sentEmails.filter((email: SentEmail) =>
+    email.subject.toLowerCase().includes(keyword)
+    || email.to_addresses.toLowerCase().includes(keyword)
+    || email.account_email.toLowerCase().includes(keyword)
+    || email.body.toLowerCase().includes(keyword),
+  );
 });
 
-const unreadMailList = computed(() => filteredMailList.value.filter(item => !item.read));
-
-const selectedMailData = computed(() => props.mails.find(item => item.id === selectedMail.value));
-
-const links: LinkProp[] = [
+const navLinks = computed<LinkProp[]>(() => [
   {
-    title: '收件箱',
-    label: '128',
-    icon: 'lucide:inbox',
-    variant: 'default',
-  },
-  {
-    title: '草稿',
-    label: '9',
-    icon: 'lucide:file',
-    variant: 'ghost',
+    title: '写信',
+    icon: 'lucide:pen-line',
+    variant: store.viewMode === 'compose' ? 'default' : 'ghost',
+    onSelect: () => {
+      store.viewMode = 'compose';
+    },
   },
   {
     title: '已发送',
-    label: '',
     icon: 'lucide:send',
-    variant: 'ghost',
+    label: store.sentEmails.length > 0 ? String(store.sentEmails.length) : '',
+    variant: store.viewMode === 'sent' ? 'default' : 'ghost',
+    onSelect: () => {
+      store.viewMode = 'sent';
+    },
   },
   {
-    title: '垃圾邮件',
-    label: '23',
-    icon: 'lucide:archive',
+    title: '模板管理',
+    icon: 'lucide:layout-template',
     variant: 'ghost',
+    onSelect: () => {
+      templateManagerOpen.value = true;
+    },
   },
   {
-    title: '回收站',
-    label: '',
-    icon: 'lucide:trash',
+    title: '管理账户',
+    icon: 'lucide:settings',
     variant: 'ghost',
+    onSelect: () => {
+      router.push('/app-setting');
+    },
   },
-  {
-    title: '归档',
-    label: '',
-    icon: 'lucide:archive',
-    variant: 'ghost',
-  },
-];
+]);
 
-const links2: LinkProp[] = [
-  {
-    title: '社交',
-    label: '972',
-    icon: 'lucide:user-2',
-    variant: 'ghost',
-  },
-  {
-    title: '更新',
-    label: '342',
-    icon: 'lucide:alert-circle',
-    variant: 'ghost',
-  },
-  {
-    title: '论坛',
-    label: '128',
-    icon: 'lucide:message-square',
-    variant: 'ghost',
-  },
-  {
-    title: '购物',
-    label: '8',
-    icon: 'lucide:shopping-cart',
-    variant: 'ghost',
-  },
-  {
-    title: '推广',
-    label: '21',
-    icon: 'lucide:archive',
-    variant: 'ghost',
-  },
-];
-
-function onCollapse() {
-  isCollapsed.value = true;
-}
-
-function onExpand() {
-  isCollapsed.value = false;
+function handleResend() {
+  const mail = store.selectedSentEmail;
+  if (mail) {
+    store.resend(mail);
+  }
 }
 </script>
 
 <template>
   <TooltipProvider :delay-duration="0">
     <ResizablePanelGroup
-      id="resize-panel-group-1"
+      id="mail-panel-group"
       direction="horizontal"
       class="h-full items-stretch"
     >
       <ResizablePanel
-        id="resize-panel-1"
-        :default-size="defaultLayout[0]"
-        :collapsed-size="navCollapsedSize"
+        id="mail-nav-panel"
+        :default-size="20"
+        :collapsed-size="6"
         collapsible
-        :min-size="15"
+        :min-size="12"
         :max-size="20"
         :class="cn(isCollapsed && 'min-w-[50px] transition-all duration-300 ease-in-out')"
-        @expand="onExpand"
-        @collapse="onCollapse"
+        @collapse="isCollapsed = true"
+        @expand="isCollapsed = false"
       >
-        <div :class="cn('flex h-[52px] items-center justify-center', isCollapsed ? 'h-[52px]' : 'px-2')">
-          <AccountSwitcher :is-collapsed="isCollapsed" :accounts="accounts" />
+        <div class="flex flex-col gap-2 p-2">
+          <AccountSwitcher
+            v-model:selected-account-id="store.selectedAccountId"
+            :is-collapsed="isCollapsed"
+            :accounts="store.accounts"
+          />
         </div>
         <Separator />
         <Nav
           :is-collapsed="isCollapsed"
-          :links="links"
-        />
-        <Separator />
-        <Nav
-          :is-collapsed="isCollapsed"
-          :links="links2"
+          :links="navLinks"
         />
       </ResizablePanel>
-      <ResizableHandle id="resize-handle-1" with-handle />
-      <ResizablePanel id="resize-panel-2" :default-size="defaultLayout[1]" :min-size="30">
-        <Tabs default-value="all">
+      <ResizableHandle id="mail-nav-handle" with-handle />
+
+      <!-- 中栏：写信时选模板，已发送时列历史 -->
+      <ResizablePanel id="mail-list-panel" :default-size="30" :min-size="25">
+        <template v-if="store.viewMode === 'compose'">
+          <div class="flex items-center px-4 py-3.5">
+            <h1 class="text-xl font-bold">
+              写信
+            </h1>
+          </div>
+          <Separator />
+          <TemplatePicker
+            v-model:selected-template-id="store.selectedTemplateId"
+            :templates="store.templates"
+            @manage="templateManagerOpen = true"
+          />
+        </template>
+
+        <Tabs
+          v-else
+          default-value="all"
+        >
           <div class="flex items-center px-4 py-2">
             <h1 class="text-xl font-bold">
-              收件箱
+              已发送
             </h1>
-            <TabsList class="ml-auto">
-              <TabsTrigger value="all" class="text-zinc-600 dark:text-zinc-200">
-                所有邮件
-              </TabsTrigger>
-              <TabsTrigger value="unread" class="text-zinc-600 dark:text-zinc-200">
-                未读
-              </TabsTrigger>
-            </TabsList>
           </div>
           <Separator />
           <div class="bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <form>
               <div class="relative">
                 <Search class="absolute left-2 top-2.5 size-4 text-muted-foreground" />
-                <Input v-model="searchValue" placeholder="搜索" class="pl-8" />
+                <Input v-model="searchValue" placeholder="搜索主题、收件人或正文" class="pl-8" />
               </div>
             </form>
           </div>
           <TabsContent value="all" class="m-0">
-            <MailList v-model:selected-mail="selectedMail" :items="filteredMailList" />
-          </TabsContent>
-          <TabsContent value="unread" class="m-0">
-            <MailList v-model:selected-mail="selectedMail" :items="unreadMailList" />
+            <SentList v-model:selected-id="store.selectedSentEmailId" :items="filteredSentList" />
           </TabsContent>
         </Tabs>
       </ResizablePanel>
-      <ResizableHandle id="resiz-handle-2" with-handle />
-      <ResizablePanel id="resize-panel-3" :default-size="defaultLayout[2]">
-        <MailDisplay :mail="selectedMailData" />
+      <ResizableHandle id="mail-display-handle" with-handle />
+
+      <!-- 右栏：写信表单或发送详情 -->
+      <ResizablePanel id="mail-display-panel" :default-size="50">
+        <ComposePanel v-if="store.viewMode === 'compose'" />
+        <SentDisplay
+          v-else
+          :mail="store.selectedSentEmail"
+          @resend="handleResend"
+        />
       </ResizablePanel>
     </ResizablePanelGroup>
   </TooltipProvider>
+
+  <TemplateManagerDialog v-model:open="templateManagerOpen" />
 </template>

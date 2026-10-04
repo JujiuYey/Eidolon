@@ -13,6 +13,8 @@ export interface LinkProp {
   label?: string;
   icon: string;
   variant: 'default' | 'ghost';
+  /** 点击回调；省略时仅为展示项 */
+  onSelect?: () => void;
 }
 
 interface NavProps {
@@ -40,6 +42,7 @@ defineProps<NavProps>();
                 link.variant === 'default'
                   && 'dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-white',
               )"
+              @click.prevent="link.onSelect?.()"
             >
               <Icon :icon="link.icon" class="size-4" />
               <span class="sr-only">{{ link.title }}</span>
@@ -63,6 +66,7 @@ defineProps<NavProps>();
               && 'dark:bg-muted dark:text-white dark:hover:bg-muted dark:hover:text-white',
             'justify-start',
           )"
+          @click.prevent="link.onSelect?.()"
         >
           <Icon :icon="link.icon" class="mr-2 size-4" />
           {{ link.title }}

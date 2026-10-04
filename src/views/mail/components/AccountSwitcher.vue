@@ -1,6 +1,5 @@
-<script lang="ts" setup>
-import { Icon } from '@iconify/vue';
-import { computed, ref } from 'vue';
+<script setup lang="ts">
+import { computed } from 'vue';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -9,48 +8,86 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import type { SmtpAccount } from '@/types/mail';
 
 interface AccountSwitcherProps {
   isCollapsed: boolean;
-  accounts: Array<{
-    label: string;
-    email: string;
-    icon: string;
-  }>;
+  accounts: SmtpAccount[];
 }
 
 const props = defineProps<AccountSwitcherProps>();
 
-const firstAccount = props.accounts[0];
-const selectedEmail = ref<string>(firstAccount ? firstAccount.email : '');
-const selectedEmailData = computed(() => props.accounts.find(item => item.email === selectedEmail.value));
+const selectedAccountId = defineModel<string>('selectedAccountId', {
+  required: true,
+});
+
+const selectedAccount = computed(() =>
+  props.accounts.find(account => account.id === selectedAccountId.value) ?? null,
+);
 </script>
 
 <template>
-  <Select v-model="selectedEmail">
-    <SelectTrigger
-      aria-label="Select account"
-      :class="cn(
-        'flex items-center gap-2 [&>span]:line-clamp-1 [&>span]:flex [&>span]:w-full [&>span]:items-center [&>span]:gap-1 [&>span]:truncate [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0',
-        { 'flex h-9 w-9 shrink-0 items-center justify-center p-0 [&>span]:w-auto [&>svg]:hidden': isCollapsed },
-      )"
+  <div
+    :class="cn(
+      'flex w-full flex-col',
+      isCollapsed && 'items-center',
+    )"
+  >
+    <Select v-model="selectedAccountId">
+      <SelectTrigger
+        aria-label="选择发件账户"
+        :class="cn(
+          'w-full items-center gap-2 [&>span]:line-clamp-1 [&>span]:flex [&>span]:w-full [&>span]:items-center [&>span]:gap-1 [&>span]:truncate',
+          { 'h-9 w-9 shrink-0 justify-center p-0 [&>span]:w-auto [&>svg]:hidden': isCollapsed },
+        )"
+      >
+        <SelectValue placeholder="选择发件账户">
+          <div
+            v-if="selectedAccount"
+            class="flex min-w-0 items-center gap-2"
+          >
+            <span class="flex size-5 shrink-0 items-center justify-center rounded bg-primary/15 text-[10px] font-semibold uppercase text-primary">
+              {{ selectedAccount.name.slice(0, 2) }}
+            </span>
+            <span
+              v-if="!isCollapsed"
+              class="truncate text-sm"
+            >
+              {{ selectedAccount.name }}
+            </span>
+          </div>
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem
+          v-for="account of accounts"
+          :key="account.id"
+          :value="account.id"
+        >
+          <div class="flex items-center gap-2">
+            <span class="truncate">
+              {{ account.name }}
+            </span>
+            <span class="truncate text-xs text-muted-foreground">
+              {{ account.email }}
+            </span>
+          </div>
+        </SelectItem>
+        <SelectItem
+          v-if="accounts.length === 0"
+          value="__empty__"
+          disabled
+        >
+          暂无账户
+        </SelectItem>
+      </SelectContent>
+    </Select>
+
+    <p
+      v-if="!isCollapsed && accounts.length === 0"
+      class="px-1 text-xs leading-5 text-muted-foreground"
     >
-      <SelectValue placeholder="Select an account">
-        <div class="flex items-center gap-3">
-          <Icon class="size-4" :icon="selectedEmailData!.icon" />
-          <span v-if="!isCollapsed">
-            {{ selectedEmailData!.label }}
-          </span>
-        </div>
-      </SelectValue>
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem v-for="account of accounts" :key="account.email" :value="account.email">
-        <div class="flex items-center gap-3 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-foreground">
-          <Icon class="size-4" :icon="account.icon" />
-          {{ account.email }}
-        </div>
-      </SelectItem>
-    </SelectContent>
-  </Select>
+      还没有发件账户，可点击下方「管理账户」配置。
+    </p>
+  </div>
 </template>

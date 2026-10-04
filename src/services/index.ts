@@ -42,6 +42,20 @@ export {
 } from './default_model';
 
 export {
+  clearSentEmails,
+  deleteMailTemplate,
+  deleteSentEmail,
+  deleteSmtpAccount,
+  listMailTemplates,
+  listSentEmails,
+  listSmtpAccounts,
+  sendEmail,
+  testSmtpConnection,
+  upsertMailTemplate,
+  upsertSmtpAccount,
+} from './mail';
+
+export {
   deleteMcpService,
   discoverMcpService,
   listMcpServices,

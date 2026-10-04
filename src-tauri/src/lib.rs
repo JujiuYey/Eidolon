@@ -79,6 +79,18 @@ pub fn run() {
             commands::api_request::send_api_request,
             commands::api_request::cancel_api_request,
             commands::api_request::preview_api_request,
+            // Email commands
+            commands::email::list_smtp_accounts,
+            commands::email::upsert_smtp_account,
+            commands::email::delete_smtp_account,
+            commands::email::list_mail_templates,
+            commands::email::upsert_mail_template,
+            commands::email::delete_mail_template,
+            commands::email::send_email,
+            commands::email::test_smtp_connection,
+            commands::email::list_sent_emails,
+            commands::email::delete_sent_email,
+            commands::email::clear_sent_emails,
             commands::api_generate::generate_api_request_body,
         ])
         .setup(|app| {

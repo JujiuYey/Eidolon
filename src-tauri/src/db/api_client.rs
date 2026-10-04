@@ -7,7 +7,10 @@ use rusqlite::{Connection, OpenFlags};
 pub const DATABASE_FILENAME: &str = "api-client.sqlite";
 
 /// 递增迁移。已应用的迁移不得修改，新增行为只能追加新版本。
-const MIGRATIONS: &[(i64, &str)] = &[(1, include_str!("migrations/0001_init.sql"))];
+const MIGRATIONS: &[(i64, &str)] = &[
+    (1, include_str!("migrations/0001_init.sql")),
+    (2, include_str!("migrations/0002_email.sql")),
+];
 
 /// API Client 专用数据库，与 `LocalJsonStore` 相互独立
 pub struct ApiClientDatabase {
@@ -184,7 +187,10 @@ mod tests {
                     "api_projects",
                     "api_request_histories",
                     "api_requests",
+                    "mail_templates",
                     "schema_migrations",
+                    "sent_emails",
+                    "smtp_accounts",
                 ] {
                     assert!(
                         tables.iter().any(|name| name == expected),
@@ -221,7 +227,7 @@ mod tests {
         second
             .with_connection(|connection| {
                 let versions = applied_versions(connection)?;
-                assert_eq!(versions, vec![1]);
+                assert_eq!(versions, vec![1, 2]);
 
                 let count: i64 = connection
                     .query_row("SELECT COUNT(*) FROM api_projects", [], |row| row.get(0))

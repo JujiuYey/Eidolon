@@ -34,8 +34,13 @@ const routes: RouteRecordRaw[] = [
         }),
       },
       {
-        path: '/index',
+        path: '/mail',
         component: () => import('@/views/mail/index.vue'),
+      },
+      {
+        // 兼容旧地址：邮件 demo 时期使用的 /index
+        path: '/index',
+        redirect: '/mail',
       },
       {
         path: '/codegen',
