@@ -55,6 +55,17 @@ pub fn run() {
             commands::pm::get_pm_skill_content,
             commands::pm::get_pm_settings,
             commands::pm::upsert_pm_settings,
+            // Docs (文档管理) commands
+            commands::docs::get_docs_settings,
+            commands::docs::upsert_docs_settings,
+            commands::docs::list_docs_entries,
+            commands::docs::read_docs_file,
+            commands::docs::save_docs_file,
+            commands::docs::create_docs_file,
+            commands::docs::create_docs_directory,
+            commands::docs::rename_docs_entry,
+            commands::docs::delete_docs_entry,
+            commands::docs::search_docs,
             // Test connection command
             commands::test_connection::test_ai_connection,
             // API client commands

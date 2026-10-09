@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-Eidolon is a **Tauri 2 + Vue 3 desktop client** (product name "Eidolon", bundle id `dev.eidolon.app`, version `0.1.0`) that ships mail template sending, weekly reports, ZenTao integration, a Postman-like API client, an AI "PM persona" chat (产品经理分身, backed by a bundled awesome-ux-skills methodology library), and AI provider / MCP configuration. (The chat-driven agent workspace was removed from the frontend in 2026-10; its design is archived in `docs/agent-design.md`, backend commands remain.)
+Eidolon is a **Tauri 2 + Vue 3 desktop client** (product name "Eidolon", bundle id `dev.eidolon.app`, version `0.1.0`) that ships mail template sending, weekly reports, ZenTao integration, a Postman-like API client, markdown document management (文档, plain .md files on disk — Obsidian-compatible), an AI "PM persona" chat (产品经理分身, backed by a bundled awesome-ux-skills methodology library), and AI provider / MCP configuration. (The chat-driven agent workspace was removed from the frontend in 2026-10; its design is archived in `docs/agent-design.md`, backend commands remain.)
 
 - Frontend: Vue 3.5 SFC, Vite 7, TypeScript 5.8, Pinia 3 (with `pinia-plugin-persistedstate`), vue-router 4.
 - Backend: Rust crate `app_lib` exposing Tauri commands; SQLite (bundled) for persistence; HTTP via `reqwest` (rustls + http2 + stream + system-proxy); LLM/MCP via `rig-core` + `rmcp`.
@@ -25,7 +25,7 @@ View (Vue SFC)  →  Store (Pinia, setup-style)  →  Service (TS)  →  Tauri C
 - **Store layer**: Pinia setup stores in `src/stores/`. `useApiClientStore` is a 1kLoC factory (`createApiClientStore(options?)`) that accepts an injectable service surface so it can be tested without Tauri. State machines for execution and AI generation live here with their own `AbortController`s.
 - **Service layer**: `src/services/**` is the **only** place that calls `@tauri-apps/api/core::invoke<T>(cmd, args)`. Mappers (`services/api-client/mappers.ts`) translate between Tauri snake_case DTOs and frontend camelCase types.
 - **IPC / Tauri**: Tauri 2 commands; payloads use **snake_case**; responses are either passed through or mapped. Cancellation: store creates `AbortController` + `executionId` / `taskId`, fires `service.cancelApiRequest(id)` (best-effort).
-- **Persistence**: Only `useAppStore.settings` (`theme` + `themeColor`) is persisted via `pinia-plugin-persistedstate` under key `eidolon-app-settings`. Feature data lives in Tauri: SQLite (bundled, `db/migrations/`) for api-client / email / weekly-report / zentao; JSON files via `db/local_store.rs::LocalJsonStore` for agent profiles/conversations (removed frontend, see `docs/agent-design.md`), provider settings, MCP services, default-model settings, and PM persona conversations/messages/settings (`pm_conversations.json` etc.).
+- **Persistence**: Only `useAppStore.settings` (`theme` + `themeColor`) is persisted via `pinia-plugin-persistedstate` under key `eidolon-app-settings`. Feature data lives in Tauri: SQLite (bundled, `db/migrations/`) for api-client / email / weekly-report / zentao; JSON files via `db/local_store.rs::LocalJsonStore` for agent profiles/conversations (removed frontend, see `docs/agent-design.md`), provider settings, MCP services, default-model settings, and PM persona conversations/messages/settings (`pm_conversations.json` etc.). **Documents are an exception by design**: they are plain `.md` files on disk under a user-chosen root (`docs_settings.json` holds the root path); every file op is sandboxed to that root via `services/work_directory.rs`.
 
 Key modules (frontend ↔ backend):
 
@@ -33,9 +33,9 @@ Key modules (frontend ↔ backend):
 |------------------------------------------------|----------------------------------------------------------|
 | `src/services/api-client/*`                    | `commands/api_client.rs`, `api_request.rs`, `api_generate.rs`, `test_connection.rs` |
 | `src/services/pm.ts`                            | `commands/pm.rs`, `services/pm_chat.rs`, `services/pm_skills.rs` (skills bundled at `src-tauri/resources/pm-skills/`, overridable via a settings directory) |
+| `src/services/docs.ts`                          | `commands/docs.rs`, `services/docs.rs` (sandboxed via `services/work_directory.rs`) |
 | `src/services/provider_config.ts`              | `commands/model_config.rs`, `default_model.rs`, `test_connection.rs` |
 | `src/services/mcp_service.ts`                  | `commands/mcp_service.rs`, `services/mcp_service.rs`     |
-| `src/services/project-files.ts`                | `commands/app_paths.rs`, `services/work_directory.rs`    |
 
 ---
 
@@ -74,6 +74,7 @@ Routing (frontend):
 | `/zentao`                         | `views/zentao/index.vue`              |
 | `/api-client`                     | `views/api-project/index.vue`         |
 | `/api-client/projects/:id`        | `views/api-client-workspace/index.vue` (name `api-client-project`) |
+| `/docs`                           | `views/docs/index.vue` (markdown 文档管理) |
 | `/pm`                             | `views/pm/index.vue` (PM persona chat)  |
 | `/app-setting`                    | `views/app-setting/index.vue`         |
 | `/:pathMatch(.*)*`                | `pages/errors/404.vue`                |
@@ -220,6 +221,8 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 - `src/views/zentao/utils/__tests__/display.test.ts`
 - `src/stores/__tests__/pm.test.ts`
 - `src/views/pm/utils/__tests__/format.test.ts`
+- `src/stores/__tests__/docs.test.ts`
+- `src/views/docs/utils/__tests__/tree.test.ts`
 
 **Rules** (project-wide):
 
@@ -237,7 +240,7 @@ pnpm test                   # one-shot vitest
 pnpm lint:eslint            # lint src/**
 ```
 
-**Manual verification surface** (no browser harness wired up): launch `pnpm tauri dev`, exercise the changed flow in the native window, and confirm behavior. The API client, mail, weekly report, ZenTao, PM persona, and app settings are all visible there.
+**Manual verification surface** (no browser harness wired up): launch `pnpm tauri dev`, exercise the changed flow in the native window, and confirm behavior. The API client, mail, weekly report, ZenTao, docs, PM persona, and app settings are all visible there.
 
 **Coverage**: not measured. Add `@vitest/coverage-v8` if a coverage gate is introduced.
 

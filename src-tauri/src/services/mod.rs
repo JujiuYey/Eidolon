@@ -1,5 +1,6 @@
 pub mod api_http;
 pub mod api_request;
+pub mod docs;
 pub mod email;
 pub mod mcp_service;
 pub mod pm_chat;

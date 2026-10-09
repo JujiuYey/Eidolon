@@ -37,6 +37,10 @@ const routes: RouteRecordRaw[] = [
         props: route => ({ projectId: route.params.id }),
       },
       {
+        path: '/docs',
+        component: () => import('@/views/docs/index.vue'),
+      },
+      {
         path: '/pm',
         component: () => import('@/views/pm/index.vue'),
       },

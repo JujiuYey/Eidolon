@@ -6,6 +6,19 @@ export {
 } from './default_model';
 
 export {
+  createDocsDirectory,
+  createDocsFile,
+  deleteDocsEntry,
+  getDocsSettings,
+  listDocsEntries,
+  readDocsFile,
+  renameDocsEntry,
+  saveDocsFile,
+  searchDocs,
+  upsertDocsSettings,
+} from './docs';
+
+export {
   clearSentEmails,
   deleteMailTemplate,
   deleteSentEmail,
@@ -39,13 +52,6 @@ export {
   sendPmMessage,
   upsertPmSettings,
 } from './pm';
-
-export {
-  listProjectDirectory,
-  readProjectFile,
-  scanProjectFiles,
-  searchProjectFiles,
-} from './project-files';
 
 export {
   deleteProviderModels,

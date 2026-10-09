@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { Component } from 'vue';
-import { Bot, Mail, NotebookPen, Network, ListTodo } from 'lucide-vue-next';
+import { Bot, FileText, Mail, NotebookPen, Network, ListTodo } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
 
 interface Menu {
@@ -37,6 +37,12 @@ const menus: Menu[] = [
     key: 'api-client',
     icon: Network,
     path: '/api-client',
+  },
+  {
+    title: '文档',
+    key: 'docs',
+    icon: FileText,
+    path: '/docs',
   },
   {
     title: '产品经理',

@@ -6,6 +6,7 @@ pub mod api_request;
 pub mod app_paths;
 pub mod conversation;
 pub mod default_model;
+pub mod docs;
 pub mod email;
 pub mod mcp_service;
 pub mod model_config;

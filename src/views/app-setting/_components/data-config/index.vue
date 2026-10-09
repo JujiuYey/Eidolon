@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { Component } from 'vue';
 import {
   ArchiveRestore,
@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { useAppPaths } from '@/composables/use-app-paths';
+import { getDocsSettings } from '@/services/docs';
 
 interface RowAction {
   label: string;
@@ -33,6 +34,15 @@ interface DirectoryRow {
 
 const compactBackup = ref(false);
 const { appDataPath, appLogPath, isLoading, openDirectory } = useAppPaths();
+
+// 文档库目录来自「文档」页的设置，这里只读展示 + 打开
+const docsRootDir = ref('');
+
+onMounted(() => {
+  void getDocsSettings()
+    .then(settings => (docsRootDir.value = settings.root_dir ?? ''))
+    .catch(() => (docsRootDir.value = ''));
+});
 
 const dangerOutlineClass = 'border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive/50';
 
@@ -87,9 +97,11 @@ const directoryRows = computed<DirectoryRow[]>(() => [
     },
   },
   {
-    title: '知识库文件',
+    title: '文档库目录',
+    value: docsRootDir.value,
+    valueIcon: FolderOpen,
     action: {
-      label: '删除文件',
+      label: '打开目录',
       variant: 'outline',
     },
   },
@@ -246,7 +258,7 @@ function handleOpenDirectory(path: string) {
                 :class="item.action.class"
                 size="sm"
                 class="justify-self-start sm:justify-self-end"
-                :disabled="!item.value && item.title !== '知识库文件'"
+                :disabled="!item.value"
                 @click="item.value ? handleOpenDirectory(item.value) : undefined"
               >
                 {{ item.action.label }}
