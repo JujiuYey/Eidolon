@@ -27,6 +27,20 @@ export {
 } from './mcp_service';
 
 export {
+  createPmConversation,
+  deletePmConversation,
+  getPmSettings,
+  getPmSkillContent,
+  listPmConversationMessages,
+  listPmConversations,
+  listPmSkills,
+  renamePmConversation,
+  revealDirectory,
+  sendPmMessage,
+  upsertPmSettings,
+} from './pm';
+
+export {
   listProjectDirectory,
   readProjectFile,
   scanProjectFiles,

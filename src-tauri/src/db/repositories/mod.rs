@@ -10,6 +10,7 @@ pub mod default_model;
 pub mod mail_template_repo;
 pub mod mcp_service;
 pub mod model_config;
+pub mod pm_conversation;
 pub mod sent_email_repo;
 pub mod smtp_account_repo;
 pub mod weekly_report_repo;

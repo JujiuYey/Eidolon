@@ -10,6 +10,7 @@ import DataConfig from './_components/data-config/index.vue';
 import DefaultModel from './_components/default-model/index.vue';
 import McpService from './_components/mcp-service/index.vue';
 import ProviderConfig from './_components/provider-config/index.vue';
+import SkillsConfig from './_components/skills-config/index.vue';
 import SmtpConfig from './_components/smtp-config/index.vue';
 import ZentaoConfig from './_components/zentao-config/index.vue';
 
@@ -124,6 +125,7 @@ function handleClick(key: string) {
         <McpService v-if="activeKey === 'mcp-service'" />
         <SmtpConfig v-if="activeKey === 'smtp-config'" />
         <ZentaoConfig v-if="activeKey === 'zentao-config'" />
+        <SkillsConfig v-if="activeKey === 'skills'" />
       </div>
     </main>
   </div>

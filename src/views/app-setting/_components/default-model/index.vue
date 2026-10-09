@@ -101,6 +101,11 @@ const cards: DefaultModelCard[] = [
     title: '周报润色模型',
     description: '周报页面的 AI 润色功能使用的模型，把提交记录聚合的草稿改写成通顺段落',
   },
+  {
+    key: 'pm_chat',
+    title: '产品经理模型',
+    description: '产品经理分身对话使用的模型，理解需求并套用方法论框架给出建议',
+  },
 ];
 
 const providerSettings = ref<ProviderSetting[]>([]);
@@ -116,6 +121,7 @@ const selectedModels = reactive<Record<DefaultModelCard['key'], string>>({
   translation: '',
   embedding: '',
   weekly_report_polish: '',
+  pm_chat: '',
 });
 
 const parameterForms = reactive<Record<DefaultModelCard['key'], ModelParameterForm>>({
@@ -124,6 +130,7 @@ const parameterForms = reactive<Record<DefaultModelCard['key'], ModelParameterFo
   translation: createDefaultParameterForm(),
   embedding: createDefaultParameterForm(),
   weekly_report_polish: createDefaultParameterForm(),
+  pm_chat: createDefaultParameterForm(),
 });
 
 const parameterDraft = ref<ModelParameterForm>(createDefaultParameterForm());

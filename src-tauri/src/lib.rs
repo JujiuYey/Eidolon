@@ -44,6 +44,17 @@ pub fn run() {
             commands::model_config::list_provider_models,
             commands::model_config::replace_provider_models,
             commands::model_config::delete_provider_models,
+            // PM (产品经理分身) commands
+            commands::pm::list_pm_conversations,
+            commands::pm::create_pm_conversation,
+            commands::pm::rename_pm_conversation,
+            commands::pm::delete_pm_conversation,
+            commands::pm::list_pm_conversation_messages,
+            commands::pm::send_pm_message,
+            commands::pm::list_pm_skills,
+            commands::pm::get_pm_skill_content,
+            commands::pm::get_pm_settings,
+            commands::pm::upsert_pm_settings,
             // Test connection command
             commands::test_connection::test_ai_connection,
             // API client commands

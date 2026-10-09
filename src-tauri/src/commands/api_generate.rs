@@ -56,8 +56,8 @@ pub(crate) struct GenerationTarget {
     pub(crate) api_key: String,
     pub(crate) base_url: String,
     provider_id: String,
-    temperature: Option<f64>,
-    max_tokens: Option<u64>,
+    pub(crate) temperature: Option<f64>,
+    pub(crate) max_tokens: Option<u64>,
 }
 
 impl GenerationTarget {
