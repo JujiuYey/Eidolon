@@ -1,16 +1,13 @@
 <script setup lang="ts">
 import type { ZentaoBug } from '@/types/zentao';
 import { computed } from 'vue';
+import { Bug, CalendarClock } from 'lucide-vue-next';
 import { Badge } from '@/components/ui/badge';
 import {
   bugStatusLabel,
-  bugStatusVariant,
   formatIsoDateTime,
-  priLabel,
-  priVariant,
   resolutionLabel,
   severityLabel,
-  severityVariant,
   sortBugs,
 } from '../utils/display';
 
@@ -19,51 +16,90 @@ const props = defineProps<{
 }>();
 
 const sorted = computed(() => sortBugs(props.bugs));
+
+/** 严重级别 → 卡片左缘色条颜色（S1 红 / S2 橙 / S3 蓝 / 其余灰） */
+function severityBarClass(severity: number): string {
+  if (severity <= 1) {
+    return 'bg-destructive';
+  }
+  if (severity === 2) {
+    return 'bg-orange-500';
+  }
+  if (severity === 3) {
+    return 'bg-sky-500';
+  }
+  return 'bg-muted-foreground/40';
+}
 </script>
 
 <template>
-  <div class="flex flex-col divide-y">
-    <div
+  <div class="grid gap-3 md:grid-cols-2">
+    <article
       v-for="bug of sorted"
       :key="bug.id"
-      class="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 py-3 transition-colors hover:bg-muted/50"
+      class="group relative overflow-hidden rounded-lg border bg-card p-4 pl-5 transition-colors hover:border-ring/40 hover:bg-muted/30"
     >
-      <Badge :variant="severityVariant(bug.severity)">
-        {{ severityLabel(bug.severity) }}
-      </Badge>
-
-      <div class="min-w-0 flex-1">
-        <p class="truncate text-sm font-medium">
-          {{ bug.title }}
-        </p>
-        <p class="truncate text-xs text-muted-foreground">
-          {{ bug.execution_name }}<template v-if="bug.opened_by.realname">
-            · {{ bug.opened_by.realname }} 提交于 {{ formatIsoDateTime(bug.opened_date) }}
-          </template>
-        </p>
-      </div>
-
+      <!-- 严重级别色条 -->
       <span
-        v-if="bug.resolution"
-        class="text-xs text-muted-foreground"
-      >
-        {{ resolutionLabel(bug.resolution) }}
-      </span>
+        class="absolute inset-y-0 left-0 w-1.5"
+        :class="severityBarClass(bug.severity)"
+        aria-hidden="true"
+      />
 
-      <div
-        v-if="bug.deadline"
-        class="text-xs tabular-nums text-muted-foreground"
-      >
-        {{ bug.deadline }}
+      <div class="flex items-start justify-between gap-3">
+        <h3 class="line-clamp-2 min-w-0 text-sm leading-6 font-medium">
+          <Bug
+            class="mr-1.5 inline-block size-4 shrink-0 align-[-2px]"
+            :class="bug.status === 'active' ? 'text-destructive' : 'text-muted-foreground'"
+          />
+          {{ bug.title }}
+        </h3>
+        <Badge
+          variant="secondary"
+          class="shrink-0"
+        >
+          {{ severityLabel(bug.severity) }}
+        </Badge>
       </div>
 
-      <Badge :variant="priVariant(bug.pri)">
-        {{ priLabel(bug.pri) }}
-      </Badge>
+      <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        <Badge
+          :variant="bug.status === 'active' ? 'destructive' : 'outline'"
+          class="h-5 px-1.5 text-[11px]"
+        >
+          {{ bugStatusLabel(bug.status) }}
+        </Badge>
 
-      <Badge :variant="bugStatusVariant(bug.status)">
-        {{ bugStatusLabel(bug.status) }}
-      </Badge>
-    </div>
+        <span
+          v-if="bug.resolution"
+          class="inline-flex items-center gap-1"
+        >
+          已处理：{{ resolutionLabel(bug.resolution) }}
+        </span>
+
+        <span
+          v-if="bug.deadline"
+          class="inline-flex items-center gap-1 tabular-nums"
+        >
+          <CalendarClock class="size-3.5" />
+          {{ bug.deadline }}
+        </span>
+      </div>
+
+      <footer
+        v-if="bug.execution_name || bug.opened_by.realname"
+        class="mt-3 border-t pt-2.5 text-xs text-muted-foreground"
+      >
+        <template v-if="bug.execution_name">
+          {{ bug.execution_name }}
+        </template>
+        <template v-if="bug.execution_name && bug.opened_by.realname">
+          ·
+        </template>
+        <template v-if="bug.opened_by.realname">
+          {{ bug.opened_by.realname }} 提交于 {{ formatIsoDateTime(bug.opened_date) }}
+        </template>
+      </footer>
+    </article>
   </div>
 </template>

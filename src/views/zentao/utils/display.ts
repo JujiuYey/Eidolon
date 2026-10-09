@@ -5,9 +5,6 @@
  */
 
 import type { ZentaoBug, ZentaoTask } from '@/types/zentao';
-import type { BadgeVariants } from '@/components/ui/badge';
-
-export type BadgeVariant = NonNullable<BadgeVariants['variant']>;
 
 /** 任务状态 → 中文文案 */
 export const TASK_STATUS_LABELS: Record<string, string> = {
@@ -56,44 +53,9 @@ export function priLabel(pri: number): string {
   return pri > 0 ? `P${pri}` : '-';
 }
 
-export function priVariant(pri: number): BadgeVariant {
-  if (pri <= 1) {
-    return 'destructive';
-  }
-  if (pri === 2) {
-    return 'default';
-  }
-  if (pri === 3) {
-    return 'secondary';
-  }
-  return 'outline';
-}
-
 /** 严重级别：1 最严重 */
 export function severityLabel(severity: number): string {
   return severity > 0 ? `S${severity}` : '-';
-}
-
-export function severityVariant(severity: number): BadgeVariant {
-  if (severity <= 1) {
-    return 'destructive';
-  }
-  if (severity === 2) {
-    return 'default';
-  }
-  if (severity === 3) {
-    return 'secondary';
-  }
-  return 'outline';
-}
-
-/** 状态徽章样式：进行中/激活高亮，其余弱化 */
-export function taskStatusVariant(status: string): BadgeVariant {
-  return status === 'doing' ? 'default' : 'secondary';
-}
-
-export function bugStatusVariant(status: string): BadgeVariant {
-  return status === 'active' ? 'destructive' : 'secondary';
 }
 
 /** deadline 形如 2026-09-18；早于今天视为逾期（仅对未完成任务调用） */

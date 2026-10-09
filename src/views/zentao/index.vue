@@ -1,33 +1,38 @@
 <script setup lang="ts">
-import type { ZentaoAccount } from '@/types/zentao';
-import { computed, onMounted, ref } from 'vue';
-import { ListTodo, Plus, RefreshCw, Settings2 } from 'lucide-vue-next';
+import { computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import {
+  Bug as BugIcon,
+  CircleDotDashed,
+  CloudOff,
+  ListTodo,
+  RefreshCw,
+  Settings,
+} from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
-import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useConfirm } from '@/composables/use-confirm';
 import { useZentaoStore } from '@/stores/zentao';
 import { getErrorMessage } from '@/utils/helpers';
-import AccountDialog from './_components/account-dialog.vue';
 import BugList from './_components/bug-list.vue';
 import TaskList from './_components/task-list.vue';
 import { formatTimestamp, sortBugs, sortTasks } from './utils/display';
 
 const store = useZentaoStore();
-const confirm = useConfirm();
+const router = useRouter();
 
-const dialogOpen = ref(false);
-const editingAccount = ref<ZentaoAccount | null>(null);
-
-const taskCount = computed(() => store.myWork?.tasks.length ?? 0);
-const bugCount = computed(() => store.myWork?.bugs.length ?? 0);
+const tasks = computed(() => store.myWork?.tasks ?? []);
+const bugs = computed(() => store.myWork?.bugs ?? []);
+const doingCount = computed(() => tasks.value.filter(task => task.status === 'doing').length);
 const hasAccount = computed(() => store.accounts.length > 0);
 
-const sortedTasks = computed(() => sortTasks(store.myWork?.tasks ?? []));
-const sortedBugs = computed(() => sortBugs(store.myWork?.bugs ?? []));
+const sortedTasks = computed(() => sortTasks(tasks.value));
+const sortedBugs = computed(() => sortBugs(bugs.value));
 
 onMounted(async () => {
   try {
@@ -50,9 +55,7 @@ async function refreshWork(notify = true) {
     toast.warning(warning);
   }
   if (notify) {
-    toast.success(
-      `已刷新：${store.myWork?.tasks.length ?? 0} 个任务、${store.myWork?.bugs.length ?? 0} 个 Bug`,
-    );
+    toast.success(`已刷新：${tasks.value.length} 个任务、${bugs.value.length} 个 Bug`);
   }
 }
 
@@ -64,31 +67,22 @@ function handleAccountChange(value: unknown) {
   void refreshWork(false);
 }
 
-function openCreateDialog() {
-  editingAccount.value = null;
-  dialogOpen.value = true;
-}
-
-function openEditDialog() {
-  editingAccount.value = store.activeAccount;
-  dialogOpen.value = true;
+/** 账户管理统一在应用设置，功能页只负责选择 */
+function goSettings() {
+  router.push('/app-setting');
 }
 </script>
 
 <template>
   <div class="flex h-full flex-col overflow-y-auto">
-    <header class="flex items-center gap-3 px-6 pt-6">
-      <h1 class="text-lg font-semibold">
-        禅道任务
-      </h1>
-      <p
-        v-if="store.myWork"
-        class="text-xs text-muted-foreground"
-      >
-        更新于 {{ formatTimestamp(store.myWork.fetched_at) }}
-      </p>
-
-      <div class="ml-auto flex items-center gap-2">
+    <SagPageHeader
+      class="px-6 pt-6"
+      title="禅道"
+    >
+      <template #meta>
+        <span v-if="store.myWork">更新于 {{ formatTimestamp(store.myWork.fetched_at) }}</span>
+      </template>
+      <template #actions>
         <template v-if="hasAccount">
           <Select
             :model-value="store.activeAccountId"
@@ -109,41 +103,29 @@ function openEditDialog() {
           </Select>
 
           <Button
-            variant="outline"
             size="sm"
             :disabled="store.workLoading || !store.activeAccountId"
-            @click="openEditDialog"
+            @click="refreshWork()"
           >
-            <Settings2 class="mr-1 h-4 w-4" />
-            编辑账户
+            <RefreshCw
+              class="mr-1 h-4 w-4"
+              :class="store.workLoading && 'animate-spin'"
+            />
+            {{ store.workLoading ? '拉取中…' : '刷新' }}
           </Button>
         </template>
 
         <Button
+          v-else
           variant="outline"
           size="sm"
-          @click="openCreateDialog"
+          @click="goSettings"
         >
-          <Plus class="mr-1 h-4 w-4" />
-          新建账户
+          <Settings class="mr-1 h-4 w-4" />
+          去设置添加账户
         </Button>
-
-        <Button
-          v-if="hasAccount"
-          size="sm"
-          :disabled="store.workLoading || !store.activeAccountId"
-          @click="refreshWork()"
-        >
-          <RefreshCw
-            class="mr-1 h-4 w-4"
-            :class="store.workLoading && 'animate-spin'"
-          />
-          {{ store.workLoading ? '拉取中…' : '刷新' }}
-        </Button>
-      </div>
-    </header>
-
-    <Separator class="mt-4" />
+      </template>
+    </SagPageHeader>
 
     <!-- 未配置账户的空状态 -->
     <div
@@ -158,94 +140,175 @@ function openEditDialog() {
           还没有配置禅道账户
         </p>
         <p class="max-w-sm text-xs text-muted-foreground">
-          填写禅道站点地址与登录账号，即可在这里直接查看名下的任务与 Bug，无需打开禅道网页。
+          在应用设置中添加禅道站点与登录账号后，即可在这里查看名下的任务与 Bug。
         </p>
       </div>
       <Button
         size="sm"
-        @click="openCreateDialog"
+        @click="goSettings"
       >
-        <Plus class="mr-1 h-4 w-4" />
-        配置禅道账户
+        <Settings class="mr-1 h-4 w-4" />
+        前往应用设置
       </Button>
     </div>
 
-    <!-- 主内容 -->
-    <Tabs
-      v-else
-      default-value="tasks"
-      class="flex flex-1 flex-col px-6 pb-6"
-    >
-      <TabsList class="w-fit">
-        <TabsTrigger value="tasks">
-          我的任务（{{ taskCount }}）
-        </TabsTrigger>
-        <TabsTrigger value="bugs">
-          我的 Bug（{{ bugCount }}）
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent
-        value="tasks"
-        class="mt-4"
+    <template v-else>
+      <!-- 统计卡 -->
+      <div
+        v-if="store.myWork"
+        class="grid grid-cols-3 gap-3 px-6 pt-4"
       >
+        <Card class="py-4">
+          <CardContent class="flex items-center gap-3 px-4">
+            <div class="flex size-9 items-center justify-center rounded-md bg-primary/10">
+              <ListTodo class="size-4.5 text-primary" />
+            </div>
+            <div>
+              <p class="text-xl leading-none font-semibold tabular-nums">
+                {{ tasks.length }}
+              </p>
+              <p class="mt-1 text-xs text-muted-foreground">
+                进行中任务
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card class="py-4">
+          <CardContent class="flex items-center gap-3 px-4">
+            <div class="flex size-9 items-center justify-center rounded-md bg-primary/10">
+              <CircleDotDashed class="size-4.5 text-primary" />
+            </div>
+            <div>
+              <p class="text-xl leading-none font-semibold tabular-nums">
+                {{ doingCount }}
+              </p>
+              <p class="mt-1 text-xs text-muted-foreground">
+                正在开发
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card class="py-4">
+          <CardContent class="flex items-center gap-3 px-4">
+            <div class="flex size-9 items-center justify-center rounded-md bg-destructive/10">
+              <BugIcon class="size-4.5 text-destructive" />
+            </div>
+            <div>
+              <p class="text-xl leading-none font-semibold tabular-nums">
+                {{ bugs.length }}
+              </p>
+              <p class="mt-1 text-xs text-muted-foreground">
+                未关闭 Bug
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Separator class="mt-5" />
+
+      <!-- 列表切换 + 内容 -->
+      <div class="flex-1 px-6 py-4">
+        <!-- 拉取失败：明确呈现错误与重试入口，而非伪装成空数据 -->
         <div
-          v-if="store.workLoading && !store.myWork"
-          class="py-16 text-center text-sm text-muted-foreground"
+          v-if="store.workError && !store.myWork"
+          class="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 py-20 text-center"
         >
-          正在从禅道拉取任务…
+          <CloudOff class="size-8 text-destructive/70" />
+          <div class="space-y-1">
+            <p class="text-sm font-medium">
+              禅道数据拉取失败
+            </p>
+            <p class="max-w-md text-xs leading-5 text-muted-foreground">
+              {{ store.workError }}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            :disabled="store.workLoading"
+            @click="refreshWork(false)"
+          >
+            <RefreshCw
+              class="mr-1 h-4 w-4"
+              :class="store.workLoading && 'animate-spin'"
+            />
+            重试
+          </Button>
         </div>
+
         <div
-          v-else-if="taskCount === 0"
-          class="py-16 text-center text-sm text-muted-foreground"
+          v-else-if="store.workLoading && !store.myWork"
+          class="flex flex-col items-center justify-center gap-2 py-20 text-muted-foreground"
         >
-          没有进行中的任务，休息一下吧。
+          <RefreshCw class="size-5 animate-spin" />
+          <p class="text-sm">
+            正在从禅道拉取数据…
+          </p>
         </div>
-        <TaskList
+
+        <Tabs
           v-else
-          :tasks="sortedTasks"
-        />
-      </TabsContent>
-
-      <TabsContent
-        value="bugs"
-        class="mt-4"
-      >
-        <div
-          v-if="store.workLoading && !store.myWork"
-          class="py-16 text-center text-sm text-muted-foreground"
+          default-value="tasks"
+          class="gap-4"
         >
-          正在从禅道拉取 Bug…
-        </div>
-        <div
-          v-else-if="bugCount === 0"
-          class="py-16 text-center text-sm text-muted-foreground"
-        >
-          没有未关闭的 Bug。
-        </div>
-        <BugList
-          v-else
-          :bugs="sortedBugs"
-        />
-      </TabsContent>
-    </Tabs>
+          <TabsList>
+            <TabsTrigger value="tasks">
+              我的任务
+              <Badge
+                v-if="tasks.length"
+                variant="secondary"
+                class="ml-1"
+              >
+                {{ tasks.length }}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="bugs">
+              我的 Bug
+              <Badge
+                v-if="bugs.length"
+                variant="secondary"
+                class="ml-1"
+              >
+                {{ bugs.length }}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
 
-    <!-- 删除账户走模块级 useConfirm 单例，此处负责渲染 -->
-    <ConfirmDialog
-      :open="confirm.state.open"
-      :title="confirm.state.title"
-      :description="confirm.state.description"
-      :confirm-label="confirm.state.confirmLabel"
-      :cancel-label="confirm.state.cancelLabel"
-      :destructive="confirm.state.destructive"
-      @update:open="confirm.onOpenChange"
-      @confirm="confirm.onConfirm"
-      @cancel="confirm.onCancel"
-    />
+          <TabsContent value="tasks">
+            <div
+              v-if="tasks.length === 0"
+              class="flex flex-col items-center justify-center gap-1 py-20 text-muted-foreground"
+            >
+              <p class="text-sm">
+                没有进行中的任务
+              </p>
+              <p class="text-xs">
+                休息一下吧
+              </p>
+            </div>
+            <TaskList
+              v-else
+              :tasks="sortedTasks"
+            />
+          </TabsContent>
 
-    <AccountDialog
-      v-model:open="dialogOpen"
-      :account="editingAccount"
-    />
+          <TabsContent value="bugs">
+            <div
+              v-if="bugs.length === 0"
+              class="flex flex-col items-center justify-center gap-1 py-20 text-muted-foreground"
+            >
+              <p class="text-sm">
+                没有未关闭的 Bug
+              </p>
+            </div>
+            <BugList
+              v-else
+              :bugs="sortedBugs"
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </template>
   </div>
 </template>
