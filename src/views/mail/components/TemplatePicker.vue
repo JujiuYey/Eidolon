@@ -19,17 +19,17 @@ const selectedTemplateId = defineModel<string>('selectedTemplateId', {
 </script>
 
 <template>
-  <ScrollArea class="flex h-[calc(100vh-56px)]">
-    <div class="flex flex-col gap-2 p-4 pt-0">
+  <ScrollArea class="min-h-0 flex-1">
+    <div class="flex flex-col gap-2 px-4 pb-4">
       <button
         type="button"
         :class="cn(
-          'flex flex-col items-start gap-1 rounded-lg border p-3 text-left text-sm transition-all hover:bg-accent',
-          selectedTemplateId === '' && 'bg-muted border-primary/40',
+          'flex flex-col items-start gap-1 rounded-lg border p-3 text-left text-sm outline-none transition-colors duration-150 hover:border-ring/40 hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring/50',
+          selectedTemplateId === '' && 'border-primary/40 bg-muted',
         )"
         @click="selectedTemplateId = ''"
       >
-        <div class="flex items-center gap-2 font-semibold">
+        <div class="flex items-center gap-2 font-medium">
           <FilePlus2 class="size-4 text-muted-foreground" />
           空白邮件
         </div>
@@ -43,15 +43,15 @@ const selectedTemplateId = defineModel<string>('selectedTemplateId', {
         :key="template.id"
         type="button"
         :class="cn(
-          'flex flex-col items-start gap-1 rounded-lg border p-3 text-left text-sm transition-all hover:bg-accent',
-          selectedTemplateId === template.id && 'bg-muted border-primary/40',
+          'flex flex-col items-start gap-1 rounded-lg border p-3 text-left text-sm outline-none transition-colors duration-150 hover:border-ring/40 hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring/50',
+          selectedTemplateId === template.id && 'border-primary/40 bg-muted',
         )"
         @click="selectedTemplateId = template.id"
       >
-        <div class="w-full truncate font-semibold">
+        <div class="w-full truncate font-medium">
           {{ template.name }}
         </div>
-        <div class="line-clamp-2 text-xs text-muted-foreground">
+        <div class="line-clamp-2 w-full text-xs text-muted-foreground">
           {{ template.subject || '（无主题）' }}
         </div>
       </button>

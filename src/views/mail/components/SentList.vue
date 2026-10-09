@@ -14,10 +14,6 @@ defineProps<SentListProps>();
 
 const selectedId = defineModel<string>('selectedId', { required: false });
 
-const styles = {
-  height: 'calc(100vh - 150px)',
-};
-
 function formatSentAt(timestamp: number) {
   if (!timestamp) {
     return '';
@@ -31,45 +27,35 @@ function previewText(email: SentEmail) {
 </script>
 
 <template>
-  <ScrollArea class="flex" :style="styles">
-    <div class="flex-1 flex flex-col gap-2 p-4 pt-0">
-      <TransitionGroup name="list" appear>
+  <ScrollArea class="min-h-0 flex-1">
+    <div class="flex flex-1 flex-col gap-2 px-4 pb-4">
+      <TransitionGroup name="list">
         <button
           v-for="item of items"
           :key="item.id"
           :class="cn(
-            'flex flex-col items-start gap-2 rounded-lg border p-3 text-left text-sm transition-all hover:bg-accent',
-            selectedId === item.id && 'bg-muted',
+            'flex flex-col items-start gap-1.5 rounded-lg border p-3 text-left text-sm outline-none transition-colors duration-150 hover:border-ring/40 hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring/50',
+            selectedId === item.id && 'border-primary/40 bg-muted',
           )"
           @click="selectedId = item.id"
         >
-          <div class="flex w-full flex-col gap-1">
-            <div class="flex w-full items-center gap-2">
-              <span
-                :class="cn(
-                  'flex h-2 w-2 shrink-0 rounded-full',
-                  item.status === 'sent' ? 'bg-emerald-500' : 'bg-red-500',
-                )"
-              />
-              <div class="min-w-0 flex-1 truncate font-semibold">
-                {{ item.subject || '（无主题）' }}
-              </div>
-              <div
-                :class="cn(
-                  'shrink-0 text-xs',
-                  selectedId === item.id ? 'text-foreground' : 'text-muted-foreground',
-                )"
-              >
-                {{ formatSentAt(item.sent_at) }}
-              </div>
-            </div>
-
-            <div class="truncate text-xs text-muted-foreground">
-              收件人：{{ item.to_addresses || '-' }}
-            </div>
+          <div class="flex w-full items-center gap-2">
+            <span
+              v-if="item.status === 'failed'"
+              class="size-2 shrink-0 rounded-full bg-destructive"
+              aria-hidden="true"
+            />
+            <span class="min-w-0 flex-1 truncate font-medium">{{ item.subject || '（无主题）' }}</span>
+            <span class="shrink-0 text-xs text-muted-foreground">
+              {{ formatSentAt(item.sent_at) }}
+            </span>
           </div>
 
-          <div class="line-clamp-2 text-xs text-muted-foreground">
+          <div class="w-full truncate text-xs text-muted-foreground">
+            收件人：{{ item.to_addresses || '-' }}
+          </div>
+
+          <div class="line-clamp-2 w-full text-xs text-muted-foreground">
             {{ previewText(item) }}
           </div>
 
@@ -93,19 +79,25 @@ function previewText(email: SentEmail) {
 </template>
 
 <style scoped>
-.list-move,
-.list-enter-active,
-.list-leave-active {
-  transition: all 0.5s ease;
+.list-move {
+  transition: transform 200ms ease-out;
 }
 
-.list-enter-from,
+.list-enter-active {
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+.list-leave-active {
+  transition: opacity 150ms ease-in;
+  position: absolute;
+}
+
+.list-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
 .list-leave-to {
   opacity: 0;
-  transform: translateY(15px);
-}
-
-.list-leave-active {
-  position: absolute;
 }
 </style>

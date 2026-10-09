@@ -3,22 +3,24 @@ import { refDebounced } from '@vueuse/core';
 import { Search } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/components/ui/resizable';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
-import { TooltipProvider } from '@/components/ui/tooltip';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMailStore } from '@/stores/mail';
 import type { SentEmail } from '@/types/mail';
-import AccountSwitcher from './AccountSwitcher.vue';
 import ComposePanel from './ComposePanel.vue';
-import Nav from './Nav.vue';
-import type { LinkProp } from './Nav.vue';
 import SentDisplay from './SentDisplay.vue';
 import SentList from './SentList.vue';
 import TemplateManagerDialog from './TemplateManagerDialog.vue';
@@ -27,7 +29,6 @@ import TemplatePicker from './TemplatePicker.vue';
 const store = useMailStore();
 const router = useRouter();
 
-const isCollapsed = ref(false);
 const templateManagerOpen = ref(false);
 const searchValue = ref('');
 const debouncedSearch = refDebounced(searchValue, 250);
@@ -46,41 +47,22 @@ const filteredSentList = computed(() => {
   );
 });
 
-const navLinks = computed<LinkProp[]>(() => [
-  {
-    title: '写信',
-    icon: 'lucide:pen-line',
-    variant: store.viewMode === 'compose' ? 'default' : 'ghost',
-    onSelect: () => {
-      store.viewMode = 'compose';
-    },
-  },
-  {
-    title: '已发送',
-    icon: 'lucide:send',
-    label: store.sentEmails.length > 0 ? String(store.sentEmails.length) : '',
-    variant: store.viewMode === 'sent' ? 'default' : 'ghost',
-    onSelect: () => {
-      store.viewMode = 'sent';
-    },
-  },
-  {
-    title: '模板管理',
-    icon: 'lucide:layout-template',
-    variant: 'ghost',
-    onSelect: () => {
-      templateManagerOpen.value = true;
-    },
-  },
-  {
-    title: '管理账户',
-    icon: 'lucide:settings',
-    variant: 'ghost',
-    onSelect: () => {
-      router.push('/app-setting');
-    },
-  },
-]);
+function handleAccountChange(value: unknown) {
+  if (typeof value === 'string') {
+    store.selectedAccountId = value;
+  }
+}
+
+function handleViewChange(value: string | number) {
+  if (value === 'compose' || value === 'sent') {
+    store.viewMode = value;
+  }
+}
+
+/** 账户管理统一在应用设置，写信页只负责选择 */
+function goSettings() {
+  router.push('/app-setting');
+}
 
 function handleResend() {
   const mail = store.selectedSentEmail;
@@ -91,81 +73,102 @@ function handleResend() {
 </script>
 
 <template>
-  <TooltipProvider :delay-duration="0">
+  <div class="flex h-full flex-col">
+    <header class="flex shrink-0 items-center gap-3 px-6 pt-6">
+      <h1 class="text-lg leading-none font-semibold">
+        邮件
+      </h1>
+
+      <div class="ml-auto flex items-center gap-2">
+        <Select
+          v-if="store.accounts.length > 0"
+          :model-value="store.selectedAccountId"
+          @update:model-value="handleAccountChange"
+        >
+          <SelectTrigger class="w-56">
+            <SelectValue placeholder="选择发件账户" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem
+              v-for="account of store.accounts"
+              :key="account.id"
+              :value="account.id"
+            >
+              {{ account.name }}（{{ account.email }}）
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <button
+          v-else
+          type="button"
+          class="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          @click="goSettings"
+        >
+          请先在设置中配置发件账户
+        </button>
+
+        <Tabs
+          :model-value="store.viewMode"
+          @update:model-value="handleViewChange"
+        >
+          <TabsList>
+            <TabsTrigger value="compose">
+              写信
+            </TabsTrigger>
+            <TabsTrigger value="sent">
+              已发送
+              <span
+                v-if="store.sentEmails.length > 0"
+                class="ml-1 text-xs text-muted-foreground tabular-nums"
+              >
+                {{ store.sentEmails.length }}
+              </span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+    </header>
+
+    <Separator class="mx-6 mt-4 shrink-0" />
+
     <ResizablePanelGroup
       id="mail-panel-group"
       direction="horizontal"
-      class="h-full items-stretch"
+      class="min-h-0 flex-1"
     >
+      <!-- 左栏：写信时选模板，已发送时列历史 -->
       <ResizablePanel
-        id="mail-nav-panel"
-        :default-size="20"
-        :collapsed-size="6"
-        collapsible
-        :min-size="12"
-        :max-size="20"
-        :class="cn(isCollapsed && 'min-w-[50px] transition-all duration-300 ease-in-out')"
-        @collapse="isCollapsed = true"
-        @expand="isCollapsed = false"
+        id="mail-list-panel"
+        class="flex h-full min-h-0 flex-col"
+        :default-size="34"
+        :min-size="25"
       >
-        <div class="flex flex-col gap-2 p-2">
-          <AccountSwitcher
-            v-model:selected-account-id="store.selectedAccountId"
-            :is-collapsed="isCollapsed"
-            :accounts="store.accounts"
-          />
-        </div>
-        <Separator />
-        <Nav
-          :is-collapsed="isCollapsed"
-          :links="navLinks"
+        <TemplatePicker
+          v-if="store.viewMode === 'compose'"
+          v-model:selected-template-id="store.selectedTemplateId"
+          class="min-h-0 flex-1"
+          :templates="store.templates"
+          @manage="templateManagerOpen = true"
         />
-      </ResizablePanel>
-      <ResizableHandle id="mail-nav-handle" with-handle />
 
-      <!-- 中栏：写信时选模板，已发送时列历史 -->
-      <ResizablePanel id="mail-list-panel" :default-size="30" :min-size="25">
-        <template v-if="store.viewMode === 'compose'">
-          <div class="flex items-center px-4 py-3.5">
-            <h1 class="text-xl font-bold">
-              写信
-            </h1>
+        <template v-else>
+          <div class="shrink-0 px-4 pt-4 pb-3">
+            <div class="relative">
+              <Search class="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
+              <Input v-model="searchValue" placeholder="搜索主题、收件人或正文" class="pl-8" />
+            </div>
           </div>
-          <Separator />
-          <TemplatePicker
-            v-model:selected-template-id="store.selectedTemplateId"
-            :templates="store.templates"
-            @manage="templateManagerOpen = true"
+          <SentList
+            v-model:selected-id="store.selectedSentEmailId"
+            class="min-h-0 flex-1"
+            :items="filteredSentList"
           />
         </template>
-
-        <Tabs
-          v-else
-          default-value="all"
-        >
-          <div class="flex items-center px-4 py-2">
-            <h1 class="text-xl font-bold">
-              已发送
-            </h1>
-          </div>
-          <Separator />
-          <div class="bg-background/95 p-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <form>
-              <div class="relative">
-                <Search class="absolute left-2 top-2.5 size-4 text-muted-foreground" />
-                <Input v-model="searchValue" placeholder="搜索主题、收件人或正文" class="pl-8" />
-              </div>
-            </form>
-          </div>
-          <TabsContent value="all" class="m-0">
-            <SentList v-model:selected-id="store.selectedSentEmailId" :items="filteredSentList" />
-          </TabsContent>
-        </Tabs>
       </ResizablePanel>
       <ResizableHandle id="mail-display-handle" with-handle />
 
       <!-- 右栏：写信表单或发送详情 -->
-      <ResizablePanel id="mail-display-panel" :default-size="50">
+      <ResizablePanel id="mail-display-panel" :default-size="66">
         <ComposePanel v-if="store.viewMode === 'compose'" />
         <SentDisplay
           v-else
@@ -174,7 +177,7 @@ function handleResend() {
         />
       </ResizablePanel>
     </ResizablePanelGroup>
-  </TooltipProvider>
 
-  <TemplateManagerDialog v-model:open="templateManagerOpen" />
+    <TemplateManagerDialog v-model:open="templateManagerOpen" />
+  </div>
 </template>
