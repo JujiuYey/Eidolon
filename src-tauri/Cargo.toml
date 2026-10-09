@@ -33,7 +33,6 @@ sha2 = "0.10"
 hex = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 schemars = "1"
-tera = "1.20"
 nanoid = "0.4"
 tempfile = "3.14"
 rmcp = { version = "0.16.0", features = ["client", "macros", "transport-child-process", "transport-streamable-http-client-reqwest"] }

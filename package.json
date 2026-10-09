@@ -10,7 +10,6 @@
     "tauri": "tauri",
     "lint:eslint": "eslint \"src/**/*.{vue,ts,tsx}\" --fix --cache --cache-location node_modules/.cache/eslint/",
     "lint:ui": "eslint \"src/components/ui/**/*.{vue,ts,tsx}\" --fix --cache --cache-location node_modules/.cache/eslint/",
-    "lint:ui2": "eslint \"src/components/ai-elements/**/*.{vue,ts,tsx}\" --fix --cache --cache-location node_modules/.cache/eslint/",
     "lint:lint-staged": "lint-staged",
     "test": "vitest run"
   },

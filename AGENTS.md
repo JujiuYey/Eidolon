@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-Eidolon is a **Tauri 2 + Vue 3 desktop client** (product name "Eidolon", bundle id `dev.eidolon.app`, version `0.1.0`) that ships a chat-driven agent workspace, a Postman-like API client, CRUD code generation (Go backend + frontend), and AI provider / MCP configuration.
+Eidolon is a **Tauri 2 + Vue 3 desktop client** (product name "Eidolon", bundle id `dev.eidolon.app`, version `0.1.0`) that ships mail template sending, weekly reports, ZenTao integration, a Postman-like API client, and AI provider / MCP configuration. (The chat-driven agent workspace was removed from the frontend in 2026-10; its design is archived in `docs/agent-design.md`, backend commands remain.)
 
 - Frontend: Vue 3.5 SFC, Vite 7, TypeScript 5.8, Pinia 3 (with `pinia-plugin-persistedstate`), vue-router 4.
 - Backend: Rust crate `app_lib` exposing Tauri commands; SQLite (bundled) for persistence; HTTP via `reqwest` (rustls + http2 + stream + system-proxy); LLM/MCP via `rig-core` + `rmcp`.
@@ -23,20 +23,17 @@ View (Vue SFC)  →  Store (Pinia, setup-style)  →  Service (TS)  →  Tauri C
 
 - **UI layer**: `<script setup lang="ts">` everywhere; shared layout is `src/layout/index.vue` (`SidebarProvider` + `AppSidebar` + `<RouterView/>`); toast notifications come from `vue-sonner` mounted in `src/App.vue`.
 - **Store layer**: Pinia setup stores in `src/stores/`. `useApiClientStore` is a 1kLoC factory (`createApiClientStore(options?)`) that accepts an injectable service surface so it can be tested without Tauri. State machines for execution and AI generation live here with their own `AbortController`s.
-- **Service layer**: `src/services/**` is the **only** place that calls `@tauri-apps/api/core::invoke<T>(cmd, args)`. Mappers (`services/api-client/mappers.ts`, inline in `agent-conversation.ts`) translate between Tauri snake_case DTOs and frontend camelCase types.
+- **Service layer**: `src/services/**` is the **only** place that calls `@tauri-apps/api/core::invoke<T>(cmd, args)`. Mappers (`services/api-client/mappers.ts`) translate between Tauri snake_case DTOs and frontend camelCase types.
 - **IPC / Tauri**: Tauri 2 commands; payloads use **snake_case**; responses are either passed through or mapped. Cancellation: store creates `AbortController` + `executionId` / `taskId`, fires `service.cancelApiRequest(id)` (best-effort).
-- **Persistence**: Only `useAppStore.settings` (`theme` + `themeColor`) is persisted via `pinia-plugin-persistedstate` under key `eidolon-app-settings`. Conversations live in Tauri/SQLite; legacy localStorage conversation data is migrated once by `services/agent-profile-storage.ts`.
+- **Persistence**: Only `useAppStore.settings` (`theme` + `themeColor`) is persisted via `pinia-plugin-persistedstate` under key `eidolon-app-settings`. Feature data lives in Tauri: SQLite (bundled, `db/migrations/`) for api-client / email / weekly-report / zentao; JSON files via `db/local_store.rs::LocalJsonStore` for agent profiles/conversations (removed frontend, see `docs/agent-design.md`), provider settings, MCP services, and default-model settings.
 
 Key modules (frontend ↔ backend):
 
 | Frontend module                                | Backend command(s)                                       |
 |------------------------------------------------|----------------------------------------------------------|
-| `src/services/api-client/*`                    | `commands/api_client.rs`, `api_request.rs`, `api_generate.rs`, `codegen.rs`, `test_connection.rs` |
-| `src/services/agent-conversation.ts`           | `commands/agent_conversation.rs`                         |
-| `src/services/agent-profile-storage.ts`        | `commands/agent_profile.rs`                              |
+| `src/services/api-client/*`                    | `commands/api_client.rs`, `api_request.rs`, `api_generate.rs`, `test_connection.rs` |
 | `src/services/provider_config.ts`              | `commands/model_config.rs`, `default_model.rs`, `test_connection.rs` |
 | `src/services/mcp_service.ts`                  | `commands/mcp_service.rs`, `services/mcp_service.rs`     |
-| `src/services/codegen.ts`                      | `commands/codegen.rs`, `services/codegen/*`              |
 | `src/services/project-files.ts`                | `commands/app_paths.rs`, `services/work_directory.rs`    |
 
 ---
@@ -47,36 +44,33 @@ Key modules (frontend ↔ backend):
 |-----------------------------------|----------------------------------------------------------------------------------------------|
 | `src/main.ts`                     | App entry: creates the Vue app, installs Pinia + router, mounts `#app`.                      |
 | `src/App.vue`                     | Root component: `<RouterView/>` + `<Toaster/>` from vue-sonner.                              |
-| `src/router/index.ts`             | Routes (see "Routing" below); `/` → `/agent`.                                                |
-| `src/layout/`                     | App shell: `index.vue` + `app-sidebar/{logo,menu,recent-conversations,footer}`.              |
+| `src/router/index.ts`             | Routes (see "Routing" below); `/` → `/mail`.                                                 |
+| `src/layout/`                     | App shell: `index.vue` + `app-sidebar/{logo,menu,footer}`.                                    |
 | `src/views/`                      | Feature pages (one folder per route). Co-located `components/`, `__tests__/`, `utils/`.      |
-| `src/stores/`                     | Pinia setup stores. `api-client.ts` is the largest; `agent-workspace.ts`; `app.ts`.           |
+| `src/stores/`                     | Pinia setup stores. `api-client.ts` is the largest; `mail.ts`, `weekly-report.ts`, `zentao.ts`, `app.ts`. |
 | `src/services/`                   | ONLY place that calls `invoke()`. Sub-folders per feature (`api-client/`, …).                |
 | `src/composables/`                | Auto-imported hooks (`useConfirm`, `useTheme`, `useAppPaths`).                               |
-| `src/components/`                 | `ui/*` (shadcn-vue), `ai-elements/*` (registry copy), `sag/*` (in-house), `ConfirmDialog.vue`.|
+| `src/components/`                 | `ui/*` (shadcn-vue), `sag/*` (in-house), `ConfirmDialog.vue`.                                |
 | `src/types/`                      | Hand-written DTOs + generated `auto-import.d.ts`, `auto-import-components.d.ts`.             |
 | `src/enum/`                       | Enums auto-imported by `unplugin-auto-import`.                                               |
 | `src/utils/`, `src/lib/`          | Pure helpers (`theme`, `crypto`, `helpers`, `cn()` in `lib/utils.ts`).                       |
 | `src/config/provider-registry.ts` | Static `PROVIDER_REGISTRY` (minimax, volcengine, deepseek, ollama).                           |
 | `src-tauri/src/commands/`         | One file per command family; surfaced through `tauri::generate_handler!` in `lib.rs`.        |
-| `src-tauri/src/services/`         | Backend business logic (HTTP, codegen, MCP, work directory).                                 |
+| `src-tauri/src/services/`         | Backend business logic (HTTP, email, weekly report, zentao, MCP, work directory).           |
 | `src-tauri/src/db/`               | SQLite via `rusqlite` + `repositories/` + SQL migrations under `db/migrations/`.             |
 | `src-tauri/src/models/`           | Rust DTOs (snake_case). Frontend mirrors them in `src/types/` + `services/api-client/types.ts`. |
-| `src-tauri/templates/`            | Tera templates used by Rust codegen (not user-runnable).                                     |
 | `src-tauri/capabilities/default.json` | Tauri 2 permissions for the default window.                                              |
-| `docs/`                           | Design + plan docs (`api-client-design.md`, `api-client-implementation-plan.md`).            |
+| `docs/`                           | Design + plan docs (`api-client-design.md`, `agent-design.md` for the removed agent feature). |
 
 Routing (frontend):
 
 | Path                              | View                                  |
 |-----------------------------------|---------------------------------------|
-| `/agent`                          | `views/agent/index.vue` (profile list)|
-| `/agent/new`                      | `views/agent/create.vue`              |
-| `/agent/:id/edit`                 | `views/agent/edit.vue`                |
-| `/agent/:id`                      | redirect → `/agent/workspace?agent=<id>` |
-| `/agent/workspace`                | `views/workspace/index.vue`           |
-| `/index`                          | `views/mail/index.vue` (sample view)  |
-| `/codegen`                        | `views/codegen/index.vue`             |
+| `/`                               | redirect → `/mail`                    |
+| `/mail`                           | `views/mail/index.vue`                |
+| `/index`                          | redirect → `/mail` (legacy mail demo path) |
+| `/weekly-report`                  | `views/weekly-report/index.vue`       |
+| `/zentao`                         | `views/zentao/index.vue`              |
 | `/api-client`                     | `views/api-project/index.vue`         |
 | `/api-client/projects/:id`        | `views/api-client-workspace/index.vue` (name `api-client-project`) |
 | `/app-setting`                    | `views/app-setting/index.vue`         |
@@ -98,7 +92,6 @@ pnpm test                   # vitest run (one-shot, node env)
 pnpm exec vitest            # watch mode
 pnpm lint:eslint            # eslint "src/**/*.{vue,ts,tsx}" --fix (ESLint cache → node_modules/.cache/eslint/)
 pnpm lint:ui                # eslint src/components/ui/**/*.{vue,ts,tsx} --fix (shadcn-vue generated)
-pnpm lint:ui2               # eslint src/components/ai-elements/**/*.{vue,ts,tsx} --fix
 pnpm lint:lint-staged       # runs lint-staged (pre-commit hook wiring)
 ```
 
@@ -150,7 +143,6 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 **Async / cancellation**
 
 - Stores own `AbortController`s for execution and AI generation; pass an `executionId` / `taskId` to the backend cancel command on user cancel.
-- Conversational request id (`conversationRequestId` in `useAgentWorkspaceStore`) invalidates stale loads when the active conversation changes.
 
 **Auto-imports** (`unplugin-auto-import`, `unplugin-vue-components`)
 
@@ -180,11 +172,8 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 | Global confirm                  | `src/composables/use-confirm.ts`, `src/components/ConfirmDialog.vue` |
 | Settings store (persisted)      | `src/stores/app.ts`                                             |
 | API client store (factory)      | `src/stores/api-client.ts`                                      |
-| Agent workspace store           | `src/stores/agent-workspace.ts`                                 |
 | API client services             | `src/services/api-client/{projects,groups,requests,environments,history,execution,ai,types,mappers,index}.ts` |
-| Agent services                  | `src/services/{agent-conversation,agent-profile-storage}.ts`    |
 | Provider / MCP services         | `src/services/{provider_config,mcp_service,default_model}.ts`   |
-| Codegen service                 | `src/services/codegen.ts`                                       |
 | Pure API-client helpers         | `src/views/api-client/utils/{request,response,ai}-helpers.ts`   |
 | API client DTOs                 | `src/types/api-client/index.ts`                                 |
 | Provider registry               | `src/config/provider-registry.ts`                               |
@@ -193,7 +182,7 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 | Rust entry / lib                | `src-tauri/src/main.rs`, `src-tauri/src/lib.rs`                 |
 | Tauri commands                  | `src-tauri/src/commands/*.rs`                                   |
 | Tauri capabilities              | `src-tauri/capabilities/default.json`                           |
-| Design docs                     | `docs/api-client-design.md`, `docs/api-client-implementation-plan.md` |
+| Design docs                     | `docs/api-client-design.md`, `docs/api-client-implementation-plan.md`, `docs/agent-design.md` |
 
 ---
 
@@ -220,10 +209,13 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 **Locations** (enforced glob `src/**/__tests__/**/*.test.ts`):
 
 - `src/composables/__tests__/use-confirm.test.ts`
+- `src/stores/__tests__/mail.test.ts`
 - `src/views/api-client/__tests__/store.test.ts`
-- `src/views/api-client/utils/__tests__/request-helpers.test.ts`
-- `src/views/api-client/utils/__tests__/response-helpers.test.ts`
-- `src/views/api-client/utils/__tests__/ai-helpers.test.ts`
+- `src/views/api-client/utils/__tests__/{request,response,ai}-helpers.test.ts`
+- `src/views/api-client-workspace/components/__tests__/build-group-tree.test.ts`
+- `src/views/mail/utils/__tests__/template-helpers.test.ts`
+- `src/views/weekly-report/utils/__tests__/report-helpers.test.ts`
+- `src/views/zentao/utils/__tests__/display.test.ts`
 
 **Rules** (project-wide):
 
@@ -241,7 +233,7 @@ pnpm test                   # one-shot vitest
 pnpm lint:eslint            # lint src/**
 ```
 
-**Manual verification surface** (no browser harness wired up): launch `pnpm tauri dev`, exercise the changed flow in the native window, and confirm behavior. The API client, agent workspace, codegen, and provider settings are all visible there.
+**Manual verification surface** (no browser harness wired up): launch `pnpm tauri dev`, exercise the changed flow in the native window, and confirm behavior. The API client, mail, weekly report, ZenTao, and app settings are all visible there.
 
 **Coverage**: not measured. Add `@vitest/coverage-v8` if a coverage gate is introduced.
 
@@ -252,7 +244,6 @@ pnpm lint:eslint            # lint src/**
 
 ## Known Quirks (worth knowing before editing)
 
-- `src/views/agent/detail.vue` is legacy (localStorage conversations + setTimeout mock replies); new work belongs in `src/views/workspace/index.vue` and `src/stores/agent-workspace.ts`.
 - `src/composables/user-commits.ts` is a stub (`fetchGitLog` returns `[]`); still auto-imported — harmless but don't rely on it.
 - `src/types/auto-import.d.ts` references composables that don't yet exist on disk (`useMessageSender`, `useRepositories`, `useSettings`); they are inert until you actually create those files.
 - `tsconfig.app.json` excludes `src/components/ui/drawer/**/*.vue` (Vaul drawer has a known typing issue — leave excluded unless you fix the upstream types).

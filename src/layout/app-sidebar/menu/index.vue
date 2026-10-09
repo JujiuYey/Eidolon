@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import type { Component } from 'vue';
-import { Mail, Bot, NotebookPen, Sparkles, Network } from 'lucide-vue-next';
+import { Mail, NotebookPen, Network, ListTodo } from 'lucide-vue-next';
 import { useRoute, useRouter } from 'vue-router';
-import AppSidebarRecentConversations from '../recent-conversations/index.vue';
 
 interface Menu {
   title: string;
@@ -28,16 +27,10 @@ const menus: Menu[] = [
     path: '/weekly-report',
   },
   {
-    title: '智能体管理',
-    key: 'agent',
-    icon: Bot,
-    path: '/agent',
-  },
-  {
-    title: 'CRUD 生成',
-    key: 'codegen',
-    icon: Sparkles,
-    path: '/codegen',
+    title: '禅道',
+    key: 'zentao',
+    icon: ListTodo,
+    path: '/zentao',
   },
   {
     title: '接口请求',
@@ -80,7 +73,5 @@ const getMenuButtonClass = computed(() => (key: string) => ({
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
-
-    <AppSidebarRecentConversations />
   </SidebarContent>
 </template>

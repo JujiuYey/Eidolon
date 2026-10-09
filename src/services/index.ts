@@ -1,40 +1,4 @@
-export {
-  createAgentConversation,
-  deleteAgentConversation,
-  getAgentConversation,
-  listAgentConversationMessages,
-  listAgentConversations,
-  listRecentAgentConversations,
-  sendAgentConversationMessage,
-} from './agent-conversation';
-
-export {
-  listAgentConversationMessages as listLegacyAgentConversationMessages,
-  saveAgentConversationMessages,
-} from './agent-profile';
-
-export {
-  deleteAgentProfile,
-  getAgentProfile,
-  listAgentProfiles,
-  upsertAgentProfile,
-} from './agent-profile-storage';
-
 export * from './api-client';
-
-export type {
-  AuditType,
-  GeneratedGoCrudResult,
-  GoCodeGenConfig,
-  ParsedField,
-  ParsedTable,
-} from './codegen';
-
-export {
-  generateFrontendCrud,
-  generateGoCode,
-  parseSql,
-} from './codegen';
 
 export {
   listDefaultModelSettings,
@@ -90,3 +54,11 @@ export {
   removeWeeklyReportRepo,
   saveWeeklyReport,
 } from './weekly-report';
+
+export {
+  deleteZentaoAccount,
+  fetchZentaoMyWork,
+  listZentaoAccounts,
+  testZentaoConnection,
+  upsertZentaoAccount,
+} from './zentao';

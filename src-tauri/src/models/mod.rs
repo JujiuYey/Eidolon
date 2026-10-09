@@ -6,3 +6,4 @@ pub mod email;
 pub mod mcp_service;
 pub mod model_config;
 pub mod weekly_report;
+pub mod zentao;

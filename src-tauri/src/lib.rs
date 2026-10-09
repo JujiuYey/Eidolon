@@ -46,10 +46,6 @@ pub fn run() {
             commands::model_config::delete_provider_models,
             // Test connection command
             commands::test_connection::test_ai_connection,
-            // Codegen commands
-            commands::codegen::generate_crud,
-            commands::codegen::parse_sql_ddl,
-            commands::codegen::generate_go_crud,
             // API client commands
             commands::api_client::list_api_projects,
             commands::api_client::get_api_project,
@@ -102,6 +98,12 @@ pub fn run() {
             commands::weekly_report::delete_weekly_report,
             commands::weekly_report::export_weekly_report,
             commands::weekly_report::polish_weekly_report,
+            // ZenTao commands
+            commands::zentao::list_zentao_accounts,
+            commands::zentao::upsert_zentao_account,
+            commands::zentao::delete_zentao_account,
+            commands::zentao::test_zentao_connection,
+            commands::zentao::fetch_zentao_my_work,
         ])
         .setup(|app| {
             // 窗口启动时自动最大化
@@ -139,6 +141,11 @@ pub fn run() {
 
             let http_client = ApiHttpClient::new().map_err(|error| std::io::Error::other(error))?;
             app.manage(http_client);
+
+            // 禅道客户端（HTTP + token 缓存）
+            let zentao_client = services::zentao::ZentaoClient::new()
+                .map_err(|error| std::io::Error::other(error))?;
+            app.manage(zentao_client);
 
             Ok(())
         })

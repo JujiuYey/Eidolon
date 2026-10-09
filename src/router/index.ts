@@ -7,32 +7,8 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: Layout,
-    redirect: '/agent',
+    redirect: '/mail',
     children: [
-      {
-        path: '/agent',
-        component: () => import('@/views/agent/index.vue'),
-      },
-      {
-        path: '/agent/workspace',
-        component: () => import('@/views/workspace/index.vue'),
-      },
-      {
-        path: '/agent/new',
-        component: () => import('@/views/agent/create.vue'),
-      },
-      {
-        path: '/agent/:id/edit',
-        component: () => import('@/views/agent/edit.vue'),
-      },
-      {
-        // Redirect old detail route to workspace
-        path: '/agent/:id',
-        redirect: to => ({
-          path: '/agent/workspace',
-          query: { agent: String(to.params.id ?? '') },
-        }),
-      },
       {
         path: '/mail',
         component: () => import('@/views/mail/index.vue'),
@@ -43,12 +19,12 @@ const routes: RouteRecordRaw[] = [
         redirect: '/mail',
       },
       {
-        path: '/codegen',
-        component: () => import('@/views/codegen/index.vue'),
-      },
-      {
         path: '/weekly-report',
         component: () => import('@/views/weekly-report/index.vue'),
+      },
+      {
+        path: '/zentao',
+        component: () => import('@/views/zentao/index.vue'),
       },
       {
         path: '/api-client',
