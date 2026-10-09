@@ -3,11 +3,18 @@ import type { DateRange as CalendarDateRange } from 'reka-ui';
 import type { WeeklyReportAuthorMode, WeeklyReportEntry, WeeklyReportRepo } from '@/types/weekly-report';
 import { CalendarDate, getLocalTimeZone } from '@internationalized/date';
 import { save } from '@tauri-apps/plugin-dialog';
-import { CalendarRange, ClipboardCopy, Download, NotebookPen, RefreshCw, Save, WandSparkles } from 'lucide-vue-next';
+import { CalendarRange, ClipboardCopy, Download, MoreHorizontal, RefreshCw, Save, WandSparkles } from 'lucide-vue-next';
 import { computed, onMounted, shallowRef } from 'vue';
 import { toast } from 'vue-sonner';
 import SagMarkdownEditor from '@/components/sag/sag-markdown-editor/index.vue';
+import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RangeCalendar } from '@/components/ui/range-calendar';
 import {
@@ -360,18 +367,19 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="mx-auto flex h-screen max-w-7xl flex-col overflow-hidden p-6">
-    <div class="mb-4 shrink-0">
-      <h1 class="mb-1 flex items-center gap-2 text-2xl font-bold">
-        <NotebookPen class="h-6 w-6 text-primary" />
-        周报生成
-      </h1>
-      <p class="text-muted-foreground">
-        汇总本地仓库的 git 提交记录，一键生成、润色并导出每周工作周报。
-      </p>
-    </div>
+  <div class="flex h-full flex-col overflow-hidden">
+    <SagPageHeader
+      class="px-6 pt-6"
+      title="周报"
+    >
+      <template #meta>
+        汇总本地仓库的 git 提交，生成、润色并归档每周工作周报
+      </template>
+    </SagPageHeader>
 
-    <div class="flex min-h-0 flex-1 gap-4">
+    <Separator class="mt-4 shrink-0" />
+
+    <div class="flex min-h-0 flex-1 gap-4 px-6 py-4">
       <!-- 左栏：仓库 + 历史 -->
       <aside class="flex w-72 shrink-0 flex-col gap-4">
         <RepoManager
@@ -391,9 +399,10 @@ onMounted(() => {
         />
       </aside>
 
-      <!-- 右侧：工具条 + 编辑器 -->
+      <!-- 右侧：采集工具条 + 成稿区 -->
       <div class="flex min-w-0 flex-1 flex-col gap-4">
-        <div class="shrink-0 space-y-3 rounded-xl border bg-card p-4">
+        <!-- 采集工具条：第一行定区间与生成，第二行筛选与成稿操作 -->
+        <div class="shrink-0 space-y-2.5">
           <div class="flex flex-wrap items-center gap-2">
             <Button
               v-for="option of presetOptions"
@@ -440,8 +449,6 @@ onMounted(() => {
               {{ isFetching ? '拉取中…' : '生成周报' }}
             </Button>
           </div>
-
-          <Separator />
 
           <div class="flex flex-wrap items-center gap-2">
             <Select
@@ -504,37 +511,48 @@ onMounted(() => {
                 <Save class="h-4 w-4" />
                 保存
               </Button>
-              <Button
-                :disabled="!reportContent.trim()"
-                size="sm"
-                variant="outline"
-                @click="copyReport"
-              >
-                <ClipboardCopy class="h-4 w-4" />
-                复制
-              </Button>
-              <Button
-                :disabled="!reportContent.trim()"
-                size="sm"
-                variant="outline"
-                @click="exportReport"
-              >
-                <Download class="h-4 w-4" />
-                导出
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <Button
+                    :disabled="!reportContent.trim()"
+                    size="sm"
+                    variant="outline"
+                    aria-label="更多操作"
+                  >
+                    <MoreHorizontal class="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem @click="copyReport">
+                    <ClipboardCopy class="mr-2 h-4 w-4" />
+                    复制全文
+                  </DropdownMenuItem>
+                  <DropdownMenuItem @click="exportReport">
+                    <Download class="mr-2 h-4 w-4" />
+                    导出 Markdown
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-card p-4">
-          <SagMarkdownEditor
-            v-model="reportContent"
-            badge-label="周报正文"
-            editor-hint="生成后可自由修改，保存后进入左侧历史列表。"
-            editor-label="周报内容"
-            placeholder="点击「生成周报」，或直接在这里撰写周报内容。"
-            title="支持 Markdown，编辑预览同步进行。"
-          />
+        <!-- 成稿区：唯一的卡片容器，头部带采集统计 -->
+        <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+          <div class="flex shrink-0 items-center justify-between border-b px-4 py-2.5">
+            <span class="text-sm font-medium">周报正文</span>
+            <span class="text-xs text-muted-foreground tabular-nums">
+              <template v-if="lastStats">{{ lastStats.repoCount }} 个仓库，{{ lastStats.commitCount }} 次提交</template>
+              <template v-else>尚未生成</template>
+            </span>
+          </div>
+          <div class="min-h-0 flex-1 overflow-y-auto p-4">
+            <SagMarkdownEditor
+              v-model="reportContent"
+              editor-label="周报内容"
+              placeholder="点击「生成周报」，或直接在这里撰写周报内容。"
+            />
+          </div>
         </div>
       </div>
     </div>
