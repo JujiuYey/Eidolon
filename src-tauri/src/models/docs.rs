@@ -1,11 +1,25 @@
 use serde::{Deserialize, Serialize};
 
+/// 一个文档库（多根目录支持）。id 由路径哈希而来，确定性可作前端路由参数
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DocsRoot {
+    #[serde(default)]
+    pub id: String,
+
+    #[serde(default)]
+    pub path: String,
+}
+
 /// 文档管理设置（docs_settings.json）
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DocsSettings {
-    /// 文档库根目录。文档是磁盘上的普通 .md 文件，不进 SQLite
+    /// 旧版单根字段：只为兼容旧配置文件的读取，新配置写入时清空
     #[serde(default)]
     pub root_dir: Option<String>,
+
+    /// 文档库列表
+    #[serde(default)]
+    pub roots: Vec<DocsRoot>,
 }
 
 /// 文档库条目（文件或文件夹），path 为相对根目录的 `/` 分隔路径

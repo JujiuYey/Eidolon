@@ -10,36 +10,36 @@ export async function upsertDocsSettings(settings: DocsSettings): Promise<DocsSe
   return invoke<DocsSettings>('upsert_docs_settings', { settings });
 }
 
-export async function listDocsEntries(): Promise<DocsEntry[]> {
-  return invoke<DocsEntry[]>('list_docs_entries');
+export async function listDocsEntries(rootId: string): Promise<DocsEntry[]> {
+  return invoke<DocsEntry[]>('list_docs_entries', { rootId });
 }
 
-export async function readDocsFile(path: string): Promise<string> {
-  return invoke<string>('read_docs_file', { path });
+export async function readDocsFile(rootId: string, path: string): Promise<string> {
+  return invoke<string>('read_docs_file', { rootId, path });
 }
 
-export async function saveDocsFile(path: string, content: string): Promise<DocsEntry> {
-  return invoke<DocsEntry>('save_docs_file', { path, content });
+export async function saveDocsFile(rootId: string, path: string, content: string): Promise<DocsEntry> {
+  return invoke<DocsEntry>('save_docs_file', { rootId, path, content });
 }
 
-export async function createDocsFile(dirPath: string, name: string): Promise<DocsEntry> {
-  return invoke<DocsEntry>('create_docs_file', { dirPath, name });
+export async function createDocsFile(rootId: string, dirPath: string, name: string): Promise<DocsEntry> {
+  return invoke<DocsEntry>('create_docs_file', { rootId, dirPath, name });
 }
 
-export async function createDocsDirectory(parentPath: string, name: string): Promise<DocsEntry> {
-  return invoke<DocsEntry>('create_docs_directory', { parentPath, name });
+export async function createDocsDirectory(rootId: string, parentPath: string, name: string): Promise<DocsEntry> {
+  return invoke<DocsEntry>('create_docs_directory', { rootId, parentPath, name });
 }
 
-export async function renameDocsEntry(path: string, newName: string): Promise<DocsEntry> {
-  return invoke<DocsEntry>('rename_docs_entry', { path, newName });
+export async function renameDocsEntry(rootId: string, path: string, newName: string): Promise<DocsEntry> {
+  return invoke<DocsEntry>('rename_docs_entry', { rootId, path, newName });
 }
 
-export async function deleteDocsEntry(path: string): Promise<string> {
-  return invoke<string>('delete_docs_entry', { path });
+export async function deleteDocsEntry(rootId: string, path: string): Promise<string> {
+  return invoke<string>('delete_docs_entry', { rootId, path });
 }
 
-export async function searchDocs(keyword: string): Promise<DocsSearchResult[]> {
-  return invoke<DocsSearchResult[]>('search_docs', { keyword });
+export async function searchDocs(rootId: string, keyword: string): Promise<DocsSearchResult[]> {
+  return invoke<DocsSearchResult[]>('search_docs', { rootId, keyword });
 }
 
 export interface DocsAiChatMessage {

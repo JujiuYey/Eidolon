@@ -74,7 +74,8 @@ Routing (frontend):
 | `/zentao`                  | `views/zentao/index.vue`                                           |
 | `/api-client`              | `views/api-project/index.vue`                                      |
 | `/api-client/projects/:id` | `views/api-client-workspace/index.vue` (name `api-client-project`) |
-| `/docs`                    | `views/docs/index.vue` (markdown 文档管理)                         |
+| `/docs`                    | `views/docs/manage.vue` (管理文档库，多根目录)                     |
+| `/docs/r/:rootId`          | `views/docs/index.vue` (文档库工作区，name `docs-root`)            |
 | `/pm`                      | `views/pm/index.vue` (PM persona chat)                             |
 | `/app-setting`             | `views/app-setting/index.vue`                                      |
 | `/:pathMatch(.*)*`         | `pages/errors/404.vue`                                             |

@@ -8,6 +8,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  Settings2,
   Trash2,
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
@@ -30,6 +31,8 @@ interface Props {
   entries: DocsEntry[];
   activePath: string;
   isLoading: boolean;
+  /** 树头部标题：当前文档库的名字 */
+  title: string;
 }
 
 interface Emits {
@@ -38,7 +41,7 @@ interface Emits {
   (e: 'create-dir', parentPath: string): void;
   (e: 'rename', entry: DocsEntry): void;
   (e: 'remove', entry: DocsEntry): void;
-  (e: 'change-root'): void;
+  (e: 'manage'): void;
 }
 
 const props = defineProps<Props>();
@@ -79,7 +82,7 @@ function rowPadding(depth: number) {
     <div class="flex items-center justify-between gap-2 px-4 py-3">
       <h2 class="flex items-center gap-2 text-sm font-semibold">
         <FolderOpen class="h-4 w-4 text-primary" />
-        文档
+        {{ title }}
       </h2>
       <div class="flex items-center gap-1">
         <Button size="sm" variant="outline" @click="emit('create-file', '')">
@@ -98,9 +101,9 @@ function rowPadding(depth: number) {
               新建文件夹
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem @click="emit('change-root')">
-              <Pencil class="mr-2 h-4 w-4" />
-              更改文档库目录
+            <DropdownMenuItem @click="emit('manage')">
+              <Settings2 class="mr-2 h-4 w-4" />
+              管理文档库
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { open } from '@tauri-apps/plugin-dialog';
 import { FolderOpen, Save, Sparkles } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
+import { useConfirm } from '@/composables/use-confirm';
 import { useDocsStore } from '@/stores/docs';
 import type { DocsEntry } from '@/types/docs';
 import { getErrorMessage } from '@/utils/helpers';
@@ -17,8 +19,62 @@ import DocsAiPanel from './_components/docs-ai-panel.vue';
 import DocsSearchResults from './_components/docs-search-results.vue';
 import DocsTree from './_components/docs-tree.vue';
 import EntryNameDialog from './_components/entry-name-dialog.vue';
+import { docsRootBasename } from './utils/roots';
 
+const props = defineProps<{
+  rootId: string;
+}>();
+
+const router = useRouter();
 const store = useDocsStore();
+const confirm = useConfirm();
+
+// ===== 当前文档库加载（由路由参数驱动） =====
+const ready = ref(false);
+
+async function bootstrapForRoot() {
+  ready.value = false;
+  try {
+    await store.initialize();
+    if (store.activeRootId !== props.rootId) {
+      await store.openRoot(props.rootId, { discardUnsaved: true });
+    }
+  } catch (error) {
+    toast.error(getErrorMessage(error, '文档库加载失败'));
+  } finally {
+    ready.value = true;
+  }
+}
+
+watch(
+  () => props.rootId,
+  () => void bootstrapForRoot(),
+  { immediate: true },
+);
+
+const rootLabel = computed(() => (store.activeRoot ? docsRootBasename(store.activeRoot.path) : '文档'));
+
+// ===== 路由级脏守卫：切库、回管理页、去其他页面都经过这里 =====
+onBeforeRouteUpdate(() => guardUnsavedOnRouteChange());
+onBeforeRouteLeave(() => guardUnsavedOnRouteChange());
+
+async function guardUnsavedOnRouteChange(): Promise<boolean> {
+  if (!store.isDirty) {
+    return true;
+  }
+  const proceed = await confirm.ask({
+    title: '当前文档存在未保存修改',
+    description: '离开将放弃当前编辑。请先保存或继续编辑。',
+    confirmLabel: '放弃修改',
+    cancelLabel: '继续编辑',
+    destructive: true,
+  });
+  if (!proceed) {
+    return false;
+  }
+  store.discardChanges();
+  return true;
+}
 
 // ===== 搜索（300ms 防抖） =====
 const searchKeyword = ref('');
@@ -29,6 +85,9 @@ watch(searchKeyword, value => {
     clearTimeout(searchTimer);
   }
   searchTimer = setTimeout(() => {
+    if (!store.activeRootId) {
+      return;
+    }
     void store.runSearch(value).catch(error => toast.error(getErrorMessage(error, '搜索失败')));
   }, 300);
 });
@@ -173,27 +232,6 @@ async function confirmRemove() {
   }
 }
 
-// ===== 文档库目录 =====
-const isPickingRoot = ref(false);
-
-async function pickRootDir() {
-  isPickingRoot.value = true;
-  try {
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      title: '选择文档库目录',
-    });
-    if (typeof selected === 'string' && selected) {
-      await store.setRootDir(selected);
-    }
-  } catch (error) {
-    toast.error(getErrorMessage(error, '设置文档库目录失败'));
-  } finally {
-    isPickingRoot.value = false;
-  }
-}
-
 // ===== AI 助手面板（应用 / 撤销 都只改内存内容，保存仍走 ⌘S） =====
 const aiOpen = ref(false);
 
@@ -212,7 +250,6 @@ const isSearching = computed(() => searchKeyword.value.trim().length > 0);
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
-  void store.initialize().catch(error => toast.error(getErrorMessage(error, '文档库加载失败')));
 });
 
 onBeforeUnmount(() => {
@@ -240,10 +277,11 @@ onBeforeUnmount(() => {
             v-else
             :active-path="store.activePath"
             :entries="store.entries"
-            :is-loading="store.loading"
-            @change-root="pickRootDir"
+            :is-loading="store.loading || !ready"
+            :title="rootLabel"
             @create-dir="askCreateDir"
             @create-file="askCreateFile"
+            @manage="router.push('/docs')"
             @remove="askRemove"
             @rename="askRename"
             @select="handleSelectFile"
@@ -251,28 +289,29 @@ onBeforeUnmount(() => {
         </div>
       </aside>
 
-      <!-- 未设置文档库目录 -->
+      <!-- 加载中 -->
+      <div v-if="!ready" class="flex min-w-0 flex-1 items-center justify-center rounded-xl border bg-card">
+        <Spinner class="size-6 text-muted-foreground" />
+      </div>
+
+      <!-- 文档库不存在（被移除或链接失效） -->
       <div
-        v-if="!store.rootDir"
+        v-else-if="!store.activeRoot"
         class="flex min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border bg-card text-center"
       >
         <div class="flex h-11 w-11 items-center justify-center rounded-full border">
           <FolderOpen class="h-5 w-5 text-primary" />
         </div>
         <div>
-          <p class="text-sm font-semibold">设置你的文档库</p>
+          <p class="text-sm font-semibold">找不到这个文档库</p>
           <p class="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
-            选一个存放 .md 文件的文件夹，里面的文档会全部出现在这里。
-            文档始终是磁盘上的普通文件，随时可以用其他工具打开。
+            它可能已经被移除，或者路径在磁盘上失效了。
           </p>
         </div>
-        <Button :disabled="isPickingRoot" @click="pickRootDir">
-          <FolderOpen class="h-4 w-4" />
-          选择文档库目录
-        </Button>
+        <Button @click="router.push('/docs')">去管理目录</Button>
       </div>
 
-      <!-- 已设置但没打开文档 -->
+      <!-- 已打开库但没打开文档 -->
       <div
         v-else-if="!store.activePath"
         class="flex min-w-0 flex-1 items-center justify-center rounded-xl border bg-card"
@@ -326,7 +365,7 @@ onBeforeUnmount(() => {
       />
     </div>
 
-    <!-- 未保存守卫 -->
+    <!-- 未保存守卫（库内切换文档） -->
     <SagConfirm
       v-model:open="unsavedOpen"
       :description="
@@ -367,6 +406,14 @@ onBeforeUnmount(() => {
           if (!value) nameDialog = null;
         }
       "
+    />
+
+    <!-- 路由切换的未保存守卫 -->
+    <ConfirmDialog
+      :open="confirm.state.open"
+      @cancel="confirm.onCancel"
+      @confirm="confirm.onConfirm"
+      @update:open="confirm.onOpenChange"
     />
   </div>
 </template>

@@ -1,10 +1,12 @@
 <script lang="ts" setup>
-import { Bot, FileText, Mail, NotebookPen, Network, ListTodo, Server } from 'lucide-vue-next';
+import { Bot, FolderClosed, Mail, NotebookPen, Network, ListTodo, Server, Settings2 } from 'lucide-vue-next';
 import type { Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 import { useApiClientStore } from '@/stores/api-client';
+import { useDocsStore } from '@/stores/docs';
+import { docsRootLabels } from '@/views/docs/utils/roots';
 
 import { isMenuItemActive } from './utils';
 import type { MenuItemMatchTarget } from './utils';
@@ -12,7 +14,7 @@ import type { MenuItemMatchTarget } from './utils';
 interface MenuItem extends MenuItemMatchTarget {
   title: string;
   icon: Component;
-  /** 图标模式收起时隐藏：动态系统项收起后只剩相同图标，认不出谁是谁 */
+  /** 图标模式收起时隐藏：动态项收起后只剩相同图标，认不出谁是谁 */
   hideCollapsed?: boolean;
 }
 
@@ -25,6 +27,7 @@ interface MenuGroup {
 const router = useRouter();
 const route = useRoute();
 const store = useApiClientStore();
+const docsStore = useDocsStore();
 
 const toolsGroup: MenuGroup = {
   key: 'tools',
@@ -34,11 +37,6 @@ const toolsGroup: MenuGroup = {
     { title: '周报', key: 'weekly-report', icon: NotebookPen, path: '/weekly-report' },
     { title: '禅道', key: 'zentao', icon: ListTodo, path: '/zentao' },
   ],
-};
-const knowledgeGroup: MenuGroup = {
-  key: 'knowledge',
-  label: '知识库',
-  items: [{ title: '文档', key: 'docs', icon: FileText, path: '/docs' }],
 };
 const agentGroup: MenuGroup = {
   key: 'agent',
@@ -50,23 +48,45 @@ const apiMenuGroup = computed<MenuGroup>(() => ({
   key: 'api-client',
   label: 'API 管理',
   items: [
+    { title: '管理项目', key: 'api-client', icon: Network, path: '/api-client', exact: true },
     ...store.sortedProjects.map(project => ({
       title: project.name,
       key: `api-project-${project.id}`,
       icon: Server,
       path: `/api-client/projects/${project.id}`,
-      projectId: project.id,
+      routeMatch: { name: 'api-client-project', paramKey: 'id', paramValue: project.id },
       hideCollapsed: true,
     })),
-    { title: '管理项目', key: 'api-client', icon: Network, path: '/api-client', exact: true },
   ],
 }));
 
-const menuGroups = computed<MenuGroup[]>(() => [toolsGroup, apiMenuGroup.value, knowledgeGroup, agentGroup]);
+const knowledgeGroup = computed<MenuGroup>(() => {
+  const labels = docsRootLabels(docsStore.roots);
+  return {
+    key: 'knowledge',
+    label: '知识库',
+    items: [
+      { title: '管理目录', key: 'docs', icon: Settings2, path: '/docs', exact: true },
+      ...docsStore.roots.map(root => ({
+        title: labels.get(root.id) ?? root.path,
+        key: `docs-root-${root.id}`,
+        icon: FolderClosed,
+        path: `/docs/r/${root.id}`,
+        routeMatch: { name: 'docs-root', paramKey: 'rootId', paramValue: root.id },
+        hideCollapsed: true,
+      })),
+    ],
+  };
+});
+
+const menuGroups = computed<MenuGroup[]>(() => [toolsGroup, apiMenuGroup.value, knowledgeGroup.value, agentGroup]);
 
 onMounted(() => {
   store.loadProjects().catch(() => {
     toast.error('加载 API 项目列表失败');
+  });
+  docsStore.initialize().catch(() => {
+    toast.error('加载文档库列表失败');
   });
 });
 

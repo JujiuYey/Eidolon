@@ -28,13 +28,38 @@ interface DirectoryRow {
 const compactBackup = ref(false);
 const { appDataPath, appLogPath, isLoading, openDirectory } = useAppPaths();
 
-// 文档库目录来自「文档」页的设置，这里只读展示 + 打开
-const docsRootDir = ref('');
+// 文档库列表来自「管理目录」页的设置，这里只读展示 + 打开
+const docsRoots = ref<string[]>([]);
 
 onMounted(() => {
   void getDocsSettings()
-    .then(settings => (docsRootDir.value = settings.root_dir ?? ''))
-    .catch(() => (docsRootDir.value = ''));
+    .then(settings => (docsRoots.value = settings.roots.map(root => root.path)))
+    .catch(() => (docsRoots.value = []));
+});
+
+const docsRootRows = computed<DirectoryRow[]>(() => {
+  if (docsRoots.value.length === 0) {
+    return [
+      {
+        title: '文档库目录',
+        value: '',
+        valueIcon: FolderOpen,
+        action: {
+          label: '打开目录',
+          variant: 'outline',
+        },
+      },
+    ];
+  }
+  return docsRoots.value.map((path, index) => ({
+    title: docsRoots.value.length > 1 ? `文档库 ${index + 1}` : '文档库目录',
+    value: path,
+    valueIcon: FolderOpen,
+    action: {
+      label: '打开目录',
+      variant: 'outline',
+    },
+  }));
 });
 
 const dangerOutlineClass =
@@ -90,15 +115,7 @@ const directoryRows = computed<DirectoryRow[]>(() => [
       variant: 'outline',
     },
   },
-  {
-    title: '文档库目录',
-    value: docsRootDir.value,
-    valueIcon: FolderOpen,
-    action: {
-      label: '打开目录',
-      variant: 'outline',
-    },
-  },
+  ...docsRootRows.value,
   {
     title: '清除缓存',
     hint: '(0.91MB)',

@@ -5,7 +5,7 @@ use std::time::UNIX_EPOCH;
 use walkdir::WalkDir;
 
 use crate::db::local_store::LocalJsonStore;
-use crate::models::docs::{DocsEntry, DocsSearchResult, DocsSettings};
+use crate::models::docs::{DocsEntry, DocsRoot, DocsSearchResult, DocsSettings};
 use crate::services::work_directory::assert_path_within_work_directory;
 
 const DOCS_SETTINGS_FILENAME: &str = "docs_settings";
@@ -17,44 +17,72 @@ const MAX_SEARCH_MATCHES: usize = 200;
 const SKIP_DIRS: [&str; 4] = [".git", "node_modules", ".obsidian", ".trash"];
 
 pub fn get_settings(store: &LocalJsonStore) -> DocsSettings {
-    store.read(DOCS_SETTINGS_FILENAME).unwrap_or_default()
+    let mut settings: DocsSettings = store.read(DOCS_SETTINGS_FILENAME).unwrap_or_default();
+    if settings.roots.is_empty() {
+        // 旧版单根配置折叠成第一个文档库；id 确定性生成，读取即迁移，无需落盘
+        if let Some(dir) = settings.root_dir.as_deref().map(str::trim).filter(|dir| !dir.is_empty()) {
+            settings.roots.push(DocsRoot { id: root_id_for(dir), path: dir.to_string() });
+        }
+    }
+    settings
 }
 
-/// 校验并保存设置。目录必须存在且确实是目录，避免配置一个拼错的路径
+/// 校验并保存设置。每个库必须是存在的绝对路径，重复路径静默去重
 pub fn save_settings(store: &LocalJsonStore, settings: &DocsSettings) -> Result<DocsSettings, String> {
-    let normalized = match settings.root_dir.as_deref().map(str::trim) {
-        None | Some("") => DocsSettings { root_dir: None },
-        Some(dir) => {
-            let path = PathBuf::from(dir);
-            if !path.is_absolute() {
-                return Err("文档库目录必须是绝对路径".to_string());
-            }
-            if !path.is_dir() {
-                return Err(format!("目录不存在或不是文件夹: {dir}"));
-            }
-            DocsSettings { root_dir: Some(dir.to_string()) }
+    let mut roots: Vec<DocsRoot> = Vec::new();
+    let mut seen: Vec<String> = Vec::new();
+    for root in &settings.roots {
+        let dir = root.path.trim();
+        if dir.is_empty() {
+            return Err("文档库路径不能为空".to_string());
         }
-    };
+        let path = PathBuf::from(dir);
+        if !path.is_absolute() {
+            return Err("文档库目录必须是绝对路径".to_string());
+        }
+        if !path.is_dir() {
+            return Err(format!("目录不存在或不是文件夹: {dir}"));
+        }
 
+        let key = dir.trim_end_matches('/').to_string();
+        if seen.contains(&key) {
+            continue;
+        }
+        seen.push(key);
+        roots.push(DocsRoot { id: root_id_for(dir), path: dir.to_string() });
+    }
+
+    let normalized = DocsSettings { root_dir: None, roots };
     store.write(DOCS_SETTINGS_FILENAME, &normalized)?;
     Ok(normalized)
 }
 
-fn resolve_root(store: &LocalJsonStore) -> Result<PathBuf, String> {
+/// fnv-1a：路径 → 确定性的库 id，同一目录每次生成的 id 一致，可安全用作路由参数
+fn root_id_for(path: &str) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in path.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("{hash:016x}")
+}
+
+fn resolve_root(store: &LocalJsonStore, root_id: &str) -> Result<PathBuf, String> {
     let settings = get_settings(store);
     let root = settings
-        .root_dir
-        .ok_or_else(|| "请先在「文档」页选择文档库目录".to_string())?;
-    let path = PathBuf::from(&root);
+        .roots
+        .iter()
+        .find(|root| root.id == root_id)
+        .ok_or_else(|| "文档库不存在或已被移除".to_string())?;
+    let path = PathBuf::from(&root.path);
     if !path.is_dir() {
-        return Err(format!("文档库目录不可用: {root}"));
+        return Err(format!("文档库目录不可用: {}", root.path));
     }
     Ok(path)
 }
 
-/// 所有文件操作的统一出口：根目录 + 相对路径 → 沙箱内的绝对路径
-fn sandboxed_path(store: &LocalJsonStore, relative: &str) -> Result<PathBuf, String> {
-    let root = resolve_root(store)?;
+/// 相对路径 → 沙箱内的绝对路径
+fn sandboxed_path_with_root(root: &Path, relative: &str) -> Result<PathBuf, String> {
     assert_path_within_work_directory(&root.to_string_lossy(), Path::new(relative))
 }
 
@@ -94,10 +122,10 @@ fn is_skipped(name: &str, is_dir: bool) -> bool {
     }
 }
 
-/// 列出全部条目（仅 .md 文件 + 文件夹），目录在前、同层按名称排序。
-/// 返回扁平列表，树形结构由前端构建。
-pub fn list_entries(store: &LocalJsonStore) -> Result<Vec<DocsEntry>, String> {
-    let root = resolve_root(store)?;
+/// 列出指定库的全部条目（仅 .md 文件 + 文件夹），目录在前、同层按名称排序。
+/// 返回相对库根的扁平列表，树形结构由前端构建。
+pub fn list_entries(store: &LocalJsonStore, root_id: &str) -> Result<Vec<DocsEntry>, String> {
+    let root = resolve_root(store, root_id)?;
 
     let mut entries = Vec::new();
     for item in WalkDir::new(&root)
@@ -130,8 +158,9 @@ pub fn list_entries(store: &LocalJsonStore) -> Result<Vec<DocsEntry>, String> {
     Ok(entries)
 }
 
-pub fn read_file(store: &LocalJsonStore, relative: &str) -> Result<String, String> {
-    let path = sandboxed_path(store, relative)?;
+pub fn read_file(store: &LocalJsonStore, root_id: &str, relative: &str) -> Result<String, String> {
+    let root = resolve_root(store, root_id)?;
+    let path = sandboxed_path_with_root(&root, relative)?;
     if !path.is_file() {
         return Err(format!("文件不存在: {relative}"));
     }
@@ -144,8 +173,9 @@ pub fn read_file(store: &LocalJsonStore, relative: &str) -> Result<String, Strin
     fs::read_to_string(&path).map_err(|error| format!("读取文件失败: {error}"))
 }
 
-pub fn save_file(store: &LocalJsonStore, relative: &str, content: &str) -> Result<DocsEntry, String> {
-    let path = sandboxed_path(store, relative)?;
+pub fn save_file(store: &LocalJsonStore, root_id: &str, relative: &str, content: &str) -> Result<DocsEntry, String> {
+    let root = resolve_root(store, root_id)?;
+    let path = sandboxed_path_with_root(&root, relative)?;
     if path.is_dir() {
         return Err("目标是文件夹，不能保存为文件".to_string());
     }
@@ -155,7 +185,6 @@ pub fn save_file(store: &LocalJsonStore, relative: &str, content: &str) -> Resul
     }
 
     fs::write(&path, content).map_err(|error| format!("写入文件失败: {error}"))?;
-    let root = resolve_root(store)?;
     build_entry(&root, &path, false).ok_or_else(|| "保存后读取文件信息失败".to_string())
 }
 
@@ -180,9 +209,10 @@ fn sanitize_name(name: &str, is_dir: bool) -> Result<String, String> {
     }
 }
 
-pub fn create_file(store: &LocalJsonStore, dir_relative: &str, name: &str) -> Result<DocsEntry, String> {
+pub fn create_file(store: &LocalJsonStore, root_id: &str, dir_relative: &str, name: &str) -> Result<DocsEntry, String> {
     let file_name = sanitize_name(name, false)?;
-    let parent = sandboxed_path(store, dir_relative)?;
+    let root = resolve_root(store, root_id)?;
+    let parent = sandboxed_path_with_root(&root, dir_relative)?;
     if !parent.is_dir() {
         return Err(format!("目标文件夹不存在: {dir_relative}"));
     }
@@ -193,13 +223,18 @@ pub fn create_file(store: &LocalJsonStore, dir_relative: &str, name: &str) -> Re
     }
 
     fs::write(&path, "").map_err(|error| format!("创建文件失败: {error}"))?;
-    let root = resolve_root(store)?;
     build_entry(&root, &path, false).ok_or_else(|| "创建后读取文件信息失败".to_string())
 }
 
-pub fn create_directory(store: &LocalJsonStore, parent_relative: &str, name: &str) -> Result<DocsEntry, String> {
+pub fn create_directory(
+    store: &LocalJsonStore,
+    root_id: &str,
+    parent_relative: &str,
+    name: &str,
+) -> Result<DocsEntry, String> {
     let dir_name = sanitize_name(name, true)?;
-    let parent = sandboxed_path(store, parent_relative)?;
+    let root = resolve_root(store, root_id)?;
+    let parent = sandboxed_path_with_root(&root, parent_relative)?;
     if !parent.is_dir() {
         return Err(format!("目标文件夹不存在: {parent_relative}"));
     }
@@ -210,13 +245,13 @@ pub fn create_directory(store: &LocalJsonStore, parent_relative: &str, name: &st
     }
 
     fs::create_dir_all(&path).map_err(|error| format!("创建文件夹失败: {error}"))?;
-    let root = resolve_root(store)?;
     build_entry(&root, &path, true).ok_or_else(|| "创建后读取文件夹信息失败".to_string())
 }
 
 /// 重命名文件或文件夹。文件原本带 .md 时自动为新名称补上
-pub fn rename_entry(store: &LocalJsonStore, relative: &str, new_name: &str) -> Result<DocsEntry, String> {
-    let path = sandboxed_path(store, relative)?;
+pub fn rename_entry(store: &LocalJsonStore, root_id: &str, relative: &str, new_name: &str) -> Result<DocsEntry, String> {
+    let root = resolve_root(store, root_id)?;
+    let path = sandboxed_path_with_root(&root, relative)?;
     if !path.exists() {
         return Err(format!("条目不存在: {relative}"));
     }
@@ -238,7 +273,6 @@ pub fn rename_entry(store: &LocalJsonStore, relative: &str, new_name: &str) -> R
         .ok_or_else(|| "无法定位父目录".to_string())?
         .join(&final_name);
     if target == path {
-        let root = resolve_root(store)?;
         return build_entry(&root, &path, is_dir).ok_or_else(|| "读取条目信息失败".to_string());
     }
     if target.exists() {
@@ -246,13 +280,13 @@ pub fn rename_entry(store: &LocalJsonStore, relative: &str, new_name: &str) -> R
     }
 
     fs::rename(&path, &target).map_err(|error| format!("重命名失败: {error}"))?;
-    let root = resolve_root(store)?;
     build_entry(&root, &target, is_dir).ok_or_else(|| "重命名后读取条目信息失败".to_string())
 }
 
 /// 删除文件；文件夹必须为空才允许删，避免一键误删整棵子树
-pub fn delete_entry(store: &LocalJsonStore, relative: &str) -> Result<String, String> {
-    let path = sandboxed_path(store, relative)?;
+pub fn delete_entry(store: &LocalJsonStore, root_id: &str, relative: &str) -> Result<String, String> {
+    let root = resolve_root(store, root_id)?;
+    let path = sandboxed_path_with_root(&root, relative)?;
     if !path.exists() {
         return Err(format!("条目不存在: {relative}"));
     }
@@ -272,14 +306,14 @@ pub fn delete_entry(store: &LocalJsonStore, relative: &str) -> Result<String, St
     Ok(relative.to_string())
 }
 
-/// 全文搜索：遍历 .md 文件逐行匹配（大小写不敏感），带命中上限
-pub fn search(store: &LocalJsonStore, keyword: &str) -> Result<Vec<DocsSearchResult>, String> {
+/// 全文搜索（仅限指定库）：遍历 .md 文件逐行匹配（大小写不敏感），带命中上限
+pub fn search(store: &LocalJsonStore, root_id: &str, keyword: &str) -> Result<Vec<DocsSearchResult>, String> {
     let keyword = keyword.trim();
     if keyword.is_empty() {
         return Ok(Vec::new());
     }
     let keyword_lower = keyword.to_lowercase();
-    let root = resolve_root(store)?;
+    let root = resolve_root(store, root_id)?;
 
     let mut results = Vec::new();
     for item in WalkDir::new(&root)
@@ -328,17 +362,31 @@ mod tests {
 
     use super::*;
 
-    fn setup() -> (tempfile::TempDir, tempfile::TempDir, LocalJsonStore) {
+    struct TestContext {
+        docs: tempfile::TempDir,
+        _store_dir: tempfile::TempDir,
+        store: LocalJsonStore,
+        root_id: String,
+    }
+
+    fn setup() -> TestContext {
         let docs_dir = tempdir().expect("docs temp dir");
         let store_dir = tempdir().expect("store temp dir");
         let store = LocalJsonStore::new(store_dir.path().to_path_buf()).expect("store");
         let saved = save_settings(
             &store,
-            &DocsSettings { root_dir: Some(docs_dir.path().to_string_lossy().to_string()) },
+            &DocsSettings {
+                root_dir: None,
+                roots: vec![DocsRoot {
+                    id: String::new(),
+                    path: docs_dir.path().to_string_lossy().to_string(),
+                }],
+            },
         )
         .expect("settings save");
-        assert!(saved.root_dir.is_some());
-        (docs_dir, store_dir, store)
+        let root_id = saved.roots[0].id.clone();
+        assert!(!root_id.is_empty());
+        TestContext { docs: docs_dir, _store_dir: store_dir, store, root_id }
     }
 
     fn write_docs_file(root: &Path, relative: &str, content: &str) {
@@ -348,27 +396,89 @@ mod tests {
     }
 
     #[test]
-    fn settings_roundtrip_and_validation() {
-        let (_docs, store_dir, store) = setup();
-        assert_eq!(
-            get_settings(&store).root_dir,
-            Some(_docs.path().to_string_lossy().to_string())
-        );
+    fn root_ids_are_deterministic_per_path() {
+        assert_eq!(root_id_for("/tmp/docs"), root_id_for("/tmp/docs"));
+        assert_ne!(root_id_for("/tmp/docs"), root_id_for("/tmp/other"));
+    }
 
-        let bad = save_settings(&store, &DocsSettings { root_dir: Some("relative/path".into()) });
+    #[test]
+    fn settings_roundtrip_and_validation() {
+        let context = setup();
+        let read_back = get_settings(&context.store);
+        assert_eq!(read_back.roots.len(), 1);
+        assert_eq!(read_back.roots[0].id, context.root_id);
+        assert_eq!(read_back.root_dir, None);
+
+        let bad = save_settings(
+            &context.store,
+            &DocsSettings {
+                root_dir: None,
+                roots: vec![DocsRoot { id: String::new(), path: "relative/path".into() }],
+            },
+        );
         assert!(bad.is_err());
 
-        let empty = save_settings(&store, &DocsSettings { root_dir: Some("   ".into()) }).expect("blank clears");
-        assert_eq!(empty.root_dir, None);
+        let missing = save_settings(
+            &context.store,
+            &DocsSettings {
+                root_dir: None,
+                roots: vec![DocsRoot { id: String::new(), path: "/definitely/not/here".into() }],
+            },
+        );
+        assert!(missing.is_err());
 
-        let fresh = LocalJsonStore::new(store_dir.path().to_path_buf()).expect("fresh store");
-        assert_eq!(get_settings(&fresh).root_dir, None);
+        let cleared = save_settings(&context.store, &DocsSettings { root_dir: None, roots: Vec::new() })
+            .expect("empty clears");
+        assert!(cleared.roots.is_empty());
+    }
+
+    #[test]
+    fn legacy_root_dir_folds_into_roots_on_read() {
+        let docs_dir = tempdir().expect("docs temp dir");
+        let store_dir = tempdir().expect("store temp dir");
+        let store = LocalJsonStore::new(store_dir.path().to_path_buf()).expect("store");
+        let legacy = docs_dir.path().to_string_lossy().to_string();
+        store
+            .write(
+                DOCS_SETTINGS_FILENAME,
+                &DocsSettings { root_dir: Some(legacy.clone()), roots: Vec::new() },
+            )
+            .expect("write legacy settings");
+
+        let settings = get_settings(&store);
+        assert_eq!(settings.roots.len(), 1);
+        assert_eq!(settings.roots[0].path, legacy);
+        assert_eq!(settings.roots[0].id, root_id_for(&legacy));
+
+        // 同一路径两次读取 id 一致，前端链接因此稳定
+        assert_eq!(get_settings(&store).roots[0].id, root_id_for(&legacy));
+    }
+
+    #[test]
+    fn save_settings_dedupes_repeated_paths() {
+        let docs_dir = tempdir().expect("docs temp dir");
+        let store_dir = tempdir().expect("store temp dir");
+        let store = LocalJsonStore::new(store_dir.path().to_path_buf()).expect("store");
+        let dir = docs_dir.path().to_string_lossy().to_string();
+
+        let saved = save_settings(
+            &store,
+            &DocsSettings {
+                root_dir: None,
+                roots: vec![
+                    DocsRoot { id: String::new(), path: dir.clone() },
+                    DocsRoot { id: String::new(), path: format!("{dir}/") },
+                ],
+            },
+        )
+        .expect("save");
+        assert_eq!(saved.roots.len(), 1);
     }
 
     #[test]
     fn list_entries_orders_dirs_first_and_filters_junk() {
-        let (docs, _store_dir, store) = setup();
-        let root = docs.path();
+        let context = setup();
+        let root = context.docs.path();
 
         write_docs_file(root, "周报/2026-10.md", "# 周报");
         write_docs_file(root, "readme.md", "hello");
@@ -377,7 +487,7 @@ mod tests {
         fs::create_dir_all(root.join(".git")).expect("git dir");
         fs::write(root.join(".git/config"), "x").expect("git file");
 
-        let entries = list_entries(&store).expect("entries");
+        let entries = list_entries(&context.store, &context.root_id).expect("entries");
 
         let names: Vec<&str> = entries.iter().map(|e| e.name.as_str()).collect();
         assert!(names.contains(&"周报"));
@@ -395,89 +505,101 @@ mod tests {
 
     #[test]
     fn read_file_enforces_size_limit_and_sandbox() {
-        let (docs, _store_dir, store) = setup();
-        write_docs_file(docs.path(), "big.md", &"x".repeat(3 * 1024 * 1024));
+        let context = setup();
+        write_docs_file(context.docs.path(), "big.md", &"x".repeat(3 * 1024 * 1024));
 
-        assert!(read_file(&store, "big.md").is_err());
-        assert!(read_file(&store, "../outside.md").is_err());
-        assert!(read_file(&store, "missing.md").is_err());
+        assert!(read_file(&context.store, &context.root_id, "big.md").is_err());
+        assert!(read_file(&context.store, &context.root_id, "../outside.md").is_err());
+        assert!(read_file(&context.store, &context.root_id, "missing.md").is_err());
+    }
+
+    #[test]
+    fn operations_fail_with_unknown_root_id() {
+        let context = setup();
+        assert!(list_entries(&context.store, "no-such-root").is_err());
+        assert!(read_file(&context.store, "no-such-root", "a.md").is_err());
+        assert!(save_file(&context.store, "no-such-root", "a.md", "x").is_err());
+        assert!(search(&context.store, "no-such-root", "x").is_err());
     }
 
     #[test]
     fn create_file_appends_md_and_rejects_collisions() {
-        let (docs, _store_dir, store) = setup();
-        let root = docs.path();
+        let context = setup();
+        let root = context.docs.path();
         write_docs_file(root, "note.md", "old");
 
-        let created = create_file(&store, "", "新文档").expect("create");
+        let created = create_file(&context.store, &context.root_id, "", "新文档").expect("create");
         assert_eq!(created.name, "新文档.md");
         assert_eq!(created.path, "新文档.md");
         assert!(root.join("新文档.md").exists());
 
-        assert!(create_file(&store, "", "note").is_err()); // 补 .md 后与 note.md 冲突
-        assert!(create_file(&store, "", "../逃逸").is_err()); // 名称带分隔符被拒
-        assert!(create_file(&store, "", ".隐藏").is_err());
+        assert!(create_file(&context.store, &context.root_id, "", "note").is_err()); // 补 .md 后与 note.md 冲突
+        assert!(create_file(&context.store, &context.root_id, "", "../逃逸").is_err()); // 名称带分隔符被拒
+        assert!(create_file(&context.store, &context.root_id, "", ".隐藏").is_err());
     }
 
     #[test]
     fn save_and_rename_and_delete_roundtrip() {
-        let (docs, _store_dir, store) = setup();
-        let root = docs.path();
-        let entry = create_file(&store, "", "草稿").expect("create");
+        let context = setup();
+        let root = context.docs.path();
+        let entry = create_file(&context.store, &context.root_id, "", "草稿").expect("create");
 
-        let saved = save_file(&store, &entry.path, "# 标题\n内容").expect("save");
+        let saved = save_file(&context.store, &context.root_id, &entry.path, "# 标题\n内容").expect("save");
         assert_eq!(saved.size, "# 标题\n内容".len() as u64);
-        assert_eq!(read_file(&store, "草稿.md").expect("read"), "# 标题\n内容");
+        assert_eq!(read_file(&context.store, &context.root_id, "草稿.md").expect("read"), "# 标题\n内容");
 
-        let renamed = rename_entry(&store, "草稿.md", "正式文档").expect("rename");
+        let renamed = rename_entry(&context.store, &context.root_id, "草稿.md", "正式文档").expect("rename");
         assert_eq!(renamed.path, "正式文档.md");
         assert!(!root.join("草稿.md").exists());
-        assert_eq!(read_file(&store, "正式文档.md").expect("read again"), "# 标题\n内容");
+        assert_eq!(read_file(&context.store, &context.root_id, "正式文档.md").expect("read again"), "# 标题\n内容");
 
-        assert_eq!(delete_entry(&store, "正式文档.md").expect("delete"), "正式文档.md");
+        assert_eq!(
+            delete_entry(&context.store, &context.root_id, "正式文档.md").expect("delete"),
+            "正式文档.md"
+        );
         assert!(!root.join("正式文档.md").exists());
     }
 
     #[test]
     fn rename_file_keeps_md_suffix_and_blocks_collision() {
-        let (docs, _store_dir, store) = setup();
-        let root = docs.path();
+        let context = setup();
+        let root = context.docs.path();
         write_docs_file(root, "a.md", "a");
         write_docs_file(root, "b.md", "b");
 
-        let renamed = rename_entry(&store, "a.md", "新名字").expect("rename");
+        let renamed = rename_entry(&context.store, &context.root_id, "a.md", "新名字").expect("rename");
         assert_eq!(renamed.name, "新名字.md");
 
-        assert!(rename_entry(&store, "新名字.md", "b").is_err()); // 会撞 b.md
-        assert!(rename_entry(&store, "missing.md", "x").is_err());
+        assert!(rename_entry(&context.store, &context.root_id, "新名字.md", "b").is_err()); // 会撞 b.md
+        assert!(rename_entry(&context.store, &context.root_id, "missing.md", "x").is_err());
     }
 
     #[test]
     fn delete_directory_requires_empty() {
-        let (docs, _store_dir, store) = setup();
-        let root = docs.path();
+        let context = setup();
+        let root = context.docs.path();
         write_docs_file(root, "folder/inner.md", "x");
 
-        assert!(delete_entry(&store, "folder").is_err());
+        assert!(delete_entry(&context.store, &context.root_id, "folder").is_err());
         fs::remove_file(root.join("folder/inner.md")).expect("clear");
-        assert!(delete_entry(&store, "folder").is_ok());
+        assert!(delete_entry(&context.store, &context.root_id, "folder").is_ok());
     }
 
     #[test]
     fn search_finds_lines_case_insensitively() {
-        let (docs, _store_dir, store) = setup();
-        let root = docs.path();
+        let context = setup();
+        let root = context.docs.path();
         write_docs_file(root, "notes/api.md", "# API\n调用的接口是 sendEmail\n");
         write_docs_file(root, "notes/other.md", "无关内容");
 
-        let results = search(&store, "sendemail").expect("search");
+        let results = search(&context.store, &context.root_id, "sendemail").expect("search");
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].path, "notes/api.md");
         assert_eq!(results[0].name, "api.md");
         assert_eq!(results[0].line_number, 2);
         assert!(results[0].line_text.contains("sendEmail"));
 
-        assert!(search(&store, "  ").expect("blank").is_empty());
+        assert!(search(&context.store, &context.root_id, "  ").expect("blank").is_empty());
     }
 
     #[test]
@@ -485,8 +607,8 @@ mod tests {
         let store_dir = tempdir().expect("store dir");
         let store = LocalJsonStore::new(store_dir.path().to_path_buf()).expect("store");
 
-        assert!(list_entries(&store).is_err());
-        assert!(read_file(&store, "a.md").is_err());
-        assert!(save_file(&store, "a.md", "x").is_err());
+        assert!(list_entries(&store, "any").is_err());
+        assert!(read_file(&store, "any", "a.md").is_err());
+        assert!(save_file(&store, "any", "a.md", "x").is_err());
     }
 }

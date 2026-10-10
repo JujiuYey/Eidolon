@@ -39,7 +39,14 @@ const routes: RouteRecordRaw[] = [
       },
       {
         path: '/docs',
+        name: 'docs-manage',
+        component: () => import('@/views/docs/manage.vue'),
+      },
+      {
+        path: '/docs/r/:rootId',
+        name: 'docs-root',
         component: () => import('@/views/docs/index.vue'),
+        props: route => ({ rootId: route.params.rootId }),
       },
       {
         path: '/pm',
