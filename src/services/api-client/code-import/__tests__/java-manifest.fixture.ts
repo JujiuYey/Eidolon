@@ -11,7 +11,7 @@ export const JAVA_MANIFEST_FIXTURE: JavaManifest = {
       name: 'DepartmentController',
       module: 'system',
       base_path: '/system/department',
-      extends_base: true,
+      framework_kind: 'vef',
       update_form: 'DepartmentUpdateForm',
       search_form: 'DepartmentSearchForm',
       endpoints: [
@@ -61,7 +61,7 @@ export const JAVA_MANIFEST_FIXTURE: JavaManifest = {
       name: 'ExternalApiController',
       module: 'api',
       base_path: '/external-api',
-      extends_base: false,
+      framework_kind: 'none',
       update_form: null,
       search_form: null,
       endpoints: [

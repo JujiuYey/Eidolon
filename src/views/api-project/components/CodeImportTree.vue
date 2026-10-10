@@ -226,7 +226,7 @@ watch(trimmedKeyword, keyword => {
                     </span>
                     <span class="truncate font-mono text-xs text-muted-foreground">{{ operation.label }}</span>
                     <Badge
-                      v-if="operation.auth !== 'bearer'"
+                      v-if="operation.auth === 'none'"
                       variant="outline"
                       class="h-4 px-1.5 text-[10px] text-muted-foreground"
                     >

@@ -1,3 +1,4 @@
+import { buildDhyxImportPayload, parseDhyxManifest } from './dhyx-java';
 import type { CodeImportPayload, CodeImportPreview } from './types';
 import { buildVefImportPayload, parseVefManifest } from './vef-go';
 import { buildJavaImportPayload, parseJavaManifest } from './vef-java';
@@ -35,6 +36,14 @@ export const CODE_IMPORT_FRAMEWORKS: CodeImportFramework[] = [
     defaultBaseUrl: 'http://127.0.0.1:8200',
     parseManifest: parseJavaManifest,
     buildImportPayload: buildJavaImportPayload,
+  },
+  {
+    id: 'dhyx-java',
+    label: 'dhyx-java',
+    description: 'Java · Spring Boot + dhyx 框架（REST 接口，静态解析源码，含中文标签）',
+    defaultBaseUrl: 'http://127.0.0.1:8888',
+    parseManifest: parseDhyxManifest,
+    buildImportPayload: buildDhyxImportPayload,
   },
 ];
 

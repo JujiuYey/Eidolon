@@ -50,7 +50,7 @@ fn export_env(framework: &str) -> Vec<(&'static str, &'static str)> {
 }
 
 pub fn supported_frameworks() -> Vec<&'static str> {
-    vec!["vef-go", "vef-java"]
+    vec!["vef-go", "vef-java", "dhyx-java"]
 }
 
 /// 在仓库目录执行框架导出命令，返回清单 JSON 文本。
@@ -67,8 +67,8 @@ pub async fn export(framework: &str, repo_path: &str, export_id: &str) -> Result
         return Err(format!("仓库路径不存在或不是目录: {repo_path}"));
     }
 
-    // vef-java：静态扫描源码（只读、毫秒级），不经过子进程与取消注册表
-    if framework == "vef-java" {
+    // Java 系框架：静态扫描源码（只读、毫秒级），不经过子进程与取消注册表
+    if framework == "vef-java" || framework == "dhyx-java" {
         return crate::services::code_scan_java::scan(repo);
     }
 

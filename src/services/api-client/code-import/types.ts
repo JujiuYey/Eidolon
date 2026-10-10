@@ -54,7 +54,10 @@ export interface JavaControllerDef {
   name: string;
   module: string;
   base_path: string;
-  extends_base: boolean;
+  /** swagger @Api(tags) 中文标签（vef 项目为空） */
+  label?: string | null;
+  /** 基类约定：`vef` | `dhyx` | `none` */
+  framework_kind: 'vef' | 'dhyx' | 'none';
   update_form: string | null;
   search_form: string | null;
   endpoints: JavaEndpointDef[];
@@ -62,6 +65,8 @@ export interface JavaControllerDef {
 
 export interface JavaEndpointDef {
   name: string;
+  /** swagger @ApiOperation(value) 中文标签 */
+  label?: string | null;
   method: string;
   path: string;
   source: 'declared' | 'base';

@@ -60,7 +60,7 @@ export function parseJavaManifest(manifestJson: string): CodeImportPreview {
     const bucket = modules.get(controller.module) ?? [];
     bucket.push({
       key: `r:${controller.base_path}`,
-      name: controller.base_path.split('/').filter(Boolean).pop() ?? controller.name,
+      name: controller.label ?? controller.base_path.split('/').filter(Boolean).pop() ?? controller.name,
       fullName: controller.base_path,
       operations,
     });
@@ -126,7 +126,7 @@ function toOperation(
   return {
     externalKey: `${fullPath}#${endpoint.method}`,
     action: endpoint.name,
-    label: `${endpoint.method} ${normalizeSubPath(endpoint.path)}`,
+    label: endpoint.label ?? `${endpoint.method} ${normalizeSubPath(endpoint.path)}`,
     method: endpoint.method,
     subPath: endpoint.path,
     url: fullPath,
