@@ -21,9 +21,7 @@ export const THEME_COLOR_OPTIONS: ThemeColorOption[] = [
   { value: 'pink', label: '莓果粉', preview: '#ec4899' },
 ];
 
-const THEME_COLOR_VALUES = new Set<ThemeColor>(
-  THEME_COLOR_OPTIONS.map(option => option.value),
-);
+const THEME_COLOR_VALUES = new Set<ThemeColor>(THEME_COLOR_OPTIONS.map(option => option.value));
 
 export function isThemeColor(value: unknown): value is ThemeColor {
   return typeof value === 'string' && THEME_COLOR_VALUES.has(value as ThemeColor);

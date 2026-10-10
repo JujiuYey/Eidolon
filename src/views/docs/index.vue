@@ -1,16 +1,18 @@
 <script setup lang="ts">
-import type { DocsEntry } from '@/types/docs';
-import { FolderOpen, Save, Sparkles } from 'lucide-vue-next';
 import { open } from '@tauri-apps/plugin-dialog';
+import { FolderOpen, Save, Sparkles } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
+
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { useDocsStore } from '@/stores/docs';
+import type { DocsEntry } from '@/types/docs';
 import { getErrorMessage } from '@/utils/helpers';
+
 import DocsAiPanel from './_components/docs-ai-panel.vue';
 import DocsSearchResults from './_components/docs-search-results.vue';
 import DocsTree from './_components/docs-tree.vue';
@@ -98,7 +100,9 @@ function askCreateFile(dirPath: string) {
     targetPath: dirPath,
     initialName: '',
     title: '新建文档',
-    description: dirPath ? `将在「${dirPath}」下创建，名称会自动补上 .md。` : '在文档库根目录创建，名称会自动补上 .md。',
+    description: dirPath
+      ? `将在「${dirPath}」下创建，名称会自动补上 .md。`
+      : '在文档库根目录创建，名称会自动补上 .md。',
     confirmLabel: '创建',
   };
 }
@@ -120,9 +124,7 @@ function askRename(entry: DocsEntry) {
     targetPath: entry.path,
     initialName: entry.is_dir ? entry.name : entry.name.replace(/\.md$/i, ''),
     title: entry.is_dir ? '重命名文件夹' : '重命名文档',
-    description: entry.is_dir
-      ? '文件夹内的文档会跟着一起改路径。'
-      : '不需要写 .md 后缀，会自动保留。',
+    description: entry.is_dir ? '文件夹内的文档会跟着一起改路径。' : '不需要写 .md 后缀，会自动保留。',
     confirmLabel: '保存',
   };
 }
@@ -225,12 +227,7 @@ onBeforeUnmount(() => {
   <div class="flex h-full flex-col overflow-hidden">
     <div class="flex min-h-0 flex-1 gap-4 px-6 py-4">
       <aside class="flex w-72 shrink-0 flex-col gap-3">
-        <Input
-          v-model="searchKeyword"
-          aria-label="搜索文档"
-          class="h-9 shrink-0"
-          placeholder="搜索文档内容"
-        />
+        <Input v-model="searchKeyword" aria-label="搜索文档" class="h-9 shrink-0" placeholder="搜索文档内容" />
         <div class="min-h-0 flex-1">
           <DocsSearchResults
             v-if="isSearching"
@@ -263,18 +260,13 @@ onBeforeUnmount(() => {
           <FolderOpen class="h-5 w-5 text-primary" />
         </div>
         <div>
-          <p class="text-sm font-semibold">
-            设置你的文档库
-          </p>
+          <p class="text-sm font-semibold">设置你的文档库</p>
           <p class="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
             选一个存放 .md 文件的文件夹，里面的文档会全部出现在这里。
             文档始终是磁盘上的普通文件，随时可以用其他工具打开。
           </p>
         </div>
-        <Button
-          :disabled="isPickingRoot"
-          @click="pickRootDir"
-        >
+        <Button :disabled="isPickingRoot" @click="pickRootDir">
           <FolderOpen class="h-4 w-4" />
           选择文档库目录
         </Button>
@@ -285,27 +277,20 @@ onBeforeUnmount(() => {
         v-else-if="!store.activePath"
         class="flex min-w-0 flex-1 items-center justify-center rounded-xl border bg-card"
       >
-        <p class="text-sm text-muted-foreground">
-          从左侧选择一篇文档，或点「新建」开始写。
-        </p>
+        <p class="text-sm text-muted-foreground">从左侧选择一篇文档，或点「新建」开始写。</p>
       </div>
 
       <!-- 编辑区 -->
-      <div
-        v-else
-        class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card"
-      >
-        <p
-          v-if="store.fileError"
-          class="shrink-0 border-b px-4 py-2 text-sm text-destructive"
-        >
+      <div v-else class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+        <p v-if="store.fileError" class="shrink-0 border-b px-4 py-2 text-sm text-destructive">
           {{ store.fileError }}
         </p>
         <SagRichEditor v-model="store.content">
           <template #actions>
             <Button
               :aria-label="aiOpen ? '关闭 AI 助手' : '打开 AI 助手'"
-              class="h-8 w-8" :class="[aiOpen ? 'text-primary' : '']"
+              class="h-8 w-8"
+              :class="[aiOpen ? 'text-primary' : '']"
               :title="aiOpen ? '关闭 AI 助手' : '打开 AI 助手'"
               :variant="aiOpen ? 'secondary' : 'ghost'"
               size="icon"
@@ -320,20 +305,9 @@ onBeforeUnmount(() => {
               <span class="h-1.5 w-1.5 rounded-full bg-current" />
               未保存
             </span>
-            <Button
-              class="h-8 shrink-0"
-              :disabled="!store.isDirty || store.saving"
-              size="sm"
-              @click="handleSave"
-            >
-              <Spinner
-                v-if="store.saving"
-                class="h-4 w-4"
-              />
-              <Save
-                v-else
-                class="h-4 w-4"
-              />
+            <Button class="h-8 shrink-0" :disabled="!store.isDirty || store.saving" size="sm" @click="handleSave">
+              <Spinner v-if="store.saving" class="h-4 w-4" />
+              <Save v-else class="h-4 w-4" />
               保存
             </Button>
           </template>
@@ -355,9 +329,11 @@ onBeforeUnmount(() => {
     <!-- 未保存守卫 -->
     <SagConfirm
       v-model:open="unsavedOpen"
-      :description="store.activeEntry
-        ? `当前文档「${store.activeEntry.name}」有未保存的修改，放弃并打开新文档？`
-        : '当前文档有未保存的修改，放弃并打开新文档？'"
+      :description="
+        store.activeEntry
+          ? `当前文档「${store.activeEntry.name}」有未保存的修改，放弃并打开新文档？`
+          : '当前文档有未保存的修改，放弃并打开新文档？'
+      "
       title="未保存的修改"
       type="default"
       @confirm="confirmDiscardAndOpen"
@@ -366,11 +342,13 @@ onBeforeUnmount(() => {
     <!-- 删除确认 -->
     <SagConfirm
       v-model:open="removeOpen"
-      :description="pendingRemove
-        ? pendingRemove.is_dir
-          ? `删除空文件夹「${pendingRemove.name}」。`
-          : `会直接删除磁盘上的「${pendingRemove.name}」，不可恢复。`
-        : ''"
+      :description="
+        pendingRemove
+          ? pendingRemove.is_dir
+            ? `删除空文件夹「${pendingRemove.name}」。`
+            : `会直接删除磁盘上的「${pendingRemove.name}」，不可恢复。`
+          : ''
+      "
       title="删除"
       type="destructive"
       @confirm="confirmRemove"
@@ -384,7 +362,11 @@ onBeforeUnmount(() => {
       :open="!!nameDialog"
       :title="nameDialog?.title ?? ''"
       @confirm="confirmNameDialog"
-      @update:open="(value) => { if (!value) nameDialog = null; }"
+      @update:open="
+        value => {
+          if (!value) nameDialog = null;
+        }
+      "
     />
   </div>
 </template>

@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { Palette, HardDrive, Sparkles, Database, Server, Brain, Mail, ListTodo, Settings } from 'lucide-vue-next';
 import { ref } from 'vue';
 import type { Component } from 'vue';
-import { Palette, HardDrive, Sparkles, Database, Server, Brain, Mail, ListTodo, Settings } from 'lucide-vue-next';
+
 import { Separator } from '@/components/ui/separator';
 
 import AppConfig from './_components/app-config/index.vue';
@@ -22,17 +23,6 @@ interface SettingMenu {
 
 const menus: SettingMenu[] = [
   {
-    title: '模型服务',
-    key: 'provider-config',
-    icon: Palette,
-  },
-  {
-    title: '默认模型',
-    key: 'default-model',
-    icon: Sparkles,
-    dividerAfter: true,
-  },
-  {
     title: '通用设置',
     key: 'app-config',
     icon: HardDrive,
@@ -41,6 +31,17 @@ const menus: SettingMenu[] = [
     title: '数据设置',
     key: 'data',
     icon: Database,
+    dividerAfter: true,
+  },
+  {
+    title: '模型服务',
+    key: 'provider-config',
+    icon: Palette,
+  },
+  {
+    title: '默认模型',
+    key: 'default-model',
+    icon: Sparkles,
     dividerAfter: true,
   },
   {
@@ -79,33 +80,24 @@ function handleClick(key: string) {
       <aside class="flex w-60 shrink-0 flex-col overflow-hidden rounded-xl border bg-card">
         <div class="flex items-center gap-2 px-4 py-3">
           <Settings class="h-4 w-4 text-primary" />
-          <h2 class="text-sm font-semibold">
-            设置
-          </h2>
+          <h2 class="text-sm font-semibold">设置</h2>
         </div>
         <nav class="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
-          <template
-            v-for="(item, index) of menus"
-            :key="item.key"
-          >
+          <template v-for="(item, index) of menus" :key="item.key">
             <button
               type="button"
               class="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors"
-              :class="activeKey === item.key
-                ? 'bg-muted text-foreground'
-                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
+              :class="
+                activeKey === item.key
+                  ? 'bg-muted text-foreground'
+                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+              "
               @click="handleClick(item.key)"
             >
-              <component
-                :is="item.icon"
-                class="h-4 w-4 shrink-0"
-              />
+              <component :is="item.icon" class="h-4 w-4 shrink-0" />
               <span class="truncate">{{ item.title }}</span>
             </button>
-            <Separator
-              v-if="item.dividerAfter && index < menus.length - 1"
-              class="my-2"
-            />
+            <Separator v-if="item.dividerAfter && index < menus.length - 1" class="my-2" />
           </template>
         </nav>
       </aside>

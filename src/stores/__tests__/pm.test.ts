@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, defineStore, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { createPmStore } from '@/stores/pm';
 import type { PmService } from '@/stores/pm';
 import type { PmConversation, PmMessage } from '@/types/pm';
@@ -57,8 +58,11 @@ describe('pm store', () => {
     const newer = makeConversation({ id: 'conv_b', updated_at: 200, title: '评审' });
     const service = createService({
       listPmConversations: vi.fn().mockResolvedValue([older, newer]),
-      listPmConversationMessages: vi.fn().mockImplementation((id: string) =>
-        Promise.resolve(id === 'conv_b' ? [makeMessage({ conversation_id: 'conv_b' })] : [])),
+      listPmConversationMessages: vi
+        .fn()
+        .mockImplementation((id: string) =>
+          Promise.resolve(id === 'conv_b' ? [makeMessage({ conversation_id: 'conv_b' })] : []),
+        ),
     });
     const store = bindStore(service);
 
@@ -157,8 +161,11 @@ describe('pm store', () => {
     });
     const service = createService({
       listPmConversations: vi.fn().mockResolvedValue([convA, convB]),
-      listPmConversationMessages: vi.fn().mockImplementation((id: string) =>
-        Promise.resolve(id === 'conv_b' ? [makeMessage({ id: 'msg_b', conversation_id: 'conv_b' })] : [])),
+      listPmConversationMessages: vi
+        .fn()
+        .mockImplementation((id: string) =>
+          Promise.resolve(id === 'conv_b' ? [makeMessage({ id: 'msg_b', conversation_id: 'conv_b' })] : []),
+        ),
       sendPmMessage: vi.fn().mockImplementation(() => sendPromise),
     });
     const store = bindStore(service);
@@ -178,9 +185,9 @@ describe('pm store', () => {
 
   it('renameConversation 更新列表条目', async () => {
     const service = createService({
-      renamePmConversation: vi.fn().mockResolvedValue(
-        makeConversation({ id: 'conv_1', title: '登录流程评审', updated_at: 300 }),
-      ),
+      renamePmConversation: vi
+        .fn()
+        .mockResolvedValue(makeConversation({ id: 'conv_1', title: '登录流程评审', updated_at: 300 })),
     });
     const store = bindStore(service);
     store.conversations = [makeConversation()];

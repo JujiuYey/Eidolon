@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
+
 import type { ApiClientRequest } from '@/types/api-client';
+
 import { toFrontendRequest, toTauriRequest } from './mappers';
 import type { TauriDeletionSummary, TauriRequest } from './types';
 
@@ -13,10 +15,7 @@ export async function getApiRequest(requestId: string): Promise<ApiClientRequest
   return raw ? toFrontendRequest(raw) : null;
 }
 
-export async function createApiRequest(input: {
-  groupId: string;
-  name: string;
-}): Promise<ApiClientRequest> {
+export async function createApiRequest(input: { groupId: string; name: string }): Promise<ApiClientRequest> {
   const raw = await invoke<TauriRequest>('create_api_request', {
     groupId: input.groupId,
     name: input.name,

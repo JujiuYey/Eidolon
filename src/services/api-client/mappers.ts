@@ -11,6 +11,7 @@ import type {
   ApiClientRequestHistory,
   ApiExecuteResult,
 } from '@/types/api-client';
+
 import type {
   TauriAiGenerateInput,
   TauriAiGenerateResult,

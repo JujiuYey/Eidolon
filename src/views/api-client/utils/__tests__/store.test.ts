@@ -1,6 +1,8 @@
 import { strict as assert } from 'node:assert';
-import { afterEach, beforeEach, describe, it } from 'vitest';
+
 import { createPinia, defineStore, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, describe, it } from 'vitest';
+
 import { createApiClientStore } from '@/stores/api-client';
 import type { ApiClientService } from '@/stores/api-client';
 import type {
@@ -147,14 +149,12 @@ interface ServiceState {
 
 function buildService(): ServiceState {
   const calls: RecordedCall[] = [];
-  let executeImpl: (input: ExecuteInput) => Promise<SnakeExecutionResult>
-    = async () => {
-      throw new Error('executeImpl not configured');
-    };
-  let generateImpl: (input: GenerateInput) => Promise<SnakeAiGenerateResult>
-    = async () => {
-      throw new Error('generateImpl not configured');
-    };
+  let executeImpl: (input: ExecuteInput) => Promise<SnakeExecutionResult> = async () => {
+    throw new Error('executeImpl not configured');
+  };
+  let generateImpl: (input: GenerateInput) => Promise<SnakeAiGenerateResult> = async () => {
+    throw new Error('generateImpl not configured');
+  };
   const historyFixture: ApiClientRequestHistory[] = [];
 
   const service: ApiClientService = {
@@ -289,7 +289,11 @@ function buildService(): ServiceState {
       calls.push({ method: 'cancelApiRequest', args: [executionId] });
       return true;
     },
-    previewApiRequest: async (input: { requestId: string; environmentId: string | null; snapshot: ApiSendRequestInput['snapshot'] }) => {
+    previewApiRequest: async (input: {
+      requestId: string;
+      environmentId: string | null;
+      snapshot: ApiSendRequestInput['snapshot'];
+    }) => {
       calls.push({ method: 'previewApiRequest', args: [input] });
       return { method: input.snapshot.method, url: input.snapshot.url, bodySizeBytes: 0, environmentName: null };
     },
@@ -428,10 +432,7 @@ describe('api project resource contract', () => {
 
   it('deletion impact surfaces not-found error instead of zero counts', async () => {
     const state = buildService();
-    await assert.rejects(
-      () => state.service.getApiProjectDeletionImpact('missing'),
-      /未找到 id 为 missing 的项目/,
-    );
+    await assert.rejects(() => state.service.getApiProjectDeletionImpact('missing'), /未找到 id 为 missing 的项目/);
     const impactCalls = state.calls.filter(call => call.method === 'getApiProjectDeletionImpact');
     assert.equal(impactCalls.length, 1);
     assert.deepEqual(impactCalls[0]!.args, ['missing']);
@@ -459,7 +460,11 @@ describe('uRL Query parsing on paste', () => {
     assert.equal(store.draft?.query.length, 3);
     assert.deepEqual(
       store.draft?.query.map(row => [row.key, row.value, row.enabled]),
-      [['tag', 'a', true], ['tag', 'b', true], ['token', 'secret', true]],
+      [
+        ['tag', 'a', true],
+        ['tag', 'b', true],
+        ['token', 'secret', true],
+      ],
     );
   });
 });

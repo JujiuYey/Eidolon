@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import type { DocsSearchResult } from '@/types/docs';
 import { FileText, SearchX } from 'lucide-vue-next';
+
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { DocsSearchResult } from '@/types/docs';
 
 interface Props {
   results: DocsSearchResult[];
@@ -21,35 +22,19 @@ const emit = defineEmits<Emits>();
 <template>
   <div class="flex h-full min-h-0 flex-col rounded-xl border bg-card">
     <div class="flex items-center justify-between gap-2 px-4 py-3">
-      <h2 class="text-sm font-semibold">
-        搜索「{{ keyword }}」
-      </h2>
-      <span
-        v-if="!isSearching"
-        class="text-xs text-muted-foreground tabular-nums"
-      >
-        {{ results.length }} 处命中
-      </span>
+      <h2 class="text-sm font-semibold">搜索「{{ keyword }}」</h2>
+      <span v-if="!isSearching" class="text-xs text-muted-foreground tabular-nums"> {{ results.length }} 处命中 </span>
     </div>
 
     <ScrollArea class="min-h-0 flex-1">
       <div class="space-y-1 px-2 pb-2">
         <template v-if="isSearching">
-          <Skeleton
-            v-for="index of 4"
-            :key="index"
-            class="mx-2 h-14"
-          />
+          <Skeleton v-for="index of 4" :key="index" class="mx-2 h-14" />
         </template>
 
-        <div
-          v-else-if="results.length === 0"
-          class="flex flex-col items-center gap-2 px-2 py-8 text-center"
-        >
+        <div v-else-if="results.length === 0" class="flex flex-col items-center gap-2 px-2 py-8 text-center">
           <SearchX class="h-5 w-5 text-muted-foreground" />
-          <p class="text-xs text-muted-foreground">
-            没有找到匹配的内容。
-          </p>
+          <p class="text-xs text-muted-foreground">没有找到匹配的内容。</p>
         </div>
 
         <button

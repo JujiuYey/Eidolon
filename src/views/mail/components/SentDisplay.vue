@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import { RotateCcw, Trash2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
-import { RotateCcw, Trash2 } from 'lucide-vue-next';
+
+import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import { useMailStore } from '@/stores/mail';
 import type { SentEmail } from '@/types/mail';
 import { getErrorMessage } from '@/utils/helpers';
@@ -54,10 +55,7 @@ function handleResend() {
 </script>
 
 <template>
-  <div
-    v-if="mail"
-    class="flex h-full flex-col"
-  >
+  <div v-if="mail" class="flex h-full flex-col">
     <div class="flex items-start justify-between gap-4 p-4">
       <div class="flex-1 space-y-1">
         <h2 class="text-xl font-bold break-all">
@@ -67,10 +65,7 @@ function handleResend() {
           {{ sentAtText }}
         </p>
       </div>
-      <Badge
-        :variant="mail.status === 'sent' ? 'secondary' : 'destructive'"
-        class="shrink-0"
-      >
+      <Badge :variant="mail.status === 'sent' ? 'secondary' : 'destructive'" class="shrink-0">
         {{ mail.status === 'sent' ? '已发送' : '发送失败' }}
       </Badge>
     </div>
@@ -84,10 +79,7 @@ function handleResend() {
           <p class="text-xs text-muted-foreground">
             收件人：<span class="text-foreground">{{ mail.to_addresses || '-' }}</span>
           </p>
-          <p
-            v-if="mail.cc_addresses"
-            class="text-xs text-muted-foreground"
-          >
+          <p v-if="mail.cc_addresses" class="text-xs text-muted-foreground">
             抄送：<span class="text-foreground">{{ mail.cc_addresses }}</span>
           </p>
         </div>
@@ -104,12 +96,7 @@ function handleResend() {
     </ScrollArea>
     <Separator />
     <div class="flex items-center justify-end gap-3 p-4">
-      <Button
-        type="button"
-        variant="outline"
-        class="h-9"
-        @click="handleResend"
-      >
+      <Button type="button" variant="outline" class="h-9" @click="handleResend">
         <RotateCcw class="mr-2 h-4 w-4" />
         重新发送
       </Button>
@@ -125,10 +112,7 @@ function handleResend() {
     </div>
   </div>
 
-  <div
-    v-else
-    class="flex h-full items-center justify-center p-8"
-  >
+  <div v-else class="flex h-full items-center justify-center p-8">
     <div class="text-center text-sm text-muted-foreground">
       <p>未选择发送记录</p>
     </div>

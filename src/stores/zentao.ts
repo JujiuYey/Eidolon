@@ -1,10 +1,8 @@
-import type {
-  ZentaoAccount,
-  ZentaoMyWork,
-} from '@/types/zentao';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+
 import * as zentaoServiceApi from '@/services/zentao';
+import type { ZentaoAccount, ZentaoMyWork } from '@/types/zentao';
 
 /** store 依赖的服务接口，测试时可注入 fake 实现 */
 export interface ZentaoService {
@@ -34,13 +32,9 @@ export function createZentaoStore(options: { service?: ZentaoService } = {}) {
   const workLoading = ref(false);
   const workError = ref('');
 
-  const enabledAccounts = computed(() =>
-    accounts.value.filter(account => account.enabled),
-  );
+  const enabledAccounts = computed(() => accounts.value.filter(account => account.enabled));
 
-  const activeAccount = computed(
-    () => accounts.value.find(account => account.id === activeAccountId.value) ?? null,
-  );
+  const activeAccount = computed(() => accounts.value.find(account => account.id === activeAccountId.value) ?? null);
 
   async function loadAccounts() {
     accountsLoading.value = true;

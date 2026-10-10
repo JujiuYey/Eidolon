@@ -1,8 +1,6 @@
-import type {
-  ProviderModel,
-  ProviderSetting,
-} from '@/types/provider';
 import { invoke } from '@tauri-apps/api/core';
+
+import type { ProviderModel, ProviderSetting } from '@/types/provider';
 
 export async function listProviderSettings(): Promise<ProviderSetting[]> {
   return invoke<ProviderSetting[]>('list_provider_settings');
@@ -31,10 +29,6 @@ export async function deleteProviderModels(providerId: string): Promise<string> 
   return invoke<string>('delete_provider_models', { providerId });
 }
 
-export async function testAiConnection(request: {
-  api_key: string;
-  base_url: string;
-  model: string;
-}): Promise<void> {
+export async function testAiConnection(request: { api_key: string; base_url: string; model: string }): Promise<void> {
   await invoke('test_ai_connection', { request });
 }

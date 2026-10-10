@@ -1,30 +1,19 @@
 <script setup lang="ts">
-import type { PmSkillSummary } from '@/types/pm';
-import MarkdownRender from 'markstream-vue';
 import { open } from '@tauri-apps/plugin-dialog';
 import { Brain, FolderOpen, Search, Trash2 } from 'lucide-vue-next';
+import MarkdownRender from 'markstream-vue';
 import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  getPmSettings,
-  getPmSkillContent,
-  listPmSkills,
-  revealDirectory,
-  upsertPmSettings,
-} from '@/services/pm';
+import { getPmSettings, getPmSkillContent, listPmSkills, revealDirectory, upsertPmSettings } from '@/services/pm';
+import type { PmSkillSummary } from '@/types/pm';
 import { getErrorMessage } from '@/utils/helpers';
 
 const skills = ref<PmSkillSummary[]>([]);
@@ -119,9 +108,7 @@ onMounted(() => {
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
     <div class="flex items-center gap-2 px-4 py-3">
       <Brain class="h-4 w-4 text-primary" />
-      <h2 class="text-sm font-semibold">
-        Skills
-      </h2>
+      <h2 class="text-sm font-semibold">Skills</h2>
     </div>
     <Separator />
 
@@ -129,28 +116,15 @@ onMounted(() => {
       <div class="px-5 py-1">
         <!-- 覆盖目录 -->
         <section class="py-3">
-          <h3 class="text-sm font-semibold">
-            覆盖目录
-          </h3>
+          <h3 class="text-sm font-semibold">覆盖目录</h3>
           <p class="mt-1 text-sm text-muted-foreground">
-            产品经理分身的方法论框架库随应用内置；如需自行更新（例如 awesome-ux-skills 有新版），把仓库
-            clone 到本地后在这里指向它。目录下每个子文件夹里的 SKILL.md 会按文件夹名覆盖内置版本，
-            也能追加全新框架。
+            产品经理分身的方法论框架库随应用内置；如需自行更新（例如 awesome-ux-skills 有新版），把仓库 clone
+            到本地后在这里指向它。目录下每个子文件夹里的 SKILL.md 会按文件夹名覆盖内置版本， 也能追加全新框架。
           </p>
 
           <div class="mt-4 flex max-w-[520px] items-center gap-2">
-            <Input
-              :model-value="overrideDir"
-              aria-label="覆盖目录路径"
-              class="font-mono text-xs"
-              readonly
-            />
-            <Button
-              :disabled="isPicking"
-              size="sm"
-              variant="outline"
-              @click="pickOverrideDir"
-            >
+            <Input :model-value="overrideDir" aria-label="覆盖目录路径" class="font-mono text-xs" readonly />
+            <Button :disabled="isPicking" size="sm" variant="outline" @click="pickOverrideDir">
               <FolderOpen class="h-4 w-4" />
               浏览
             </Button>
@@ -181,15 +155,17 @@ onMounted(() => {
         <section class="py-3">
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 class="text-sm font-semibold">
-                方法论框架库
-              </h3>
+              <h3 class="text-sm font-semibold">方法论框架库</h3>
               <p class="mt-1 text-xs text-muted-foreground">
-                共 {{ skills.length }} 个框架<span v-if="overrideCount > 0">，其中 {{ overrideCount }} 个来自覆盖目录</span>。点击条目查看完整方法文本。
+                共 {{ skills.length }} 个框架<span v-if="overrideCount > 0"
+                  >，其中 {{ overrideCount }} 个来自覆盖目录</span
+                >。点击条目查看完整方法文本。
               </p>
             </div>
             <div class="relative">
-              <Search class="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search
+                class="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              />
               <Input
                 v-model="searchKeyword"
                 aria-label="搜索框架"
@@ -201,17 +177,10 @@ onMounted(() => {
 
           <div class="mt-4 space-y-2">
             <template v-if="isLoading">
-              <Skeleton
-                v-for="index of 5"
-                :key="index"
-                class="h-14"
-              />
+              <Skeleton v-for="index of 5" :key="index" class="h-14" />
             </template>
 
-            <p
-              v-else-if="filteredSkills.length === 0"
-              class="py-6 text-center text-sm text-muted-foreground"
-            >
+            <p v-else-if="filteredSkills.length === 0" class="py-6 text-center text-sm text-muted-foreground">
               {{ skills.length === 0 ? '技能库为空，请检查应用资源是否完整。' : '没有匹配的框架。' }}
             </p>
 
@@ -227,10 +196,7 @@ onMounted(() => {
                   <span class="truncate font-mono text-sm font-medium">
                     {{ skill.slug }}
                   </span>
-                  <Badge
-                    :variant="skill.source === 'override' ? 'default' : 'secondary'"
-                    class="text-[11px]"
-                  >
+                  <Badge :variant="skill.source === 'override' ? 'default' : 'secondary'" class="text-[11px]">
                     {{ skill.source === 'override' ? '覆盖' : '内置' }}
                   </Badge>
                   <span class="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
@@ -249,10 +215,7 @@ onMounted(() => {
   </div>
 
   <!-- 框架全文预览 -->
-  <Dialog
-    :open="previewOpen"
-    @update:open="value => previewOpen = value"
-  >
+  <Dialog :open="previewOpen" @update:open="value => (previewOpen = value)">
     <DialogContent class="flex max-h-[80vh] flex-col sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle class="font-mono">
@@ -268,14 +231,8 @@ onMounted(() => {
           <div v-if="previewLoading">
             <Skeleton class="h-64 w-full" />
           </div>
-          <div
-            v-else
-            class="pm-markdown"
-          >
-            <MarkdownRender
-              :content="previewContent"
-              custom-id="pm-skill-preview"
-            />
+          <div v-else class="pm-markdown">
+            <MarkdownRender :content="previewContent" custom-id="pm-skill-preview" />
           </div>
         </div>
       </ScrollArea>

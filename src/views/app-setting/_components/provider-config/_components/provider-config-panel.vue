@@ -1,16 +1,9 @@
 <script setup lang="ts">
-import {
-  Check,
-  ExternalLink,
-  Eye,
-  EyeOff,
-  PencilLine,
-  Plus,
-  RotateCcw,
-  Trash2,
-} from 'lucide-vue-next';
+import { Check, ExternalLink, Eye, EyeOff, PencilLine, Plus, RotateCcw, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
+
+import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,19 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import SagConfirm from '@/components/sag/sag-confirm/index.vue';
-import {
-  deleteProviderModels,
-  deleteProviderSetting,
-  replaceProviderModels,
-  upsertProviderSetting,
-} from '@/services';
-import type {
-  ProviderModel,
-  ProviderModelCapabilities,
-  ProviderRegistryItem,
-  ProviderSetting,
-} from '@/types/provider';
+import { deleteProviderModels, deleteProviderSetting, replaceProviderModels, upsertProviderSetting } from '@/services';
+import type { ProviderModel, ProviderModelCapabilities, ProviderRegistryItem, ProviderSetting } from '@/types/provider';
 import { getErrorMessage } from '@/utils/helpers';
 
 const props = defineProps<{
@@ -110,31 +92,31 @@ const settingForm = ref<ProviderSetting>(buildSettingFormData());
 const modelItems = ref<ProviderModel[]>(props.models.map(cloneModel));
 const modelDraft = ref<ProviderModel>(createEmptyModel());
 
-watch(() => [props.provider, props.setting, props.models], () => {
-  settingForm.value = buildSettingFormData();
-  modelItems.value = props.models.map(cloneModel);
-  modelDraft.value = createEmptyModel();
-  modelDialogOpen.value = false;
-  editingModelIndex.value = null;
-  showApiKey.value = false;
-}, { immediate: true });
+watch(
+  () => [props.provider, props.setting, props.models],
+  () => {
+    settingForm.value = buildSettingFormData();
+    modelItems.value = props.models.map(cloneModel);
+    modelDraft.value = createEmptyModel();
+    modelDialogOpen.value = false;
+    editingModelIndex.value = null;
+    showApiKey.value = false;
+  },
+  { immediate: true },
+);
 
 const isConfigured = computed(() => Boolean(props.setting));
 const defaultBaseUrl = computed(() => props.provider.default_base_url);
 const canRestoreBaseUrl = computed(() =>
   Boolean(defaultBaseUrl.value && settingForm.value.base_url !== defaultBaseUrl.value),
 );
-const isFormValid = computed(() =>
-  Boolean(settingForm.value.base_url.trim())
-  && modelItems.value.every(model => Boolean(model.model_id.trim())),
+const isFormValid = computed(
+  () => Boolean(settingForm.value.base_url.trim()) && modelItems.value.every(model => Boolean(model.model_id.trim())),
 );
-const canSaveModelDraft = computed(() =>
-  Boolean(modelDraft.value.model_id.trim())
-  && Object.values(modelDraft.value.capabilities).some(Boolean),
+const canSaveModelDraft = computed(
+  () => Boolean(modelDraft.value.model_id.trim()) && Object.values(modelDraft.value.capabilities).some(Boolean),
 );
-const providerInitials = computed(() =>
-  props.provider.name.slice(0, 2).toUpperCase(),
-);
+const providerInitials = computed(() => props.provider.name.slice(0, 2).toUpperCase());
 
 function restoreBaseUrl() {
   settingForm.value.base_url = defaultBaseUrl.value;
@@ -173,9 +155,7 @@ function removeModel(index: number) {
 }
 
 function enabledCapabilityLabels(model: ProviderModel) {
-  return capabilityOptions
-    .filter(option => model.capabilities[option.key])
-    .map(option => option.label);
+  return capabilityOptions.filter(option => model.capabilities[option.key]).map(option => option.label);
 }
 
 async function saveConfig() {
@@ -215,17 +195,11 @@ async function confirmDelete() {
     <div class="flex items-start justify-between gap-4 border-b px-8 py-6">
       <div class="min-w-0 space-y-3">
         <div class="flex items-center gap-3">
-          <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-xs ring-1 ring-black/5">
-            <img
-              v-if="provider.icon"
-              :src="provider.icon"
-              :alt="provider.name"
-              class="h-7 w-7 object-contain"
-            />
-            <span
-              v-else
-              class="text-sm font-semibold"
-            >
+          <div
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-xs ring-1 ring-black/5"
+          >
+            <img v-if="provider.icon" :src="provider.icon" :alt="provider.name" class="h-7 w-7 object-contain" />
+            <span v-else class="text-sm font-semibold">
               {{ providerInitials }}
             </span>
           </div>
@@ -242,11 +216,7 @@ async function confirmDelete() {
                 size="icon-sm"
                 class="h-8 w-8 rounded-full text-muted-foreground"
               >
-                <a
-                  :href="provider.website"
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <a :href="provider.website" target="_blank" rel="noreferrer">
                   <ExternalLink class="h-4 w-4" />
                 </a>
               </Button>
@@ -311,7 +281,9 @@ async function confirmDelete() {
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2">
               <Label class="text-base font-semibold text-foreground">模型</Label>
-              <span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              <span
+                class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+              >
                 {{ modelItems.length }}
               </span>
             </div>
@@ -328,10 +300,7 @@ async function confirmDelete() {
             </Button>
           </div>
 
-          <div
-            v-if="modelItems.length > 0"
-            class="space-y-3"
-          >
+          <div v-if="modelItems.length > 0" class="space-y-3">
             <div
               v-for="(model, index) of modelItems"
               :key="`${model.model_id}-${index}`"
@@ -340,17 +309,16 @@ async function confirmDelete() {
               <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0 flex-1 space-y-3">
                   <div class="flex min-w-0 items-center gap-3">
-                    <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
+                    <div
+                      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5"
+                    >
                       <img
                         v-if="provider.icon"
                         :src="provider.icon"
                         :alt="provider.name"
                         class="h-5 w-5 object-contain"
                       />
-                      <span
-                        v-else
-                        class="text-[10px] font-semibold text-muted-foreground"
-                      >
+                      <span v-else class="text-[10px] font-semibold text-muted-foreground">
                         {{ providerInitials }}
                       </span>
                     </div>
@@ -368,10 +336,7 @@ async function confirmDelete() {
                     >
                       {{ label }}
                     </span>
-                    <span
-                      v-if="enabledCapabilityLabels(model).length === 0"
-                      class="text-xs text-muted-foreground"
-                    >
+                    <span v-if="enabledCapabilityLabels(model).length === 0" class="text-xs text-muted-foreground">
                       未设置能力
                     </span>
                   </div>
@@ -399,10 +364,7 @@ async function confirmDelete() {
             </div>
           </div>
 
-          <div
-            v-else
-            class="rounded-2xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground"
-          >
+          <div v-else class="rounded-2xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground">
             还没有模型，点击“新增模型”后手动维护模型 ID 和能力。
           </div>
         </section>
@@ -421,12 +383,7 @@ async function confirmDelete() {
         删除配置
       </Button>
 
-      <Button
-        type="button"
-        class="h-10 rounded-xl px-5"
-        :disabled="!isFormValid"
-        @click="saveConfig"
-      >
+      <Button type="button" class="h-10 rounded-xl px-5" :disabled="!isFormValid" @click="saveConfig">
         <Check class="mr-2 h-4 w-4" />
         保存配置
       </Button>
@@ -447,20 +404,13 @@ async function confirmDelete() {
         <DialogTitle>
           {{ editingModelIndex === null ? '新增模型' : '编辑模型' }}
         </DialogTitle>
-        <DialogDescription>
-          维护模型 ID，并设置这个模型支持的能力。
-        </DialogDescription>
+        <DialogDescription> 维护模型 ID，并设置这个模型支持的能力。 </DialogDescription>
       </DialogHeader>
 
       <div class="space-y-5">
         <div class="space-y-2">
           <Label class="text-sm font-medium text-foreground">模型 ID</Label>
-          <Input
-            v-model="modelDraft.model_id"
-            type="text"
-            placeholder="例如: deepseek-chat"
-            class="h-11 rounded-xl"
-          />
+          <Input v-model="modelDraft.model_id" type="text" placeholder="例如: deepseek-chat" class="h-11 rounded-xl" />
         </div>
 
         <div class="space-y-3">
@@ -488,20 +438,8 @@ async function confirmDelete() {
       </div>
 
       <DialogFooter>
-        <Button
-          type="button"
-          variant="outline"
-          @click="modelDialogOpen = false"
-        >
-          取消
-        </Button>
-        <Button
-          type="button"
-          :disabled="!canSaveModelDraft"
-          @click="saveModelDraft"
-        >
-          保存模型
-        </Button>
+        <Button type="button" variant="outline" @click="modelDialogOpen = false"> 取消 </Button>
+        <Button type="button" :disabled="!canSaveModelDraft" @click="saveModelDraft"> 保存模型 </Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

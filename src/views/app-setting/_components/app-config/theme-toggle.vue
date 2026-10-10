@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { Theme } from '@/types';
 import { Computer, Moon, Sun } from 'lucide-vue-next';
+
 import { useTheme } from '@/composables/use-theme';
+import type { Theme } from '@/types';
 
 const { theme, setTheme } = useTheme();
 

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { AlertTriangle } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import type { ApiClientBodyKind, ApiClientRequestBody } from '@/types/api-client';
+
 import KeyValueEditor from './KeyValueEditor.vue';
 
 interface Props {
@@ -96,18 +98,10 @@ function updateForm(rows: ApiClientRequestBody['form']): void {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="none">
-            无请求体
-          </SelectItem>
-          <SelectItem value="json">
-            JSON
-          </SelectItem>
-          <SelectItem value="text">
-            原始文本
-          </SelectItem>
-          <SelectItem value="form">
-            URL 编码表单
-          </SelectItem>
+          <SelectItem value="none"> 无请求体 </SelectItem>
+          <SelectItem value="json"> JSON </SelectItem>
+          <SelectItem value="text"> 原始文本 </SelectItem>
+          <SelectItem value="form"> URL 编码表单 </SelectItem>
         </SelectContent>
       </Select>
     </div>
@@ -123,7 +117,7 @@ function updateForm(rows: ApiClientRequestBody['form']): void {
         <div class="flex flex-col gap-2">
           <Textarea
             :model-value="modelValue.text"
-            placeholder="{&quot;key&quot;: &quot;value&quot;}"
+            placeholder='{"key": "value"}'
             :rows="10"
             class="font-mono text-xs"
             @update:model-value="handleTextInput"

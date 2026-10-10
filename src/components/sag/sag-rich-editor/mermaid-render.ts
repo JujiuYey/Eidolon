@@ -39,10 +39,11 @@ async function getMermaid(isDark: boolean): Promise<Mermaid> {
 
 function extractErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  const firstLine = message
-    .split('\n')
-    .map(line => line.trim())
-    .filter(Boolean)[0] ?? '图表语法错误';
+  const firstLine =
+    message
+      .split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)[0] ?? '图表语法错误';
   return firstLine.slice(0, 160);
 }
 

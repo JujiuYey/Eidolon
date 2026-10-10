@@ -1,5 +1,6 @@
-import type { DefaultModelSetting } from '@/types/default-model';
 import { invoke } from '@tauri-apps/api/core';
+
+import type { DefaultModelSetting } from '@/types/default-model';
 
 export async function listDefaultModelSettings(): Promise<DefaultModelSetting[]> {
   return invoke<DefaultModelSetting[]>('list_default_model_settings');

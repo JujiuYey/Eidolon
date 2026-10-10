@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildEmptyValues,
-  extractVariables,
-  missingVariables,
-  renderTemplate,
-} from '../template-helpers';
+
+import { buildEmptyValues, extractVariables, missingVariables, renderTemplate } from '../template-helpers';
 
 describe('extractVariables', () => {
   it('提取主题与正文中的变量并去重、保序', () => {
@@ -13,27 +9,15 @@ describe('extractVariables', () => {
       '尊敬的{{审批人}}：我因{{请假事由}}请假{{请假天数}}天。{{审批人}}请查收。',
     );
 
-    expect(variables).toEqual([
-      '姓名',
-      '请假类型',
-      '审批人',
-      '请假事由',
-      '请假天数',
-    ]);
+    expect(variables).toEqual(['姓名', '请假类型', '审批人', '请假事由', '请假天数']);
   });
 
   it('兼容花括号内侧空格与英文变量名', () => {
-    expect(extractVariables('{{ name }}的{{ type }}申请', '')).toEqual([
-      'name',
-      'type',
-    ]);
+    expect(extractVariables('{{ name }}的{{ type }}申请', '')).toEqual(['name', 'type']);
   });
 
   it('同一变量在两个文本间共享时只出现一次', () => {
-    expect(extractVariables('{{ 姓名 }}的请假申请', '{{姓名}} {{日期}}')).toEqual([
-      '姓名',
-      '日期',
-    ]);
+    expect(extractVariables('{{ 姓名 }}的请假申请', '{{姓名}} {{日期}}')).toEqual(['姓名', '日期']);
   });
 
   it('无变量时返回空数组', () => {

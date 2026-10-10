@@ -1,3 +1,5 @@
+import { invoke } from '@tauri-apps/api/core';
+
 import type {
   MailTemplate,
   SendEmailRequest,
@@ -7,7 +9,6 @@ import type {
   TestSmtpConnectionRequest,
   TestSmtpConnectionResponse,
 } from '@/types/mail';
-import { invoke } from '@tauri-apps/api/core';
 
 export async function listSmtpAccounts(): Promise<SmtpAccount[]> {
   return invoke<SmtpAccount[]>('list_smtp_accounts');
@@ -37,9 +38,7 @@ export async function sendEmail(request: SendEmailRequest): Promise<SendEmailRes
   return invoke<SendEmailResult>('send_email', { request });
 }
 
-export async function testSmtpConnection(
-  request: TestSmtpConnectionRequest,
-): Promise<TestSmtpConnectionResponse> {
+export async function testSmtpConnection(request: TestSmtpConnectionRequest): Promise<TestSmtpConnectionResponse> {
   return invoke<TestSmtpConnectionResponse>('test_smtp_connection', { request });
 }
 

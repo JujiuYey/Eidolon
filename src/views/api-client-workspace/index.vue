@@ -3,6 +3,7 @@ import { Network } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch as vueWatch } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
+
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,15 +12,16 @@ import { Spinner } from '@/components/ui/spinner';
 import { useConfirm } from '@/composables/use-confirm';
 import { useApiClientStore } from '@/stores/api-client';
 import type { ApiClientHttpMethod } from '@/types/api-client';
+
 import AiBodyGeneratorPanel from './components/AiBodyGeneratorPanel.vue';
 import ApiClientTree from './components/ApiClientTree.vue';
 import ApiRequestEditor from './components/ApiRequestEditor.vue';
 import ApiResponsePanel from './components/ApiResponsePanel.vue';
 import CreateGroupDialog from './components/CreateGroupDialog.vue';
 import CreateRequestDialog from './components/CreateRequestDialog.vue';
+import EnvironmentManagerDialog from './components/EnvironmentManagerDialog.vue';
 import RenameGroupDialog from './components/RenameGroupDialog.vue';
 import RequestHistoryPanel from './components/RequestHistoryPanel.vue';
-import EnvironmentManagerDialog from './components/EnvironmentManagerDialog.vue';
 import WorkspaceToolbar from './components/WorkspaceToolbar.vue';
 
 const props = defineProps<{
@@ -314,11 +316,15 @@ function handleToggleHistoryPanel(): void {
 }
 
 async function handleGenerateAi(): Promise<void> {
-  await runAsync(() => store.generateAiBody({
-    prompt: draft.value?.aiPrompt ?? '',
-    reference: draft.value?.aiReference ?? '',
-    includeCurrentBody: includeCurrentBody.value,
-  }), '生成失败');
+  await runAsync(
+    () =>
+      store.generateAiBody({
+        prompt: draft.value?.aiPrompt ?? '',
+        reference: draft.value?.aiReference ?? '',
+        includeCurrentBody: includeCurrentBody.value,
+      }),
+    '生成失败',
+  );
 }
 
 async function handleCancelAi(): Promise<void> {
@@ -379,11 +385,15 @@ function handleBack(): void {
   void router.push('/api-client');
 }
 
-vueWatch(() => props.projectId, async next => {
-  if (next) {
-    await bootstrapForProject();
-  }
-}, { immediate: true });
+vueWatch(
+  () => props.projectId,
+  async next => {
+    if (next) {
+      await bootstrapForProject();
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   window.addEventListener('beforeunload', handleBeforeUnload);
@@ -411,15 +421,15 @@ const activeProject = computed(() => store.activeProject);
 
     <Alert v-if="!store.activeProjectId" variant="destructive" class="m-4 shrink-0">
       <AlertTitle>项目不可用</AlertTitle>
-      <AlertDescription>
-        请返回项目列表后重新进入。
-      </AlertDescription>
+      <AlertDescription> 请返回项目列表后重新进入。 </AlertDescription>
     </Alert>
 
     <div
       v-else
       class="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-hidden"
-      :class="showHistoryPanel || showAiPanel ? 'grid-cols-[280px_minmax(0,1fr)_360px]' : 'grid-cols-[280px_minmax(0,1fr)]'"
+      :class="
+        showHistoryPanel || showAiPanel ? 'grid-cols-[280px_minmax(0,1fr)_360px]' : 'grid-cols-[280px_minmax(0,1fr)]'
+      "
     >
       <div class="min-h-0 overflow-hidden bg-card">
         <ApiClientTree
@@ -475,16 +485,15 @@ const activeProject = computed(() => store.activeProject);
             @select-environment="handleSelectEnvironment"
           />
 
-          <div v-else class="flex flex-col items-center justify-center rounded-md border border-dashed bg-muted/10 px-6 py-12 text-center text-sm text-muted-foreground">
+          <div
+            v-else
+            class="flex flex-col items-center justify-center rounded-md border border-dashed bg-muted/10 px-6 py-12 text-center text-sm text-muted-foreground"
+          >
             <Network class="mb-2 size-6 text-muted-foreground" />
             请在左侧选择或新建一个请求
           </div>
 
-          <ApiResponsePanel
-            v-if="draft"
-            :response="responseView"
-            :is-loading="isResponseLoading"
-          />
+          <ApiResponsePanel v-if="draft" :response="responseView" :is-loading="isResponseLoading" />
         </div>
       </ScrollArea>
 
@@ -562,19 +571,27 @@ const activeProject = computed(() => store.activeProject);
     <RenameGroupDialog
       :open="renameGroupDialogOpen"
       :current-name="renamingGroupCurrentName"
-      @update:open="(value: boolean) => { renameGroupDialogOpen = value; if (!value) { renamingGroupId = null; renamingGroupCurrentName = ''; } }"
+      @update:open="
+        (value: boolean) => {
+          renameGroupDialogOpen = value;
+          if (!value) {
+            renamingGroupId = null;
+            renamingGroupCurrentName = '';
+          }
+        }
+      "
       @submit="submitRenameGroup"
     />
     <CreateRequestDialog
       :open="createRequestDialogOpen"
       :group-name="createRequestGroupName"
-      @update:open="(value: boolean) => createRequestDialogOpen = value"
+      @update:open="(value: boolean) => (createRequestDialogOpen = value)"
       @submit="submitCreateRequest"
     />
 
     <EnvironmentManagerDialog
       :open="environmentDialogOpen"
-      @update:open="(value: boolean) => environmentDialogOpen = value"
+      @update:open="(value: boolean) => (environmentDialogOpen = value)"
     />
   </div>
 </template>

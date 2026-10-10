@@ -1,7 +1,8 @@
-import type { PmConversation, PmMessage } from '@/types/pm';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+
 import * as pmServiceApi from '@/services/pm';
+import type { PmConversation, PmMessage } from '@/types/pm';
 import { getErrorMessage } from '@/utils/helpers';
 
 /** store 依赖的服务接口，测试时可注入 fake 实现 */
@@ -19,9 +20,7 @@ const defaultService: PmService = pmServiceApi;
 function sortConversations(conversations: PmConversation[]): PmConversation[] {
   return [...conversations].sort(
     (left, right) =>
-      right.updated_at - left.updated_at
-      || left.title.localeCompare(right.title)
-      || left.id.localeCompare(right.id),
+      right.updated_at - left.updated_at || left.title.localeCompare(right.title) || left.id.localeCompare(right.id),
   );
 }
 
@@ -106,9 +105,7 @@ export function createPmStore(options: { service?: PmService } = {}) {
 
   async function renameConversation(conversationId: string, title: string) {
     const renamed = await service.renamePmConversation(conversationId, title);
-    conversations.value = sortConversations(
-      conversations.value.map(item => (item.id === renamed.id ? renamed : item)),
-    );
+    conversations.value = sortConversations(conversations.value.map(item => (item.id === renamed.id ? renamed : item)));
   }
 
   async function removeConversation(conversationId: string) {
@@ -138,8 +135,7 @@ export function createPmStore(options: { service?: PmService } = {}) {
     sendError.value = '';
 
     try {
-      const conversationId
-        = activeConversationId.value || (await createConversation()).id;
+      const conversationId = activeConversationId.value || (await createConversation()).id;
 
       // 仅当仍停留在原会话时才展示乐观消息
       const showOptimistic = activeConversationId.value === conversationId;

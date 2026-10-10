@@ -1,5 +1,5 @@
-import { ref, onMounted } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { ref, onMounted } from 'vue';
 
 export interface AppPaths {
   app_data: string;

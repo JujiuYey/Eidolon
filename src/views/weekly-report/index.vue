@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import type { DateRange as CalendarDateRange } from 'reka-ui';
-import type { WeeklyReportAuthorMode, WeeklyReportEntry, WeeklyReportRepo } from '@/types/weekly-report';
 import { CalendarDate, getLocalTimeZone } from '@internationalized/date';
 import { save } from '@tauri-apps/plugin-dialog';
 import { CalendarRange, ClipboardCopy, Download, MoreHorizontal, RefreshCw, Save, WandSparkles } from 'lucide-vue-next';
+import type { DateRange as CalendarDateRange } from 'reka-ui';
 import { computed, onMounted, shallowRef } from 'vue';
 import { toast } from 'vue-sonner';
-import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
+
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
+import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,13 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RangeCalendar } from '@/components/ui/range-calendar';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import {
   addWeeklyReportRepo,
@@ -36,17 +30,18 @@ import {
   removeWeeklyReportRepo,
   saveWeeklyReport,
 } from '@/services';
-import { copyToClipboard, getErrorMessage } from '@/utils/helpers';
 import { useWeeklyReportStore } from '@/stores/weekly-report';
-import ReportHistory from './_components/report-history.vue';
+import type { WeeklyReportAuthorMode, WeeklyReportEntry, WeeklyReportRepo } from '@/types/weekly-report';
+import { copyToClipboard, getErrorMessage } from '@/utils/helpers';
+
 import RepoManager from './_components/repo-manager.vue';
+import ReportHistory from './_components/report-history.vue';
 import {
   aggregateCommits,
   buildReportTitle,
   collectCommits,
   formatRange,
   getPresetRange,
-
 } from './utils/report-helpers';
 import type { DateRange, RangePreset, ReportGroupBy } from './utils/report-helpers';
 
@@ -368,13 +363,8 @@ onMounted(() => {
 
 <template>
   <div class="flex h-full flex-col overflow-hidden">
-    <SagPageHeader
-      class="px-6 pt-6"
-      title="周报"
-    >
-      <template #meta>
-        汇总本地仓库的 git 提交，生成、润色并归档每周工作周报
-      </template>
+    <SagPageHeader class="px-6 pt-6" title="周报">
+      <template #meta> 汇总本地仓库的 git 提交，生成、润色并归档每周工作周报 </template>
     </SagPageHeader>
 
     <Separator class="mt-4 shrink-0" />
@@ -416,18 +406,12 @@ onMounted(() => {
 
             <Popover v-model:open="isCalendarOpen">
               <PopoverTrigger as-child>
-                <Button
-                  size="sm"
-                  :variant="activePreset === 'custom' ? 'default' : 'outline'"
-                >
+                <Button size="sm" :variant="activePreset === 'custom' ? 'default' : 'outline'">
                   <CalendarRange class="h-4 w-4" />
                   {{ rangeLabel }}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent
-                align="start"
-                class="w-auto p-0"
-              >
+              <PopoverContent align="start" class="w-auto p-0">
                 <RangeCalendar
                   :number-of-months="1"
                   :model-value="calendarValue"
@@ -436,16 +420,8 @@ onMounted(() => {
               </PopoverContent>
             </Popover>
 
-            <Button
-              class="ml-auto"
-              :disabled="isFetching"
-              size="sm"
-              @click="generate"
-            >
-              <RefreshCw
-                class="h-4 w-4"
-                :class="isFetching ? 'animate-spin' : ''"
-              />
+            <Button class="ml-auto" :disabled="isFetching" size="sm" @click="generate">
+              <RefreshCw class="h-4 w-4" :class="isFetching ? 'animate-spin' : ''" />
               {{ isFetching ? '拉取中…' : '生成周报' }}
             </Button>
           </div>
@@ -453,17 +429,13 @@ onMounted(() => {
           <div class="flex flex-wrap items-center gap-2">
             <Select
               :model-value="prefs.authorMode"
-              @update:model-value="value => prefs.authorMode = String(value ?? '') as WeeklyReportAuthorMode"
+              @update:model-value="value => (prefs.authorMode = String(value ?? '') as WeeklyReportAuthorMode)"
             >
               <SelectTrigger class="h-8 w-[10.5rem] text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem
-                  v-for="option of authorModeOptions"
-                  :key="option.key"
-                  :value="option.key"
-                >
+                <SelectItem v-for="option of authorModeOptions" :key="option.key" :value="option.key">
                   {{ option.label }}
                 </SelectItem>
               </SelectContent>
@@ -490,35 +462,17 @@ onMounted(() => {
             </div>
 
             <div class="ml-auto flex items-center gap-2">
-              <Button
-                :disabled="isPolishing || !reportContent.trim()"
-                size="sm"
-                variant="outline"
-                @click="polish"
-              >
-                <WandSparkles
-                  class="h-4 w-4"
-                  :class="isPolishing ? 'animate-pulse' : ''"
-                />
+              <Button :disabled="isPolishing || !reportContent.trim()" size="sm" variant="outline" @click="polish">
+                <WandSparkles class="h-4 w-4" :class="isPolishing ? 'animate-pulse' : ''" />
                 {{ isPolishing ? '润色中…' : 'AI 润色' }}
               </Button>
-              <Button
-                :disabled="!reportContent.trim()"
-                size="sm"
-                variant="outline"
-                @click="saveReport"
-              >
+              <Button :disabled="!reportContent.trim()" size="sm" variant="outline" @click="saveReport">
                 <Save class="h-4 w-4" />
                 保存
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <Button
-                    :disabled="!reportContent.trim()"
-                    size="sm"
-                    variant="outline"
-                    aria-label="更多操作"
-                  >
+                  <Button :disabled="!reportContent.trim()" size="sm" variant="outline" aria-label="更多操作">
                     <MoreHorizontal class="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -546,10 +500,7 @@ onMounted(() => {
               <template v-else>尚未生成</template>
             </span>
           </div>
-          <SagRichEditor
-            v-model="reportContent"
-            placeholder="点击「生成周报」，或直接在这里撰写周报内容。"
-          />
+          <SagRichEditor v-model="reportContent" placeholder="点击「生成周报」，或直接在这里撰写周报内容。" />
         </div>
       </div>
     </div>

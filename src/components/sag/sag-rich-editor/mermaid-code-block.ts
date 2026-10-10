@@ -1,5 +1,6 @@
 import CodeBlock from '@tiptap/extension-code-block';
 import { VueNodeViewRenderer } from '@tiptap/vue-3';
+
 import MermaidCodeBlockView from './mermaid-code-block-view.vue';
 
 /**

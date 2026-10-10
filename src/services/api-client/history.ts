@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
+
 import type { ApiClientRequestHistory } from '@/types/api-client';
+
 import { toFrontendHistory } from './mappers';
 import type { TauriRequestHistory } from './types';
 

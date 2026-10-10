@@ -2,10 +2,12 @@
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
+
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import { Separator } from '@/components/ui/separator';
 import { listDefaultModelSettings } from '@/services';
 import { usePmStore } from '@/stores/pm';
+
 import ChatInput from './_components/chat-input.vue';
 import ConversationList from './_components/conversation-list.vue';
 import MessageList from './_components/message-list.vue';
@@ -90,12 +92,7 @@ onMounted(() => {
           :sending="store.sending"
           @send="handleSend"
         />
-        <ChatInput
-          ref="chatInputRef"
-          :error="store.sendError"
-          :sending="store.sending"
-          @send="handleSend"
-        />
+        <ChatInput ref="chatInputRef" :error="store.sendError" :sending="store.sending" @send="handleSend" />
       </div>
     </div>
   </div>

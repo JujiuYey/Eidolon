@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { SendHorizonal } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { toast } from 'vue-sonner';
-import { SendHorizonal } from 'lucide-vue-next';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,9 +17,7 @@ const store = useMailStore();
 const sending = computed(() => store.sendStatus === 'sending');
 
 const missingVariables = computed(() =>
-  store.composeVariables.filter(
-    name => (store.variableValues[name] ?? '').trim() === '',
-  ),
+  store.composeVariables.filter(name => (store.variableValues[name] ?? '').trim() === ''),
 );
 
 async function handleSend() {
@@ -59,29 +58,16 @@ async function handleSend() {
             />
           </section>
 
-          <section
-            v-if="store.composeVariables.length > 0"
-            class="space-y-2"
-          >
+          <section v-if="store.composeVariables.length > 0" class="space-y-2">
             <div class="flex items-center justify-between">
               <Label class="text-sm font-semibold">模板变量</Label>
-              <span
-                v-if="missingVariables.length > 0"
-                class="text-xs text-amber-600 dark:text-amber-400"
-              >
+              <span v-if="missingVariables.length > 0" class="text-xs text-amber-600 dark:text-amber-400">
                 待填写：{{ missingVariables.join('、') }}
               </span>
             </div>
             <div class="grid gap-3 rounded-xl border bg-muted/20 p-4 md:grid-cols-2">
-              <div
-                v-for="variable of store.composeVariables"
-                :key="variable"
-                class="space-y-1.5"
-              >
-                <Label
-                  :for="`variable-${variable}`"
-                  class="text-xs text-muted-foreground"
-                >
+              <div v-for="variable of store.composeVariables" :key="variable" class="space-y-1.5">
+                <Label :for="`variable-${variable}`" class="text-xs text-muted-foreground">
                   {{ variable }}
                 </Label>
                 <Input
@@ -125,12 +111,7 @@ async function handleSend() {
             使用 <span class="text-foreground">{{ store.selectedAccount?.email }}</span> 发送
           </template>
         </p>
-        <Button
-          type="button"
-          class="shrink-0"
-          :disabled="sending"
-          @click="handleSend"
-        >
+        <Button type="button" class="shrink-0" :disabled="sending" @click="handleSend">
           <SendHorizonal class="mr-2 h-4 w-4" />
           {{ sending ? '发送中…' : '发送' }}
         </Button>

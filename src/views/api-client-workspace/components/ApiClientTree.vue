@@ -1,6 +1,19 @@
 <script setup lang="ts">
-import { ChevronDown, ChevronRight, Folder, FolderInput, FolderOpen, MoreHorizontal, Pencil, Plus, PlusCircle, Search, Trash2 } from 'lucide-vue-next';
+import {
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  FolderInput,
+  FolderOpen,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  PlusCircle,
+  Search,
+  Trash2,
+} from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +28,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
 import type { ApiClientGroup, ApiClientRequest } from '@/types/api-client';
+
 import { buildGroupTree, flattenGroupTree } from './build-group-tree';
 import type { GroupTreeNode } from './build-group-tree';
 
@@ -71,7 +85,10 @@ const filteredRequestsByGroup = computed(() => {
   }
   const filtered = new Map<string, ApiClientRequest[]>();
   for (const [groupId, list] of requestsByGroup.value) {
-    filtered.set(groupId, list.filter(request => request.name.toLowerCase().includes(keyword)));
+    filtered.set(
+      groupId,
+      list.filter(request => request.name.toLowerCase().includes(keyword)),
+    );
   }
   return filtered;
 });
@@ -108,8 +125,8 @@ const visibleGroupIds = computed<Set<string>>(() => {
     groupById.set(group.id, group);
   }
   for (const node of sortedByDepth) {
-    const hasMatch = directMatches.has(node.group.id)
-      || (filteredRequestsByGroup.value.get(node.group.id)?.length ?? 0) > 0;
+    const hasMatch =
+      directMatches.has(node.group.id) || (filteredRequestsByGroup.value.get(node.group.id)?.length ?? 0) > 0;
     if (!hasMatch) {
       continue;
     }
@@ -211,9 +228,7 @@ function indentStyle(depth: number): { paddingLeft: string } {
         <p class="truncate text-sm font-medium text-foreground">
           {{ projectName }}
         </p>
-        <p class="text-[11px] text-muted-foreground">
-          当前项目
-        </p>
+        <p class="text-[11px] text-muted-foreground">当前项目</p>
       </div>
     </div>
 

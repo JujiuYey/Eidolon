@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { DocsEntry } from '@/types/docs';
 import {
   ChevronRight,
   FileText,
@@ -12,6 +11,7 @@ import {
   Trash2,
 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { DocsEntry } from '@/types/docs';
+
 import { buildDocsTree, flattenTree } from '../utils/tree';
 
 interface Props {
@@ -49,9 +51,7 @@ watch(
   () => props.entries,
   () => {
     expanded.value = new Set(
-      props.entries
-        .filter(entry => entry.is_dir && !entry.path.includes('/'))
-        .map(entry => entry.path),
+      props.entries.filter(entry => entry.is_dir && !entry.path.includes('/')).map(entry => entry.path),
     );
   },
   { immediate: true },
@@ -82,21 +82,13 @@ function rowPadding(depth: number) {
         文档
       </h2>
       <div class="flex items-center gap-1">
-        <Button
-          size="sm"
-          variant="outline"
-          @click="emit('create-file', '')"
-        >
+        <Button size="sm" variant="outline" @click="emit('create-file', '')">
           <Plus class="h-4 w-4" />
           新建
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
-            <Button
-              aria-label="文档库操作"
-              size="icon"
-              variant="ghost"
-            >
+            <Button aria-label="文档库操作" size="icon" variant="ghost">
               <MoreHorizontal class="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -118,17 +110,10 @@ function rowPadding(depth: number) {
     <ScrollArea class="min-h-0 flex-1">
       <div class="space-y-0.5 px-2 pb-2">
         <template v-if="isLoading">
-          <Skeleton
-            v-for="index of 5"
-            :key="index"
-            class="mx-2 h-8"
-          />
+          <Skeleton v-for="index of 5" :key="index" class="mx-2 h-8" />
         </template>
 
-        <p
-          v-else-if="rows.length === 0"
-          class="px-2 py-6 text-center text-xs text-muted-foreground"
-        >
+        <p v-else-if="rows.length === 0" class="px-2 py-6 text-center text-xs text-muted-foreground">
           文档库是空的，点「新建」写下第一篇。
         </p>
 
@@ -150,12 +135,9 @@ function rowPadding(depth: number) {
                 class="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform"
                 :class="expanded.has(row.entry.path) ? 'rotate-90' : ''"
               />
-              <span
-                v-else
-                class="w-3.5 shrink-0"
-              />
+              <span v-else class="w-3.5 shrink-0" />
               <component
-                :is="row.entry.is_dir ? expanded.has(row.entry.path) ? FolderOpen : Folder : FileText"
+                :is="row.entry.is_dir ? (expanded.has(row.entry.path) ? FolderOpen : Folder) : FileText"
                 class="h-4 w-4 shrink-0"
                 :class="row.entry.is_dir ? 'text-primary/80' : 'text-muted-foreground'"
               />
@@ -188,10 +170,7 @@ function rowPadding(depth: number) {
                   <Pencil class="mr-2 h-4 w-4" />
                   重命名
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  class="text-destructive focus:text-destructive"
-                  @click="emit('remove', row.entry)"
-                >
+                <DropdownMenuItem class="text-destructive focus:text-destructive" @click="emit('remove', row.entry)">
                   <Trash2 class="mr-2 h-4 w-4" />
                   删除
                 </DropdownMenuItem>

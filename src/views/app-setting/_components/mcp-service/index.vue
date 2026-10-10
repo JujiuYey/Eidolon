@@ -1,21 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
+
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
-import {
-  deleteMcpService,
-  listMcpServices,
-  upsertMcpService,
-} from '@/services';
+import { deleteMcpService, listMcpServices, upsertMcpService } from '@/services';
 import type { McpService } from '@/types/mcp-service';
 import { getErrorMessage } from '@/utils/helpers';
+
 import McpServiceForm from './mcp-service-form.vue';
 import McpServiceList from './mcp-service-list.vue';
 import type { McpServiceFormMode } from './types';
 
-type McpServiceViewState
-  = | { type: 'list' }
-    | { type: 'form'; mode: McpServiceFormMode; serviceId?: string };
+type McpServiceViewState = { type: 'list' } | { type: 'form'; mode: McpServiceFormMode; serviceId?: string };
 
 const viewState = ref<McpServiceViewState>({ type: 'list' });
 const services = ref<McpService[]>([]);

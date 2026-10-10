@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { NodeViewContent, NodeViewWrapper, nodeViewProps } from '@tiptap/vue-3';
 import { Code2, Eye, Maximize2 } from 'lucide-vue-next';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
 import { useAppStore } from '@/stores/app';
+
 import { renderMermaidDiagram } from './mermaid-render';
 import MermaidZoomOverlay from './mermaid-zoom-overlay.vue';
 
@@ -112,7 +114,11 @@ function switchToCode() {
   void nextTick(() => {
     const pos = nodePos();
     if (typeof pos === 'number') {
-      props.editor.chain().focus().setTextSelection(pos + 1).run();
+      props.editor
+        .chain()
+        .focus()
+        .setTextSelection(pos + 1)
+        .run();
     }
   });
 }
@@ -134,15 +140,19 @@ function onTransaction({ transaction }: { transaction: { docChanged: boolean } }
 }
 
 // 切到 mermaid 语言立即出图;源码/主题变化防抖重渲
-watch(isMermaid, value => {
-  if (value) {
-    void render();
-  } else {
-    svg.value = '';
-    error.value = '';
-    zoomOpen.value = false;
-  }
-}, { immediate: true });
+watch(
+  isMermaid,
+  value => {
+    if (value) {
+      void render();
+    } else {
+      svg.value = '';
+      error.value = '';
+      zoomOpen.value = false;
+    }
+  },
+  { immediate: true },
+);
 
 watch([source, isDark], () => {
   if (isMermaid.value) {
@@ -181,10 +191,7 @@ onBeforeUnmount(() => {
     :data-mode="isMermaid ? mode : undefined"
   >
     <!-- mermaid 图表卡头部:标签 + 模式切换 + 放大 -->
-    <div
-      v-if="isMermaid"
-      class="sag-mermaid-head"
-    >
+    <div v-if="isMermaid" class="sag-mermaid-head">
       <span class="sag-mermaid-title">Mermaid</span>
       <button
         v-if="mode === 'diagram'"
@@ -226,40 +233,16 @@ onBeforeUnmount(() => {
     <template v-if="isMermaid">
       <!-- 代码模式:源码在上,下面按状态给提示/报错;不显示图 -->
       <template v-if="mode === 'code'">
-        <div
-          v-if="isEmpty"
-          class="sag-mermaid-hint"
-        >
-          输入 mermaid 源码，点击右上角切换为图表
-        </div>
-        <div
-          v-else-if="error"
-          class="sag-mermaid-error"
-          :title="error"
-        >
+        <div v-if="isEmpty" class="sag-mermaid-hint">输入 mermaid 源码，点击右上角切换为图表</div>
+        <div v-else-if="error" class="sag-mermaid-error" :title="error">
           {{ error }}
         </div>
       </template>
 
       <!-- 图表模式:渲染结果或失败面板,不显示源码 -->
-      <div
-        v-else-if="error"
-        class="sag-mermaid-fail"
-      >
-        <p
-          class="truncate"
-          :title="error"
-        >
-          图表渲染失败：{{ error }}
-        </p>
-        <button
-          type="button"
-          class="sag-mermaid-fail-action"
-          @mousedown.prevent
-          @click="switchToCode"
-        >
-          编辑源码
-        </button>
+      <div v-else-if="error" class="sag-mermaid-fail">
+        <p class="truncate" :title="error">图表渲染失败：{{ error }}</p>
+        <button type="button" class="sag-mermaid-fail-action" @mousedown.prevent @click="switchToCode">编辑源码</button>
       </div>
 
       <div
@@ -269,17 +252,10 @@ onBeforeUnmount(() => {
         title="点击放大"
         @click="svg && (zoomOpen = true)"
       >
-        <div
-          class="sag-mermaid-diagram-inner"
-          v-html="svg"
-        />
+        <div class="sag-mermaid-diagram-inner" v-html="svg" />
       </div>
 
-      <MermaidZoomOverlay
-        v-if="zoomOpen && svg"
-        :svg="svg"
-        @close="zoomOpen = false"
-      />
+      <MermaidZoomOverlay v-if="zoomOpen && svg" :svg="svg" @close="zoomOpen = false" />
     </template>
   </NodeViewWrapper>
 </template>
@@ -328,7 +304,9 @@ onBeforeUnmount(() => {
   height: 1.5rem;
   border-radius: 0.375rem;
   color: var(--muted-foreground);
-  transition: color 120ms ease, background-color 120ms ease;
+  transition:
+    color 120ms ease,
+    background-color 120ms ease;
 }
 
 .sag-mermaid-btn:hover:not(:disabled) {

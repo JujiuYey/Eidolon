@@ -25,12 +25,8 @@ defineEmits<Emits>();
         </DialogDescription>
       </DialogHeader>
       <div class="flex justify-end gap-2 pt-4">
-        <Button variant="outline" @click="$emit('update:open', false)">
-          取消
-        </Button>
-        <Button :variant="type" @click="$emit('confirm')">
-          确认
-        </Button>
+        <Button variant="outline" @click="$emit('update:open', false)"> 取消 </Button>
+        <Button :variant="type" @click="$emit('confirm')"> 确认 </Button>
       </div>
     </DialogContent>
   </Dialog>

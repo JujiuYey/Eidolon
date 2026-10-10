@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { FolderPlus, Pencil } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -41,9 +42,9 @@ const canSubmit = computed(() => trimmedName.value.length > 0 && !submitting.val
 
 const titleText = computed(() => (props.mode === 'create' ? '新建项目' : '编辑项目'));
 const submitText = computed(() => (props.mode === 'create' ? '创建并进入' : '保存'));
-const descriptionText = computed(() => (props.mode === 'create'
-  ? '创建项目后会自动生成「默认分组」，用于管理接口请求。'
-  : '修改项目的名称和描述。'));
+const descriptionText = computed(() =>
+  props.mode === 'create' ? '创建项目后会自动生成「默认分组」，用于管理接口请求。' : '修改项目的名称和描述。',
+);
 
 function applyInitial(): void {
   name.value = props.initialName ?? '';
@@ -131,14 +132,7 @@ function onSubmit(): void {
         </div>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="submitting"
-            @click="onOpenChange(false)"
-          >
-            取消
-          </Button>
+          <Button type="button" variant="outline" :disabled="submitting" @click="onOpenChange(false)"> 取消 </Button>
           <Button type="submit" :disabled="!canSubmit">
             {{ submitText }}
           </Button>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ChevronLeft, History, Layers, Network, Sparkles } from 'lucide-vue-next';
+
 import { Button } from '@/components/ui/button';
 
 interface Props {
@@ -36,19 +37,11 @@ const emit = defineEmits<{
         <Layers class="size-4" />
         环境
       </Button>
-      <Button
-        :variant="showAiPanel ? 'default' : 'outline'"
-        size="sm"
-        @click="emit('toggle-ai')"
-      >
+      <Button :variant="showAiPanel ? 'default' : 'outline'" size="sm" @click="emit('toggle-ai')">
         <Sparkles class="size-4" />
         AI 面板
       </Button>
-      <Button
-        :variant="showHistoryPanel ? 'default' : 'outline'"
-        size="sm"
-        @click="emit('toggle-history')"
-      >
+      <Button :variant="showHistoryPanel ? 'default' : 'outline'" size="sm" @click="emit('toggle-history')">
         <History class="size-4" />
         历史
       </Button>

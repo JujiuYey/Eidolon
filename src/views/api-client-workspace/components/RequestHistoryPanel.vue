@@ -2,6 +2,7 @@
 import { History, Loader2, RefreshCcw, Trash2, AlertTriangle } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { toast } from 'vue-sonner';
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -66,9 +67,7 @@ function handleClear(): void {
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
         <History class="size-4" />
-        <h3 class="text-sm font-semibold">
-          历史记录
-        </h3>
+        <h3 class="text-sm font-semibold">历史记录</h3>
         <span class="text-xs text-muted-foreground">最近 {{ sorted.length }} 条</span>
       </div>
 
@@ -102,11 +101,7 @@ function handleClear(): void {
 
       <ScrollArea class="min-h-0 flex-1">
         <ul class="flex flex-col gap-2 pr-3">
-          <li
-            v-for="entry of sorted"
-            :key="entry.id"
-            class="rounded-md border bg-background p-3 text-xs"
-          >
+          <li v-for="entry of sorted" :key="entry.id" class="rounded-md border bg-background p-3 text-xs">
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2">
                 <Badge :variant="statusVariants[entry.status]">
@@ -115,7 +110,12 @@ function handleClear(): void {
                 <span class="font-mono">{{ entry.requestSnapshot.method }} {{ entry.statusCode ?? '-' }}</span>
                 <span class="text-muted-foreground">{{ entry.durationMs }} ms</span>
               </div>
-              <Button variant="ghost" size="icon-sm" :aria-label="`恢复历史 ${entry.id}`" @click="handleRestore(entry.id)">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                :aria-label="`恢复历史 ${entry.id}`"
+                @click="handleRestore(entry.id)"
+              >
                 <RefreshCcw class="size-4" />
               </Button>
             </div>

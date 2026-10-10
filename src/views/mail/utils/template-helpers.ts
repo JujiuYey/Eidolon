@@ -32,10 +32,7 @@ export function extractVariables(subject: string, body: string): string[] {
  * 用变量值渲染模板文本。未提供或为空值的变量保持原占位符不动，
  * 便于用户在预览中看到尚缺的内容。
  */
-export function renderTemplate(
-  text: string,
-  values: Record<string, string>,
-): string {
+export function renderTemplate(text: string, values: Record<string, string>): string {
   return text.replace(VARIABLE_PATTERN, (placeholder, rawName: string) => {
     const name = rawName.trim();
     const value = values[name];
@@ -46,10 +43,7 @@ export function renderTemplate(
 /**
  * 返回尚未填写（空白）的变量名列表，用于发送前校验。
  */
-export function missingVariables(
-  variables: string[],
-  values: Record<string, string>,
-): string[] {
+export function missingVariables(variables: string[], values: Record<string, string>): string[] {
   return variables.filter(name => (values[name] ?? '').trim() === '');
 }
 

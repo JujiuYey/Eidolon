@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import type { WeeklyReportEntry } from '@/types/weekly-report';
 import { History, Trash2 } from 'lucide-vue-next';
 import { ref } from 'vue';
+
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { WeeklyReportEntry } from '@/types/weekly-report';
+
 import { formatDateTime } from '../utils/report-helpers';
 
 interface Props {
@@ -51,17 +53,10 @@ function confirmRemove() {
     <ScrollArea class="min-h-0 flex-1">
       <div class="space-y-1 px-2 pb-2">
         <template v-if="isLoading">
-          <Skeleton
-            v-for="index of 3"
-            :key="index"
-            class="mx-2 h-12"
-          />
+          <Skeleton v-for="index of 3" :key="index" class="mx-2 h-12" />
         </template>
 
-        <p
-          v-else-if="reports.length === 0"
-          class="px-2 py-6 text-center text-xs text-muted-foreground"
-        >
+        <p v-else-if="reports.length === 0" class="px-2 py-6 text-center text-xs text-muted-foreground">
           生成的周报保存后会出现在这里。
         </p>
 
@@ -98,9 +93,7 @@ function confirmRemove() {
 
     <SagConfirm
       v-model:open="removeOpen"
-      :description="pendingReport
-        ? `删除「${pendingReport.title}」后无法恢复。`
-        : ''"
+      :description="pendingReport ? `删除「${pendingReport.title}」后无法恢复。` : ''"
       title="删除周报"
       type="destructive"
       @confirm="confirmRemove"

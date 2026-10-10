@@ -1,18 +1,9 @@
-import type {
-  MailTemplate,
-  SendEmailRequest,
-  SendEmailResult,
-  SentEmail,
-  SmtpAccount,
-} from '@/types/mail';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+
 import * as mailServiceApi from '@/services/mail';
-import {
-  buildEmptyValues,
-  extractVariables,
-  renderTemplate,
-} from '@/views/mail/utils/template-helpers';
+import type { MailTemplate, SendEmailRequest, SendEmailResult, SentEmail, SmtpAccount } from '@/types/mail';
+import { buildEmptyValues, extractVariables, renderTemplate } from '@/views/mail/utils/template-helpers';
 
 /** store 依赖的服务接口，测试时可注入 fake 实现 */
 export interface MailService {
@@ -111,9 +102,7 @@ export function createMailStore(options: { service?: MailService } = {}) {
   async function loadAccounts(): Promise<void> {
     accounts.value = await service.listSmtpAccounts();
     if (!accounts.value.some(account => account.id === selectedAccountId.value)) {
-      selectedAccountId.value = accounts.value.find(account => account.enabled)?.id
-        ?? accounts.value[0]?.id
-        ?? '';
+      selectedAccountId.value = accounts.value.find(account => account.enabled)?.id ?? accounts.value[0]?.id ?? '';
     }
   }
 
@@ -180,9 +169,7 @@ export function createMailStore(options: { service?: MailService } = {}) {
     if (!composeTo.value.trim()) {
       return '请填写收件人';
     }
-    const missing = composeVariables.value.filter(
-      name => (variableValues.value[name] ?? '').trim() === '',
-    );
+    const missing = composeVariables.value.filter(name => (variableValues.value[name] ?? '').trim() === '');
     if (missing.length > 0) {
       return `请填写模板变量：${missing.join('、')}`;
     }

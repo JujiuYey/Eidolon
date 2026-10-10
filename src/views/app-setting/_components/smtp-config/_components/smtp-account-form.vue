@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { SmtpAccount } from '@/types/mail';
 import SagSmtpAccountForm from '@/components/sag/sag-smtp-account-form/index.vue';
+import type { SmtpAccount } from '@/types/mail';
 
 /**
  * 设置页的邮件账户表单页框架（标题 + 表单核心）。
@@ -26,9 +26,7 @@ const emit = defineEmits<{
         <h2 class="truncate text-2xl font-semibold tracking-tight text-foreground">
           {{ props.account ? props.account.name : '新建邮件账户' }}
         </h2>
-        <p class="text-sm text-muted-foreground">
-          配置 SMTP 发信服务器与凭据，凭据仅保存在本机。
-        </p>
+        <p class="text-sm text-muted-foreground">配置 SMTP 发信服务器与凭据，凭据仅保存在本机。</p>
       </div>
     </div>
 

@@ -34,14 +34,7 @@ export interface TauriGroup {
   updated_at: number;
 }
 
-export type TauriHttpMethod
-  = | 'GET'
-    | 'POST'
-    | 'PUT'
-    | 'PATCH'
-    | 'DELETE'
-    | 'HEAD'
-    | 'OPTIONS';
+export type TauriHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
 export interface TauriRequest {
   id: string;
@@ -71,13 +64,7 @@ export interface TauriEnvironment {
   updated_at: number;
 }
 
-export type TauriExecutionStatus
-  = | 'success'
-    | 'http_error'
-    | 'network_error'
-    | 'timeout'
-    | 'cancelled'
-    | 'oversize';
+export type TauriExecutionStatus = 'success' | 'http_error' | 'network_error' | 'timeout' | 'cancelled' | 'oversize';
 
 export interface TauriRequestSnapshot {
   method: string;

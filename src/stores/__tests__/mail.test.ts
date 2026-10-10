@@ -1,14 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, defineStore, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { createMailStore } from '@/stores/mail';
 import type { MailService } from '@/stores/mail';
-import type {
-  MailTemplate,
-  SendEmailRequest,
-  SendEmailResult,
-  SentEmail,
-  SmtpAccount,
-} from '@/types/mail';
+import type { MailTemplate, SendEmailRequest, SendEmailResult, SentEmail, SmtpAccount } from '@/types/mail';
 
 function bindStore(service: MailService) {
   const useBound = defineStore('mail-test', () => createMailStore({ service }));

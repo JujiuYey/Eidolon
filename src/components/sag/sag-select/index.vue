@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import type { AcceptableValue } from 'reka-ui';
-import { X } from 'lucide-vue-next';
 import { isNil } from 'es-toolkit';
+import { X } from 'lucide-vue-next';
+import type { AcceptableValue } from 'reka-ui';
 
 interface Option {
   label: string;

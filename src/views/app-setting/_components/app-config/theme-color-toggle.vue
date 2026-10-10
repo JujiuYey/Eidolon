@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { cn } from '@/lib/utils';
 import { useTheme } from '@/composables/use-theme';
+import { cn } from '@/lib/utils';
 import { THEME_COLOR_OPTIONS } from '@/utils/theme';
 
 const { themeColor, setThemeColor } = useTheme();

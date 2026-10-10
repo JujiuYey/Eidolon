@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import type { WeeklyReportRepo } from '@/types/weekly-report';
 import { open } from '@tauri-apps/plugin-dialog';
 import { FolderGit2, Plus, Trash2 } from 'lucide-vue-next';
 import { ref } from 'vue';
+
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { WeeklyReportRepo } from '@/types/weekly-report';
 
 interface Props {
   repos: WeeklyReportRepo[];
@@ -62,12 +63,7 @@ function confirmRemove() {
         <FolderGit2 class="h-4 w-4 text-primary" />
         代码仓库
       </h2>
-      <Button
-        size="sm"
-        variant="outline"
-        :disabled="isPicking"
-        @click="pickRepos"
-      >
+      <Button size="sm" variant="outline" :disabled="isPicking" @click="pickRepos">
         <Plus class="h-4 w-4" />
         添加
       </Button>
@@ -76,17 +72,10 @@ function confirmRemove() {
     <ScrollArea class="min-h-0 flex-1">
       <div class="space-y-1 px-2 pb-2">
         <template v-if="isLoading">
-          <Skeleton
-            v-for="index of 3"
-            :key="index"
-            class="mx-2 h-12"
-          />
+          <Skeleton v-for="index of 3" :key="index" class="mx-2 h-12" />
         </template>
 
-        <p
-          v-else-if="repos.length === 0"
-          class="px-2 py-6 text-center text-xs text-muted-foreground"
-        >
+        <p v-else-if="repos.length === 0" class="px-2 py-6 text-center text-xs text-muted-foreground">
           还没有仓库，点击「添加」选择本地 git 仓库目录。
         </p>
 
@@ -100,10 +89,7 @@ function confirmRemove() {
               <p class="truncate text-sm font-medium">
                 {{ repo.name }}
               </p>
-              <p
-                class="truncate text-xs text-muted-foreground"
-                :title="repo.path"
-              >
+              <p class="truncate text-xs text-muted-foreground" :title="repo.path">
                 {{ repo.path }}
               </p>
             </div>
@@ -123,9 +109,7 @@ function confirmRemove() {
 
     <SagConfirm
       v-model:open="removeOpen"
-      :description="pendingRepo
-        ? `将从周报统计中移除「${pendingRepo.name}」。不会删除磁盘上的仓库文件。`
-        : ''"
+      :description="pendingRepo ? `将从周报统计中移除「${pendingRepo.name}」。不会删除磁盘上的仓库文件。` : ''"
       title="移除仓库"
       type="destructive"
       @confirm="confirmRemove"

@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import { Mail, Plus } from 'lucide-vue-next';
+import { onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
+
 import { Button } from '@/components/ui/button';
 import { listSmtpAccounts } from '@/services';
 import type { SmtpAccount } from '@/types/mail';
 import { getErrorMessage } from '@/utils/helpers';
-import SmtpAccountList from './_components/smtp-account-list.vue';
+
 import SmtpAccountForm from './_components/smtp-account-form.vue';
+import SmtpAccountList from './_components/smtp-account-list.vue';
 
 const accounts = ref<SmtpAccount[]>([]);
 /** 空字符串表示新建账户 */
@@ -26,8 +28,7 @@ async function loadData(keepSelection = true) {
   if (!keepSelection || !accounts.value.some(account => account.id === selectedAccountId.value)) {
     selectedAccountId.value = accounts.value[0]?.id ?? '';
   }
-  selectedAccount.value = accounts.value.find(account => account.id === selectedAccountId.value)
-    ?? null;
+  selectedAccount.value = accounts.value.find(account => account.id === selectedAccountId.value) ?? null;
 }
 
 function handleSelect(accountId: string) {
@@ -64,20 +65,12 @@ onMounted(() => {
           <Mail class="h-4 w-4 text-primary" />
           邮件账户
         </h2>
-        <Button
-          size="sm"
-          variant="outline"
-          @click="handleCreate"
-        >
+        <Button size="sm" variant="outline" @click="handleCreate">
           <Plus class="h-4 w-4" />
           新建
         </Button>
       </div>
-      <SmtpAccountList
-        v-model:selected-account-id="selectedAccountId"
-        :accounts="accounts"
-        @select="handleSelect"
-      />
+      <SmtpAccountList v-model:selected-account-id="selectedAccountId" :accounts="accounts" @select="handleSelect" />
     </div>
     <SmtpAccountForm
       :key="selectedAccountId"

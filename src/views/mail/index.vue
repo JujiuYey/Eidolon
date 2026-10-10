@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { onMounted } from 'vue';
 import { toast } from 'vue-sonner';
+
 import { useMailStore } from '@/stores/mail';
 import { getErrorMessage } from '@/utils/helpers';
+
 import Mail from './components/Mail.vue';
 
 const store = useMailStore();

@@ -1,3 +1,5 @@
+import { invoke } from '@tauri-apps/api/core';
+
 import type {
   FetchCommitsRequest,
   PolishWeeklyReportInput,
@@ -6,7 +8,6 @@ import type {
   WeeklyReportEntry,
   WeeklyReportRepo,
 } from '@/types/weekly-report';
-import { invoke } from '@tauri-apps/api/core';
 
 export async function listWeeklyReportRepos(): Promise<WeeklyReportRepo[]> {
   return invoke<WeeklyReportRepo[]>('list_weekly_report_repos');
@@ -20,9 +21,7 @@ export async function removeWeeklyReportRepo(repoId: string): Promise<string> {
   return invoke<string>('remove_weekly_report_repo', { repoId });
 }
 
-export async function fetchWeeklyReportCommits(
-  request: FetchCommitsRequest,
-): Promise<RepoCommitLog[]> {
+export async function fetchWeeklyReportCommits(request: FetchCommitsRequest): Promise<RepoCommitLog[]> {
   return invoke<RepoCommitLog[]>('fetch_weekly_report_commits', { request });
 }
 
@@ -42,8 +41,6 @@ export async function exportWeeklyReport(path: string, content: string): Promise
   return invoke<string>('export_weekly_report', { path, content });
 }
 
-export async function polishWeeklyReport(
-  input: PolishWeeklyReportInput,
-): Promise<PolishWeeklyReportResult> {
+export async function polishWeeklyReport(input: PolishWeeklyReportInput): Promise<PolishWeeklyReportResult> {
   return invoke<PolishWeeklyReportResult>('polish_weekly_report', { input });
 }

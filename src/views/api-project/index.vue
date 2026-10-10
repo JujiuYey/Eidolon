@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Loader2, Network, Pencil, Plus, Trash2 } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { toast } from 'vue-sonner';
 import { useRouter } from 'vue-router';
+import { toast } from 'vue-sonner';
+
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +12,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/ca
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirm } from '@/composables/use-confirm';
 import { useApiClientStore } from '@/stores/api-client';
+
 import ProjectFormDialog from './components/ProjectFormDialog.vue';
 
 const router = useRouter();
@@ -154,9 +156,7 @@ onBeforeUnmount(() => {
 
     <Alert v-if="backendError" variant="destructive" class="mb-4">
       <AlertTitle>无法连接到接口请求后端</AlertTitle>
-      <AlertDescription>
-        {{ backendError }}。请确认 Rust 端 API Client commands 已注册后重启应用。
-      </AlertDescription>
+      <AlertDescription> {{ backendError }}。请确认 Rust 端 API Client commands 已注册后重启应用。 </AlertDescription>
     </Alert>
 
     <div v-if="store.isLoadingProjects" class="flex flex-1 items-center justify-center">
@@ -166,19 +166,14 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div
-      v-else-if="sortedProjects.length === 0"
-      class="flex flex-1 items-center justify-center"
-    >
+    <div v-else-if="sortedProjects.length === 0" class="flex flex-1 items-center justify-center">
       <Card class="w-full max-w-xl border-dashed bg-muted/10">
         <CardHeader class="items-center text-center">
           <div class="mx-auto flex size-14 items-center justify-center rounded-full border bg-background">
             <Network class="size-6 text-primary" />
           </div>
           <CardTitle>还没有 API 项目</CardTitle>
-          <CardDescription>
-            在上方输入项目名称并点击「新建项目」开始。
-          </CardDescription>
+          <CardDescription> 在上方输入项目名称并点击「新建项目」开始。 </CardDescription>
         </CardHeader>
       </Card>
     </div>
@@ -190,11 +185,7 @@ onBeforeUnmount(() => {
         class="group flex flex-col rounded-2xl border bg-card p-5 text-left shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/5"
       >
         <div class="flex items-start justify-between gap-3">
-          <button
-            type="button"
-            class="flex min-w-0 flex-1 items-start gap-3 text-left"
-            @click="handleOpen(project.id)"
-          >
+          <button type="button" class="flex min-w-0 flex-1 items-start gap-3 text-left" @click="handleOpen(project.id)">
             <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Network class="size-5" />
             </div>
@@ -208,9 +199,7 @@ onBeforeUnmount(() => {
             </div>
           </button>
           <div class="flex shrink-0 items-center gap-2">
-            <Badge variant="outline" class="border-border bg-muted text-muted-foreground">
-              HTTP
-            </Badge>
+            <Badge variant="outline" class="border-border bg-muted text-muted-foreground"> HTTP </Badge>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -256,7 +245,7 @@ onBeforeUnmount(() => {
     <ProjectFormDialog
       mode="create"
       :open="createDialogOpen"
-      @update:open="(value: boolean) => createDialogOpen = value"
+      @update:open="(value: boolean) => (createDialogOpen = value)"
       @submit="handleCreateProjectSubmit"
     />
 
@@ -265,7 +254,7 @@ onBeforeUnmount(() => {
       :open="editDialogOpen"
       :initial-name="editingProject?.name"
       :initial-description="editingProject?.description"
-      @update:open="(value: boolean) => editDialogOpen = value"
+      @update:open="(value: boolean) => (editDialogOpen = value)"
       @submit="handleEditProjectSubmit"
     />
   </div>

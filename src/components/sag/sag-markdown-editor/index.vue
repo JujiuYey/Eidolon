@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue';
 import MarkdownRender from 'markstream-vue';
+import { computed, nextTick, ref } from 'vue';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import type { SagMarkdownGuide, SagMarkdownSnippet } from './types';
 
 interface Props {
@@ -27,11 +29,7 @@ const props = withDefaults(defineProps<Props>(), {
   editorHeightClass: 'h-[28rem]',
   editorHint: '',
   editorLabel: '正文',
-  emptyPreviewContent: [
-    '## 实时预览',
-    '',
-    '这里会展示当前 Markdown 内容的排版效果。',
-  ].join('\n'),
+  emptyPreviewContent: ['## 实时预览', '', '这里会展示当前 Markdown 内容的排版效果。'].join('\n'),
   guide: null,
   placeholder: '在这里编写内容，支持 Markdown 结构，比如标题、列表、引用和代码块。',
   previewHint: '用来检查结构和可读性。',
@@ -85,10 +83,7 @@ const lineCount = computed(() => {
 });
 
 const resolvedSnippets = computed(() => {
-  return [
-    ...(props.guide?.primarySnippet ? [props.guide.primarySnippet] : []),
-    ...props.snippets,
-  ];
+  return [...(props.guide?.primarySnippet ? [props.guide.primarySnippet] : []), ...props.snippets];
 });
 
 async function insertSnippet(snippet: string) {
@@ -127,12 +122,8 @@ async function insertSnippet(snippet: string) {
             <Badge variant="secondary">
               {{ badgeLabel }}
             </Badge>
-            <Badge variant="outline">
-              {{ lineCount }} 行
-            </Badge>
-            <Badge variant="outline">
-              {{ charCount }} 字符
-            </Badge>
+            <Badge variant="outline"> {{ lineCount }} 行 </Badge>
+            <Badge variant="outline"> {{ charCount }} 字符 </Badge>
           </div>
           <p class="text-sm text-foreground">
             {{ title }}
@@ -144,15 +135,9 @@ async function insertSnippet(snippet: string) {
 
         <Tabs v-model="previewMode" class="w-full lg:w-auto">
           <TabsList class="grid w-full grid-cols-3 lg:w-[18rem]">
-            <TabsTrigger value="edit">
-              编辑
-            </TabsTrigger>
-            <TabsTrigger value="split">
-              分栏
-            </TabsTrigger>
-            <TabsTrigger value="preview">
-              预览
-            </TabsTrigger>
+            <TabsTrigger value="edit"> 编辑 </TabsTrigger>
+            <TabsTrigger value="split"> 分栏 </TabsTrigger>
+            <TabsTrigger value="preview"> 预览 </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -173,14 +158,11 @@ async function insertSnippet(snippet: string) {
 
     <div
       class="grid gap-4"
-      :class="previewMode === 'split'
-        ? 'grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]'
-        : 'grid-cols-1'"
+      :class="
+        previewMode === 'split' ? 'grid-cols-1 xl:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]' : 'grid-cols-1'
+      "
     >
-      <div
-        v-if="previewMode !== 'preview'"
-        class="overflow-hidden rounded-xl bg-background p-1"
-      >
+      <div v-if="previewMode !== 'preview'" class="overflow-hidden rounded-xl bg-background p-1">
         <div v-if="editorLabel || editorHint" class="space-y-1 px-2 pb-2 pt-1">
           <p v-if="editorLabel" class="text-sm font-medium">
             {{ editorLabel }}
@@ -193,17 +175,12 @@ async function insertSnippet(snippet: string) {
           ref="editorRef"
           v-model="content"
           class="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 flex w-full rounded-md border bg-transparent px-3 py-3 font-mono text-sm leading-6 shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px]"
-          :class="[
-            editorHeightClass,
-          ]"
+          :class="[editorHeightClass]"
           :placeholder="placeholder"
         />
       </div>
 
-      <div
-        v-if="previewMode !== 'edit'"
-        class="overflow-hidden rounded-xl border bg-background p-2"
-      >
+      <div v-if="previewMode !== 'edit'" class="overflow-hidden rounded-xl border bg-background p-2">
         <div v-if="previewLabel || previewHint" class="space-y-1 px-2 pb-2 pt-1">
           <p v-if="previewLabel" class="text-sm font-medium">
             {{ previewLabel }}
@@ -213,10 +190,7 @@ async function insertSnippet(snippet: string) {
           </p>
         </div>
         <div class="overflow-auto" :class="editorHeightClass">
-          <MarkdownRender
-            :content="previewContent"
-            :custom-id="PREVIEW_CUSTOM_ID"
-          />
+          <MarkdownRender :content="previewContent" :custom-id="PREVIEW_CUSTOM_ID" />
         </div>
       </div>
     </div>

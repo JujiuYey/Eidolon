@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Plus, Trash2 } from 'lucide-vue-next';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -74,17 +75,8 @@ function onToggle(rowId: string, value: boolean | string | number): void {
       {{ emptyHint }}
     </div>
 
-    <div
-      v-for="row of modelValue"
-      v-else
-      :key="row.id"
-      class="grid grid-cols-[auto_1fr_1fr_auto] items-center gap-2"
-    >
-      <Switch
-        v-if="showToggle"
-        :model-value="row.enabled"
-        @update:model-value="value => onToggle(row.id, value)"
-      />
+    <div v-for="row of modelValue" v-else :key="row.id" class="grid grid-cols-[auto_1fr_1fr_auto] items-center gap-2">
+      <Switch v-if="showToggle" :model-value="row.enabled" @update:model-value="value => onToggle(row.id, value)" />
       <span v-else class="size-9" />
 
       <Input
@@ -101,12 +93,7 @@ function onToggle(rowId: string, value: boolean | string | number): void {
         @update:model-value="value => onValueInput(row.id, value)"
       />
 
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        :aria-label="`删除行 ${row.key}`"
-        @click="removeRow(row.id)"
-      >
+      <Button variant="ghost" size="icon-sm" :aria-label="`删除行 ${row.key}`" @click="removeRow(row.id)">
         <Trash2 class="size-4" />
       </Button>
     </div>

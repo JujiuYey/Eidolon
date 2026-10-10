@@ -1,5 +1,8 @@
 import { strict as assert } from 'node:assert';
+
 import { describe, it } from 'vitest';
+
+import type { ApiClientAiCandidate } from '@/types/api-client';
 import {
   applyCandidateToBody,
   buildAiCandidate,
@@ -8,7 +11,6 @@ import {
   buildAiContextPayload,
 } from '@/views/api-client/utils/ai-helpers';
 import { createEmptyBody } from '@/views/api-client/utils/request-helpers';
-import type { ApiClientAiCandidate } from '@/types/api-client';
 
 function baseInputs() {
   return {
@@ -94,11 +96,14 @@ describe('applyCandidateToBody', () => {
       ...baseInputs(),
       rawContent: '{"new":true}',
     });
-    const next = applyCandidateToBody({
-      kind: 'json',
-      text: '{"old":true}',
-      form: [],
-    }, candidate);
+    const next = applyCandidateToBody(
+      {
+        kind: 'json',
+        text: '{"old":true}',
+        form: [],
+      },
+      candidate,
+    );
     assert.equal(next.kind, 'json');
     assert.equal(next.text, '{"new":true}');
   });

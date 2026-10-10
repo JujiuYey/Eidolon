@@ -1,8 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
-import type {
-  McpService,
-  McpServiceDiscovery,
-} from '@/types/mcp-service';
+
+import type { McpService, McpServiceDiscovery } from '@/types/mcp-service';
 
 export async function listMcpServices(): Promise<McpService[]> {
   return invoke<McpService[]>('list_mcp_services');

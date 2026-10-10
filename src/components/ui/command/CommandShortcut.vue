@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue';
+
 import { cn } from '@/lib/utils';
 
 const props = defineProps<{
@@ -8,10 +9,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <span
-    data-slot="command-shortcut"
-    :class="cn('text-muted-foreground ml-auto text-xs tracking-widest', props.class)"
-  >
+  <span data-slot="command-shortcut" :class="cn('text-muted-foreground ml-auto text-xs tracking-widest', props.class)">
     <slot />
   </span>
 </template>

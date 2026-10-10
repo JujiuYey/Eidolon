@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+
 import * as apiClientService from '@/services/api-client';
 import type {
   ApiClientAiCandidate,
@@ -108,7 +109,9 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
 
   const activeProject = computed(() => projects.value.find(project => project.id === activeProjectId.value) ?? null);
   const activeGroup = computed(() => groups.value.find(group => group.id === activeGroupId.value) ?? null);
-  const activeEnvironment = computed(() => environments.value.find(env => env.id === activeEnvironmentId.value) ?? null);
+  const activeEnvironment = computed(
+    () => environments.value.find(env => env.id === activeEnvironmentId.value) ?? null,
+  );
   const activeRequest = computed(() => requests.value.find(request => request.id === activeRequestId.value) ?? null);
 
   const requestSearchResults = computed(() => {
@@ -194,11 +197,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     clearExecutionState();
     clearAiState();
 
-    await Promise.all([
-      loadGroups(projectId),
-      loadRequests(projectId),
-      loadEnvironments(projectId),
-    ]);
+    await Promise.all([loadGroups(projectId), loadRequests(projectId), loadEnvironments(projectId)]);
 
     activeEnvironmentId.value = environments.value[0]?.id ?? null;
   }
@@ -237,7 +236,11 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     }
   }
 
-  async function createGroup(input: { projectId: string; name: string; parentGroupId?: string | null }): Promise<ApiClientGroup> {
+  async function createGroup(input: {
+    projectId: string;
+    name: string;
+    parentGroupId?: string | null;
+  }): Promise<ApiClientGroup> {
     const group = await service.createApiGroup({
       projectId: input.projectId,
       name: input.name,
@@ -795,7 +798,11 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     execution.value = null;
   }
 
-  async function generateAiBody(options: { prompt: string; reference: string; includeCurrentBody: boolean }): Promise<void> {
+  async function generateAiBody(options: {
+    prompt: string;
+    reference: string;
+    includeCurrentBody: boolean;
+  }): Promise<void> {
     if (!draft.value || !activeRequestId.value) {
       return;
     }

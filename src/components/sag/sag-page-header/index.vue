@@ -15,16 +15,10 @@ defineProps<{
     <h1 class="text-lg leading-none font-semibold">
       {{ title }}
     </h1>
-    <div
-      v-if="$slots.meta"
-      class="min-w-0 truncate text-xs text-muted-foreground"
-    >
+    <div v-if="$slots.meta" class="min-w-0 truncate text-xs text-muted-foreground">
       <slot name="meta" />
     </div>
-    <div
-      v-if="$slots.actions"
-      class="ml-auto flex shrink-0 items-center gap-2"
-    >
+    <div v-if="$slots.actions" class="ml-auto flex shrink-0 items-center gap-2">
       <slot name="actions" />
     </div>
   </header>

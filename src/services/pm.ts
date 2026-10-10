@@ -1,5 +1,6 @@
-import type { PmConversation, PmMessage, PmSettings, PmSkillSummary } from '@/types/pm';
 import { invoke } from '@tauri-apps/api/core';
+
+import type { PmConversation, PmMessage, PmSettings, PmSkillSummary } from '@/types/pm';
 
 export async function listPmConversations(): Promise<PmConversation[]> {
   return invoke<PmConversation[]>('list_pm_conversations');
@@ -9,10 +10,7 @@ export async function createPmConversation(): Promise<PmConversation> {
   return invoke<PmConversation>('create_pm_conversation');
 }
 
-export async function renamePmConversation(
-  conversationId: string,
-  title: string,
-): Promise<PmConversation> {
+export async function renamePmConversation(conversationId: string, title: string): Promise<PmConversation> {
   return invoke<PmConversation>('rename_pm_conversation', { conversationId, title });
 }
 

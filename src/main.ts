@@ -1,9 +1,12 @@
-import { createApp } from 'vue';
 import { createPinia } from 'pinia';
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate';
+import { createApp } from 'vue';
+
+import { useAppStore } from '@/stores/app';
+
 import App from './App.vue';
 import router from './router';
-import { useAppStore } from '@/stores/app';
+
 import './index.css';
 
 const app = createApp(App);
@@ -16,10 +19,7 @@ async function bootstrap() {
   const appStore = useAppStore(pinia);
   await appStore.init();
 
-  app
-    .use(pinia)
-    .use(router)
-    .mount('#app');
+  app.use(pinia).use(router).mount('#app');
 }
 
 void bootstrap();

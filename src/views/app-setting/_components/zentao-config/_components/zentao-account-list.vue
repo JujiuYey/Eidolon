@@ -26,12 +26,16 @@ function handleSelect(accountId: string) {
       :key="account.id"
       type="button"
       class="flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors"
-      :class="selectedAccountId === account.id
-        ? 'border-primary bg-primary/20 shadow-xs'
-        : 'border-transparent hover:bg-primary/10'"
+      :class="
+        selectedAccountId === account.id
+          ? 'border-primary bg-primary/20 shadow-xs'
+          : 'border-transparent hover:bg-primary/10'
+      "
       @click="handleSelect(account.id)"
     >
-      <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background text-xs font-semibold uppercase text-muted-foreground ring-1 ring-black/5">
+      <div
+        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background text-xs font-semibold uppercase text-muted-foreground ring-1 ring-black/5"
+      >
         {{ account.name.slice(0, 2) }}
       </div>
 
@@ -44,10 +48,7 @@ function handleSelect(accountId: string) {
         </p>
       </div>
 
-      <span
-        v-if="!account.enabled"
-        class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
-      >
+      <span v-if="!account.enabled" class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
         已停用
       </span>
     </button>

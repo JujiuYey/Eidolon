@@ -1,15 +1,8 @@
 <script setup lang="ts">
+import { ArchiveRestore, Database, FileOutput, FolderOpen, FolderUp, Loader2, Wifi } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import type { Component } from 'vue';
-import {
-  ArchiveRestore,
-  Database,
-  FileOutput,
-  FolderOpen,
-  FolderUp,
-  Loader2,
-  Wifi,
-} from 'lucide-vue-next';
+
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -44,7 +37,8 @@ onMounted(() => {
     .catch(() => (docsRootDir.value = ''));
 });
 
-const dangerOutlineClass = 'border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive/50';
+const dangerOutlineClass =
+  'border-destructive/60 text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive/50';
 
 const backupActions: RowAction[] = [
   {
@@ -134,30 +128,18 @@ function handleOpenDirectory(path: string) {
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
     <div class="flex items-center gap-2 px-4 py-3">
       <Database class="h-4 w-4 text-primary" />
-      <h2 class="text-sm font-semibold">
-        数据设置
-      </h2>
+      <h2 class="text-sm font-semibold">数据设置</h2>
     </div>
     <Separator />
 
     <ScrollArea class="min-h-0 flex-1">
       <div class="px-5 py-1">
         <div class="flex flex-col gap-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <h3 class="text-base font-medium">
-            数据备份与恢复
-          </h3>
+          <h3 class="text-base font-medium">数据备份与恢复</h3>
 
           <div class="flex flex-wrap justify-end gap-2">
-            <Button
-              v-for="action of backupActions"
-              :key="action.label"
-              :variant="action.variant"
-              size="sm"
-            >
-              <component
-                :is="action.icon"
-                class="size-4"
-              />
+            <Button v-for="action of backupActions" :key="action.label" :variant="action.variant" size="sm">
+              <component :is="action.icon" class="size-4" />
               <span>{{ action.label }}</span>
             </Button>
           </div>
@@ -167,9 +149,7 @@ function handleOpenDirectory(path: string) {
 
         <div class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div class="space-y-1">
-            <h3 class="text-base font-medium">
-              精简备份
-            </h3>
+            <h3 class="text-base font-medium">精简备份</h3>
             <p class="max-w-3xl text-sm leading-6 text-muted-foreground">
               备份时跳过备份图片、知识库等数据文件，仅备份聊天记录和设置，减少空间占用，加快备份速度
             </p>
@@ -180,23 +160,14 @@ function handleOpenDirectory(path: string) {
 
         <Separator />
 
-        <template
-          v-for="(item, index) of exportActions"
-          :key="item.title"
-        >
+        <template v-for="(item, index) of exportActions" :key="item.title">
           <div class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
             <h3 class="text-base font-medium">
               {{ item.title }}
             </h3>
 
-            <Button
-              :variant="item.action.variant"
-              size="sm"
-            >
-              <component
-                :is="item.action.icon"
-                class="size-4"
-              />
+            <Button :variant="item.action.variant" size="sm">
+              <component :is="item.action.icon" class="size-4" />
               <span>{{ item.action.label }}</span>
             </Button>
           </div>
@@ -206,47 +177,27 @@ function handleOpenDirectory(path: string) {
 
         <Separator />
 
-        <div
-          v-if="isLoading"
-          class="flex items-center justify-center py-8"
-        >
+        <div v-if="isLoading" class="flex items-center justify-center py-8">
           <Loader2 class="size-6 animate-spin text-muted-foreground" />
         </div>
-        <template
-          v-for="(item, index) of directoryRows"
-          v-else
-          :key="item.title"
-        >
+        <template v-for="(item, index) of directoryRows" v-else :key="item.title">
           <div class="grid gap-3 py-4 sm:grid-cols-[minmax(0,180px)_1fr_auto] sm:items-center sm:gap-6">
             <div class="min-w-0">
               <div class="flex items-baseline gap-1.5">
                 <h3 class="text-base font-medium">
                   {{ item.title }}
                 </h3>
-                <span
-                  v-if="item.hint"
-                  class="text-sm text-muted-foreground"
-                >
+                <span v-if="item.hint" class="text-sm text-muted-foreground">
                   {{ item.hint }}
                 </span>
               </div>
             </div>
 
-            <div
-              v-if="item.value"
-              class="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
-            >
+            <div v-if="item.value" class="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
               <span class="truncate">{{ item.value }}</span>
-              <component
-                :is="item.valueIcon"
-                v-if="item.valueIcon"
-                class="size-3.5 shrink-0"
-              />
+              <component :is="item.valueIcon" v-if="item.valueIcon" class="size-3.5 shrink-0" />
             </div>
-            <div
-              v-else
-              class="hidden sm:block"
-            />
+            <div v-else class="hidden sm:block" />
 
             <Button
               :variant="item.action.variant"

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { DocsAiChatMessage } from '@/services/docs';
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import MarkdownRender from 'markstream-vue';
 import { Send, X } from 'lucide-vue-next';
+import MarkdownRender from 'markstream-vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
+
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
+import type { DocsAiChatMessage } from '@/services/docs';
 import { chatDocsAi } from '@/services/docs';
 import { getErrorMessage } from '@/utils/helpers';
 
@@ -120,12 +121,10 @@ async function send() {
   sending.value = true;
   startTimer();
   try {
-    const history: DocsAiChatMessage[] = messages.value
-      .slice(0, -1)
-      .map(message => ({
-        role: message.role,
-        content: message.role === 'assistant' ? stripDocForHistory(message.text) : message.text,
-      }));
+    const history: DocsAiChatMessage[] = messages.value.slice(0, -1).map(message => ({
+      role: message.role,
+      content: message.role === 'assistant' ? stripDocForHistory(message.text) : message.text,
+    }));
 
     const result = await chatDocsAi(history, props.document, text);
     const parsed = parseAssistant(result.content);
@@ -190,24 +189,13 @@ onBeforeUnmount(stopTimer);
 <template>
   <aside class="flex w-[21rem] shrink-0 flex-col overflow-hidden rounded-xl border bg-card">
     <div class="flex h-11 shrink-0 items-center justify-between border-b px-3">
-      <p class="text-sm font-semibold">
-        AI 助手
-      </p>
-      <Button
-        aria-label="关闭 AI 助手"
-        class="h-7 w-7"
-        size="icon"
-        variant="ghost"
-        @click="emit('close')"
-      >
+      <p class="text-sm font-semibold">AI 助手</p>
+      <Button aria-label="关闭 AI 助手" class="h-7 w-7" size="icon" variant="ghost" @click="emit('close')">
         <X class="h-4 w-4" />
       </Button>
     </div>
 
-    <div
-      ref="listRef"
-      class="min-h-0 flex-1 space-y-4 overflow-y-auto p-3"
-    >
+    <div ref="listRef" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
       <!-- 未打开文档 -->
       <div
         v-if="!hasDocument"
@@ -243,43 +231,24 @@ onBeforeUnmount(stopTimer);
 
           <template v-else>
             <div class="docs-ai-markdown w-full min-w-0 text-sm leading-relaxed">
-              <MarkdownRender
-                :content="message.text"
-                custom-id="docs-ai-panel"
-              />
+              <MarkdownRender :content="message.text" custom-id="docs-ai-panel" />
             </div>
-            <p
-              v-if="message.modelLabel"
-              class="font-mono text-[11px] text-muted-foreground"
-            >
+            <p v-if="message.modelLabel" class="font-mono text-[11px] text-muted-foreground">
               {{ message.modelLabel }}
             </p>
 
             <!-- 文档修改卡 -->
-            <div
-              v-if="message.doc !== null"
-              class="w-full space-y-2 rounded-lg border bg-muted/30 p-2.5"
-            >
+            <div v-if="message.doc !== null" class="w-full space-y-2 rounded-lg border bg-muted/30 p-2.5">
               <p class="text-xs text-muted-foreground">
                 AI 生成了新的文档版本（{{ message.doc.length }} 字，当前 {{ props.document.length }} 字）
               </p>
               <pre
                 v-if="expandedIds.has(message.id)"
                 class="max-h-64 overflow-auto rounded-md bg-muted p-2 font-mono text-xs whitespace-pre-wrap"
-              >{{ message.doc }}</pre>
+                >{{ message.doc }}</pre>
               <div class="flex flex-wrap items-center gap-2">
-                <Button
-                  v-if="!message.applied"
-                  size="sm"
-                  @click="applyDoc(message)"
-                >
-                  应用到文档
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  @click="togglePreview(message)"
-                >
+                <Button v-if="!message.applied" size="sm" @click="applyDoc(message)"> 应用到文档 </Button>
+                <Button size="sm" variant="outline" @click="togglePreview(message)">
                   {{ expandedIds.has(message.id) ? '收起预览' : '预览' }}
                 </Button>
                 <Button
@@ -290,27 +259,18 @@ onBeforeUnmount(stopTimer);
                 >
                   撤销应用
                 </Button>
-                <span
-                  v-else-if="message.applied"
-                  class="text-xs text-muted-foreground"
-                >
+                <span v-else-if="message.applied" class="text-xs text-muted-foreground">
                   文档已在应用后被手动修改，无法自动撤销
                 </span>
               </div>
-              <p
-                v-if="message.applied"
-                class="text-xs text-emerald-600 dark:text-emerald-400"
-              >
+              <p v-if="message.applied" class="text-xs text-emerald-600 dark:text-emerald-400">
                 已应用，⌘S 保存后写入磁盘
               </p>
             </div>
           </template>
         </div>
 
-        <div
-          v-if="sending"
-          class="flex items-center gap-2 text-xs text-muted-foreground"
-        >
+        <div v-if="sending" class="flex items-center gap-2 text-xs text-muted-foreground">
           <Spinner class="h-3.5 w-3.5" />
           <span>正在思考</span>
           <span class="tabular-nums">{{ elapsedSeconds }}s</span>

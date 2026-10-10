@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+
 import type { DocsEntry } from '@/types/docs';
+
 import { buildDocsTree, firstLevelDirPaths, flattenTree } from '../tree';
 
 function makeEntry(overrides: Partial<DocsEntry> & Pick<DocsEntry, 'name' | 'path' | 'is_dir'>): DocsEntry {

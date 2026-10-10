@@ -2,6 +2,7 @@
 import { AlertTriangle, CheckCircle2, RotateCcw, Sparkles, Square } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -103,21 +104,11 @@ function handleGenerate(): void {
   <div class="flex h-full min-h-0 flex-col gap-3 rounded-lg border bg-card p-4">
     <div class="flex items-center gap-2">
       <Sparkles class="size-4 text-primary" />
-      <h3 class="text-sm font-semibold">
-        AI 请求体生成
-      </h3>
-      <Badge v-if="candidate?.status === 'generating'" variant="secondary">
-        生成中
-      </Badge>
-      <Badge v-else-if="candidate?.status === 'success'" variant="default">
-        就绪
-      </Badge>
-      <Badge v-else-if="candidate?.status === 'error'" variant="destructive">
-        失败
-      </Badge>
-      <Badge v-else-if="candidate?.status === 'cancelled'" variant="outline">
-        已取消
-      </Badge>
+      <h3 class="text-sm font-semibold">AI 请求体生成</h3>
+      <Badge v-if="candidate?.status === 'generating'" variant="secondary"> 生成中 </Badge>
+      <Badge v-else-if="candidate?.status === 'success'" variant="default"> 就绪 </Badge>
+      <Badge v-else-if="candidate?.status === 'error'" variant="destructive"> 失败 </Badge>
+      <Badge v-else-if="candidate?.status === 'cancelled'" variant="outline"> 已取消 </Badge>
     </div>
 
     <div class="flex flex-col gap-2">
@@ -152,14 +143,10 @@ function handleGenerate(): void {
     </div>
 
     <div class="flex items-center gap-2">
-      <Label class="w-20 shrink-0">
-        模型
-      </Label>
+      <Label class="w-20 shrink-0"> 模型 </Label>
       <div class="flex-1 rounded-md border bg-muted/30 px-3 py-1.5 text-sm">
         <span v-if="currentModelLabel">{{ currentModelLabel }}</span>
-        <span v-else class="text-muted-foreground">
-          等待生成结果以显示当前使用的模型
-        </span>
+        <span v-else class="text-muted-foreground"> 等待生成结果以显示当前使用的模型 </span>
       </div>
     </div>
 
@@ -181,7 +168,9 @@ function handleGenerate(): void {
     <Alert v-if="candidate?.status === 'error' || candidate?.status === 'cancelled'" variant="destructive">
       <AlertTriangle class="size-4" />
       <AlertTitle>{{ candidate.status === 'error' ? '生成失败' : '已取消' }}</AlertTitle>
-      <AlertDescription>{{ candidate.errorMessage ?? (candidate.status === 'cancelled' ? '生成被取消，原内容保留' : '请稍后重试') }}</AlertDescription>
+      <AlertDescription>{{
+        candidate.errorMessage ?? (candidate.status === 'cancelled' ? '生成被取消，原内容保留' : '请稍后重试')
+      }}</AlertDescription>
     </Alert>
 
     <div v-if="isGenerating || candidate" class="flex flex-col gap-2">
@@ -211,7 +200,10 @@ function handleGenerate(): void {
 
     <Alert>
       <AlertTitle>使用后端默认模型</AlertTitle>
-      <AlertDescription>请求体生成使用后端「默认模型」页签中 `api_body_generation` 键对应的模型。前端无法列出或切换；如需修改，请在设置页调整默认模型。</AlertDescription>
+      <AlertDescription
+        >请求体生成使用后端「默认模型」页签中 `api_body_generation`
+        键对应的模型。前端无法列出或切换；如需修改，请在设置页调整默认模型。</AlertDescription
+      >
     </Alert>
   </div>
 </template>

@@ -70,17 +70,17 @@ Memory Store
 
 ## 4. 技术选型
 
-| 层级 | 技术 | 说明 |
-| --- | --- | --- |
-| 前端框架 | Vue 3 + TypeScript | 现有技术栈 |
-| 状态管理 | Pinia | 现有技术栈 |
-| UI 组件 | `ai-elements` + 当前 UI 组件库 | 用于消息、工具状态、文件树等展示 |
-| Agent 编排 | `rig-core` | 统一放在 Tauri Rust 侧 |
-| 后端 | Tauri 2 + Rust | 现有技术栈 |
-| 文件遍历 | `walkdir` + `globset` | 比单纯 `glob` 更适合递归遍历和忽略目录 |
-| 文本搜索 | `regex` | 搜索文件内容 |
-| 记忆存储 | JSON 文件 | 使用 Tauri 应用数据目录 |
-| 路径哈希 | `sha2` + `hex` | 按项目路径生成稳定目录名 |
+| 层级       | 技术                           | 说明                                   |
+| ---------- | ------------------------------ | -------------------------------------- |
+| 前端框架   | Vue 3 + TypeScript             | 现有技术栈                             |
+| 状态管理   | Pinia                          | 现有技术栈                             |
+| UI 组件    | `ai-elements` + 当前 UI 组件库 | 用于消息、工具状态、文件树等展示       |
+| Agent 编排 | `rig-core`                     | 统一放在 Tauri Rust 侧                 |
+| 后端       | Tauri 2 + Rust                 | 现有技术栈                             |
+| 文件遍历   | `walkdir` + `globset`          | 比单纯 `glob` 更适合递归遍历和忽略目录 |
+| 文本搜索   | `regex`                        | 搜索文件内容                           |
+| 记忆存储   | JSON 文件                      | 使用 Tauri 应用数据目录                |
+| 路径哈希   | `sha2` + `hex`                 | 按项目路径生成稳定目录名               |
 
 说明：
 
@@ -146,42 +146,42 @@ src/services/agent.ts
 
 ```ts
 export interface AgentSettings {
-  maxHistoryMessages: number
-  maxToolRounds: number
-  fileExtensions: string
-  ignoreDirs: string
-  maxFileContentLength: number
+  maxHistoryMessages: number;
+  maxToolRounds: number;
+  fileExtensions: string;
+  ignoreDirs: string;
+  maxFileContentLength: number;
 }
 
 export interface AgentToolTrace {
-  id: string
-  name: string
-  argsText: string
-  resultText?: string
-  status: 'pending' | 'running' | 'success' | 'error'
+  id: string;
+  name: string;
+  argsText: string;
+  resultText?: string;
+  status: 'pending' | 'running' | 'success' | 'error';
 }
 
 export interface AnalyzedModule {
-  path: string
-  summary: string
-  updatedAt: string
+  path: string;
+  summary: string;
+  updatedAt: string;
 }
 
 export interface AgentMessage {
-  id: string
-  role: 'user' | 'assistant' | 'system'
-  content: string
-  createdAt: number
-  status?: 'streaming' | 'done' | 'error'
-  toolTraces?: AgentToolTrace[]
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  createdAt: number;
+  status?: 'streaming' | 'done' | 'error';
+  toolTraces?: AgentToolTrace[];
 }
 
 export interface AgentConversation {
-  id: string
-  title: string
-  messages: AgentMessage[]
-  createdAt: number
-  updatedAt: number
+  id: string;
+  title: string;
+  messages: AgentMessage[];
+  createdAt: number;
+  updatedAt: number;
 }
 ```
 
@@ -195,14 +195,14 @@ Store 设计重点：
 推荐状态：
 
 ```ts
-const files = ref<string[]>([])
-const selectedFilePath = ref<string | null>(null)
-const conversations = ref<AgentConversation[]>([])
-const currentConversationId = ref<string | null>(null)
-const analyzedModules = ref<Record<string, AnalyzedModule>>({})
-const isAnalyzing = ref(false)
-const activeRunId = ref<string | null>(null)
-const settings = ref<AgentSettings>({ ...defaultAgentSettings })
+const files = ref<string[]>([]);
+const selectedFilePath = ref<string | null>(null);
+const conversations = ref<AgentConversation[]>([]);
+const currentConversationId = ref<string | null>(null);
+const analyzedModules = ref<Record<string, AnalyzedModule>>({});
+const isAnalyzing = ref(false);
+const activeRunId = ref<string | null>(null);
+const settings = ref<AgentSettings>({ ...defaultAgentSettings });
 ```
 
 推荐 action：
@@ -639,17 +639,17 @@ if exceeded round limit
 
 ## 9. 错误处理
 
-| 场景 | 处理方式 |
-| --- | --- |
-| 未设置项目路径 | 前端阻止发送，并提示去系统设置选择项目文件夹 |
-| 未配置 AI 服务 | 前端阻止发送，并提示去 AI 设置配置模型 |
-| 项目路径不存在 | Rust 返回明确错误，前端提示重新选择 |
-| 文件读取失败 | 返回具体原因，如文件不存在、越权访问、编码失败 |
-| 搜索无结果 | 返回空数组，由前端展示“未找到匹配内容” |
-| 工具调用超时 | 结束当前 run，并写入错误消息 |
-| 达到最大轮次 | 返回“请缩小问题范围后重试” |
-| 模型服务不可用 | 返回供应商错误信息，并附带基础诊断提示 |
-| memory 文件损坏 | 记录日志并回退到空 memory，不阻塞页面加载 |
+| 场景            | 处理方式                                       |
+| --------------- | ---------------------------------------------- |
+| 未设置项目路径  | 前端阻止发送，并提示去系统设置选择项目文件夹   |
+| 未配置 AI 服务  | 前端阻止发送，并提示去 AI 设置配置模型         |
+| 项目路径不存在  | Rust 返回明确错误，前端提示重新选择            |
+| 文件读取失败    | 返回具体原因，如文件不存在、越权访问、编码失败 |
+| 搜索无结果      | 返回空数组，由前端展示“未找到匹配内容”         |
+| 工具调用超时    | 结束当前 run，并写入错误消息                   |
+| 达到最大轮次    | 返回“请缩小问题范围后重试”                     |
+| 模型服务不可用  | 返回供应商错误信息，并附带基础诊断提示         |
+| memory 文件损坏 | 记录日志并回退到空 memory，不阻塞页面加载      |
 
 ---
 
@@ -657,13 +657,13 @@ if exceeded round limit
 
 建议保留原始配置，但生效位置改为 Rust Runner。
 
-| 配置项 | 默认值 | 说明 |
-| --- | --- | --- |
-| `maxHistoryMessages` | `30` | 参与模型上下文的历史消息条数 |
-| `maxToolRounds` | `30` | 单次交互最大工具轮次 |
-| `fileExtensions` | `.ts,.tsx,.js,.jsx,.vue` | 允许扫描的文件扩展名 |
-| `ignoreDirs` | `node_modules,.git,dist` | 忽略目录 |
-| `maxFileContentLength` | `15000` | 单次读取最大字符数 |
+| 配置项                 | 默认值                   | 说明                         |
+| ---------------------- | ------------------------ | ---------------------------- |
+| `maxHistoryMessages`   | `30`                     | 参与模型上下文的历史消息条数 |
+| `maxToolRounds`        | `30`                     | 单次交互最大工具轮次         |
+| `fileExtensions`       | `.ts,.tsx,.js,.jsx,.vue` | 允许扫描的文件扩展名         |
+| `ignoreDirs`           | `node_modules,.git,dist` | 忽略目录                     |
+| `maxFileContentLength` | `15000`                  | 单次读取最大字符数           |
 
 补充建议：
 

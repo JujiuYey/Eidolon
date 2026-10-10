@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Plus } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -105,11 +106,7 @@ function onSubmit(): void {
         <div class="grid grid-cols-[120px_1fr] gap-3">
           <div class="flex flex-col gap-1">
             <Label for="create-request-method">方法</Label>
-            <NativeSelect
-              id="create-request-method"
-              v-model="method"
-              :disabled="submitting"
-            >
+            <NativeSelect id="create-request-method" v-model="method" :disabled="submitting">
               <NativeSelectOption v-for="m of API_CLIENT_HTTP_METHODS" :key="m" :value="m">
                 {{ m }}
               </NativeSelectOption>
@@ -128,17 +125,8 @@ function onSubmit(): void {
         </div>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="submitting"
-            @click="onOpenChange(false)"
-          >
-            取消
-          </Button>
-          <Button type="submit" :disabled="!canSubmit">
-            创建
-          </Button>
+          <Button type="button" variant="outline" :disabled="submitting" @click="onOpenChange(false)"> 取消 </Button>
+          <Button type="submit" :disabled="!canSubmit"> 创建 </Button>
         </DialogFooter>
       </form>
     </DialogContent>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { FolderPlus } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -36,9 +37,9 @@ const canSubmit = computed(() => trimmedName.value.length > 0 && !submitting.val
 
 const isChild = computed(() => props.parentGroupId != null && props.parentGroupId !== '');
 
-const dialogTitle = computed(() => (isChild.value && props.parentGroupName
-  ? `新建子分组 — ${props.parentGroupName}`
-  : '新建分组'));
+const dialogTitle = computed(() =>
+  isChild.value && props.parentGroupName ? `新建子分组 — ${props.parentGroupName}` : '新建分组',
+);
 
 function reset(): void {
   name.value = '';
@@ -73,9 +74,7 @@ function onSubmit(): void {
           <DialogTitle>{{ dialogTitle }}</DialogTitle>
         </div>
         <DialogDescription>
-          <span v-if="isChild && parentGroupName">
-            将在分组「{{ parentGroupName }}」下创建子分组。
-          </span>
+          <span v-if="isChild && parentGroupName"> 将在分组「{{ parentGroupName }}」下创建子分组。 </span>
           <span v-else-if="projectName">将在项目「{{ projectName }}」下创建分组。</span>
           <span v-else>将创建一个新分组。</span>
         </DialogDescription>
@@ -84,27 +83,12 @@ function onSubmit(): void {
       <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
         <div class="flex flex-col gap-1">
           <Label for="rename-group-name" class="mb-1">分组名称</Label>
-          <Input
-            id="create-group-name"
-            v-model="name"
-            placeholder="例如：订单管理"
-            :disabled="submitting"
-            required
-          />
+          <Input id="create-group-name" v-model="name" placeholder="例如：订单管理" :disabled="submitting" required />
         </div>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="submitting"
-            @click="onOpenChange(false)"
-          >
-            取消
-          </Button>
-          <Button type="submit" :disabled="!canSubmit">
-            创建
-          </Button>
+          <Button type="button" variant="outline" :disabled="submitting" @click="onOpenChange(false)"> 取消 </Button>
+          <Button type="submit" :disabled="!canSubmit"> 创建 </Button>
         </DialogFooter>
       </form>
     </DialogContent>

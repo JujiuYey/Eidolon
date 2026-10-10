@@ -27,13 +27,13 @@ export const BUG_STATUS_LABELS: Record<string, string> = {
 /** Bug 解决方案 → 中文文案 */
 export const RESOLUTION_LABELS: Record<string, string> = {
   '': '',
-  'bydesign': '设计如此',
-  'duplicate': '重复 Bug',
-  'external': '外部原因',
-  'fixed': '已解决',
-  'notrepro': '无法重现',
-  'postponed': '延后处理',
-  'willnotfix': '不予解决',
+  bydesign: '设计如此',
+  duplicate: '重复 Bug',
+  external: '外部原因',
+  fixed: '已解决',
+  notrepro: '无法重现',
+  postponed: '延后处理',
+  willnotfix: '不予解决',
 };
 
 export function taskStatusLabel(status: string): string {

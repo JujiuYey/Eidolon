@@ -1,7 +1,8 @@
-import type { DocsEntry, DocsSearchResult, DocsSettings } from '@/types/docs';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+
 import * as docsServiceApi from '@/services/docs';
+import type { DocsEntry, DocsSearchResult, DocsSettings } from '@/types/docs';
 import { buildDocsTree, firstLevelDirPaths } from '@/views/docs/utils/tree';
 
 /** store 依赖的服务接口，测试时可注入 fake 实现 */

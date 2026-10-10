@@ -23,10 +23,10 @@ View (views/agent, views/workspace)
 - 参数走 Tauri snake_case，前端 `toCamelCase*` mapper 转换（`services/agent-conversation.ts` 内联）。
 - 所有 agent 数据存 **JSON 文件而非 SQLite**（`db/local_store.rs::LocalJsonStore`，pretty JSON，整文件读写 + 内存缓存）：
 
-| 文件 | 内容 |
-|---|---|
-| `agent_profiles.json` | 全部 Agent Profile |
-| `agent_conversations.json` | 全部会话（含快照字段） |
+| 文件                               | 内容                                |
+| ---------------------------------- | ----------------------------------- |
+| `agent_profiles.json`              | 全部 Agent Profile                  |
+| `agent_conversations.json`         | 全部会话（含快照字段）              |
 | `agent_conversation_messages.json` | 全部消息（按 conversation_id 关联） |
 
 - 遗留迁移：Profile 最初存 localStorage（key `eidolon.agent_profiles`），`services/agent-profile-storage.ts` 负责「读取旧数据 → upsert 进 Tauri → 写 `eidolon.agent_profiles.migrated_to_tauri` 标记」的一次性迁移。
@@ -40,14 +40,14 @@ interface AgentProfile {
   id: string;
   name: string;
   description: string;
-  providerId: string;      // 对应 provider_settings 里的一条（应用设置页配置）
+  providerId: string; // 对应 provider_settings 里的一条（应用设置页配置）
   modelId: string;
-  temperature: string;     // 字符串存储，发送时 parse
+  temperature: string; // 字符串存储，发送时 parse
   maxTokens: string;
   systemPrompt: string;
-  workDirectory: string;   // 工作目录，文件树/检索的根
-  enabledMcpServiceIds: string[];  // ⚠️ 仅存储，聊天后端未消费（见 §7）
-  enabledToolKeys: string[];       // ⚠️ 同上
+  workDirectory: string; // 工作目录，文件树/检索的根
+  enabledMcpServiceIds: string[]; // ⚠️ 仅存储，聊天后端未消费（见 §7）
+  enabledToolKeys: string[]; // ⚠️ 同上
   createdAt: number;
   updatedAt: number;
 }
@@ -61,7 +61,7 @@ interface AgentWorkspaceConversation {
   agentProfileId: string;
   title: string;
   snapshotVersion: number;
-  createdFromProfileUpdatedAt: number;  // 快照时 Profile 的 updatedAt，可用于判断“Profile 已变化”
+  createdFromProfileUpdatedAt: number; // 快照时 Profile 的 updatedAt，可用于判断“Profile 已变化”
   snapshotAgentName: string;
   snapshotProviderId: string;
   snapshotModelId: string;
@@ -86,7 +86,7 @@ interface AgentWorkspaceMessage {
   conversationId: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  status: 'done' | 'error';   // 模型调用失败时，错误文案作为 assistant 消息入库，status=error
+  status: 'done' | 'error'; // 模型调用失败时，错误文案作为 assistant 消息入库，status=error
   createdAt: number;
 }
 ```
@@ -99,15 +99,15 @@ interface AgentWorkspaceMessage {
 
 命令清单（仍在 `lib.rs` 注册，可直接调用）：
 
-| 命令 | 说明 |
-|---|---|
-| `list_agent_conversations(agentProfileId)` | 按 Profile 列会话 |
-| `list_recent_agent_conversations(limit?)` | 跨 Profile 最近会话（原侧边栏用） |
-| `create_agent_conversation(agentProfileId)` | 从 Profile 拍快照建会话 |
-| `get_agent_conversation(id)` / `delete_agent_conversation(id)` | 查/删 |
-| `list_agent_conversation_messages(id)` | 拉历史消息 |
-| `send_agent_conversation_message(id, content)` | 发消息 + 模型回复（见下） |
-| `list/get/upsert/delete_agent_profile` | Profile CRUD |
+| 命令                                                           | 说明                              |
+| -------------------------------------------------------------- | --------------------------------- |
+| `list_agent_conversations(agentProfileId)`                     | 按 Profile 列会话                 |
+| `list_recent_agent_conversations(limit?)`                      | 跨 Profile 最近会话（原侧边栏用） |
+| `create_agent_conversation(agentProfileId)`                    | 从 Profile 拍快照建会话           |
+| `get_agent_conversation(id)` / `delete_agent_conversation(id)` | 查/删                             |
+| `list_agent_conversation_messages(id)`                         | 拉历史消息                        |
+| `send_agent_conversation_message(id, content)`                 | 发消息 + 模型回复（见下）         |
+| `list/get/upsert/delete_agent_profile`                         | Profile CRUD                      |
 
 `send_agent_conversation_message` 流程：
 

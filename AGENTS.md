@@ -29,55 +29,55 @@ View (Vue SFC)  →  Store (Pinia, setup-style)  →  Service (TS)  →  Tauri C
 
 Key modules (frontend ↔ backend):
 
-| Frontend module                                | Backend command(s)                                       |
-|------------------------------------------------|----------------------------------------------------------|
-| `src/services/api-client/*`                    | `commands/api_client.rs`, `api_request.rs`, `api_generate.rs`, `test_connection.rs` |
-| `src/services/pm.ts`                            | `commands/pm.rs`, `services/pm_chat.rs`, `services/pm_skills.rs` (skills bundled at `src-tauri/resources/pm-skills/`, overridable via a settings directory) |
-| `src/services/docs.ts`                          | `commands/docs.rs`, `services/docs.rs` (sandboxed via `services/work_directory.rs`) |
-| `src/services/provider_config.ts`              | `commands/model_config.rs`, `default_model.rs`, `test_connection.rs` |
-| `src/services/mcp_service.ts`                  | `commands/mcp_service.rs`, `services/mcp_service.rs`     |
+| Frontend module                   | Backend command(s)                                                                                                                                          |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/services/api-client/*`       | `commands/api_client.rs`, `api_request.rs`, `api_generate.rs`, `test_connection.rs`                                                                         |
+| `src/services/pm.ts`              | `commands/pm.rs`, `services/pm_chat.rs`, `services/pm_skills.rs` (skills bundled at `src-tauri/resources/pm-skills/`, overridable via a settings directory) |
+| `src/services/docs.ts`            | `commands/docs.rs`, `services/docs.rs` (sandboxed via `services/work_directory.rs`)                                                                         |
+| `src/services/provider_config.ts` | `commands/model_config.rs`, `default_model.rs`, `test_connection.rs`                                                                                        |
+| `src/services/mcp_service.ts`     | `commands/mcp_service.rs`, `services/mcp_service.rs`                                                                                                        |
 
 ---
 
 ## Key Directories
 
-| Path                              | Purpose                                                                                      |
-|-----------------------------------|----------------------------------------------------------------------------------------------|
-| `src/main.ts`                     | App entry: creates the Vue app, installs Pinia + router, mounts `#app`.                      |
-| `src/App.vue`                     | Root component: `<RouterView/>` + `<Toaster/>` from vue-sonner.                              |
-| `src/router/index.ts`             | Routes (see "Routing" below); `/` → `/mail`.                                                 |
-| `src/layout/`                     | App shell: `index.vue` + `app-sidebar/{logo,menu,footer}`.                                    |
-| `src/views/`                      | Feature pages (one folder per route). Co-located `components/`, `__tests__/`, `utils/`.      |
-| `src/stores/`                     | Pinia setup stores. `api-client.ts` is the largest; `mail.ts`, `weekly-report.ts`, `zentao.ts`, `app.ts`. |
-| `src/services/`                   | ONLY place that calls `invoke()`. Sub-folders per feature (`api-client/`, …).                |
-| `src/composables/`                | Auto-imported hooks (`useConfirm`, `useTheme`, `useAppPaths`).                               |
-| `src/components/`                 | `ui/*` (shadcn-vue), `sag/*` (in-house), `ConfirmDialog.vue`.                                |
-| `src/types/`                      | Hand-written DTOs + generated `auto-import.d.ts`, `auto-import-components.d.ts`.             |
-| `src/enum/`                       | Enums auto-imported by `unplugin-auto-import`.                                               |
-| `src/utils/`, `src/lib/`          | Pure helpers (`theme`, `crypto`, `helpers`, `cn()` in `lib/utils.ts`).                       |
-| `src/config/provider-registry.ts` | Static `PROVIDER_REGISTRY` (minimax, volcengine, deepseek, ollama).                           |
-| `src-tauri/src/commands/`         | One file per command family; surfaced through `tauri::generate_handler!` in `lib.rs`.        |
-| `src-tauri/src/services/`         | Backend business logic (HTTP, email, weekly report, zentao, MCP, work directory).           |
-| `src-tauri/src/db/`               | SQLite via `rusqlite` + `repositories/` + SQL migrations under `db/migrations/`.             |
-| `src-tauri/src/models/`           | Rust DTOs (snake_case). Frontend mirrors them in `src/types/` + `services/api-client/types.ts`. |
-| `src-tauri/capabilities/default.json` | Tauri 2 permissions for the default window.                                              |
-| `docs/`                           | Design + plan docs (`api-client-design.md`, `agent-design.md` for the removed agent feature). |
+| Path                                  | Purpose                                                                                                   |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `src/main.ts`                         | App entry: creates the Vue app, installs Pinia + router, mounts `#app`.                                   |
+| `src/App.vue`                         | Root component: `<RouterView/>` + `<Toaster/>` from vue-sonner.                                           |
+| `src/router/index.ts`                 | Routes (see "Routing" below); `/` → `/mail`.                                                              |
+| `src/layout/`                         | App shell: `index.vue` + `app-sidebar/{logo,menu,footer}`.                                                |
+| `src/views/`                          | Feature pages (one folder per route). Co-located `components/`, `__tests__/`, `utils/`.                   |
+| `src/stores/`                         | Pinia setup stores. `api-client.ts` is the largest; `mail.ts`, `weekly-report.ts`, `zentao.ts`, `app.ts`. |
+| `src/services/`                       | ONLY place that calls `invoke()`. Sub-folders per feature (`api-client/`, …).                             |
+| `src/composables/`                    | Auto-imported hooks (`useConfirm`, `useTheme`, `useAppPaths`).                                            |
+| `src/components/`                     | `ui/*` (shadcn-vue), `sag/*` (in-house), `ConfirmDialog.vue`.                                             |
+| `src/types/`                          | Hand-written DTOs + generated `auto-import.d.ts`, `auto-import-components.d.ts`.                          |
+| `src/enum/`                           | Enums auto-imported by `unplugin-auto-import`.                                                            |
+| `src/utils/`, `src/lib/`              | Pure helpers (`theme`, `crypto`, `helpers`, `cn()` in `lib/utils.ts`).                                    |
+| `src/config/provider-registry.ts`     | Static `PROVIDER_REGISTRY` (minimax, volcengine, deepseek, ollama).                                       |
+| `src-tauri/src/commands/`             | One file per command family; surfaced through `tauri::generate_handler!` in `lib.rs`.                     |
+| `src-tauri/src/services/`             | Backend business logic (HTTP, email, weekly report, zentao, MCP, work directory).                         |
+| `src-tauri/src/db/`                   | SQLite via `rusqlite` + `repositories/` + SQL migrations under `db/migrations/`.                          |
+| `src-tauri/src/models/`               | Rust DTOs (snake_case). Frontend mirrors them in `src/types/` + `services/api-client/types.ts`.           |
+| `src-tauri/capabilities/default.json` | Tauri 2 permissions for the default window.                                                               |
+| `docs/`                               | Design + plan docs (`api-client-design.md`, `agent-design.md` for the removed agent feature).             |
 
 Routing (frontend):
 
-| Path                              | View                                  |
-|-----------------------------------|---------------------------------------|
-| `/`                               | redirect → `/mail`                    |
-| `/mail`                           | `views/mail/index.vue`                |
-| `/index`                          | redirect → `/mail` (legacy mail demo path) |
-| `/weekly-report`                  | `views/weekly-report/index.vue`       |
-| `/zentao`                         | `views/zentao/index.vue`              |
-| `/api-client`                     | `views/api-project/index.vue`         |
-| `/api-client/projects/:id`        | `views/api-client-workspace/index.vue` (name `api-client-project`) |
-| `/docs`                           | `views/docs/index.vue` (markdown 文档管理) |
-| `/pm`                             | `views/pm/index.vue` (PM persona chat)  |
-| `/app-setting`                    | `views/app-setting/index.vue`         |
-| `/:pathMatch(.*)*`                | `pages/errors/404.vue`                |
+| Path                       | View                                                               |
+| -------------------------- | ------------------------------------------------------------------ |
+| `/`                        | redirect → `/mail`                                                 |
+| `/mail`                    | `views/mail/index.vue`                                             |
+| `/index`                   | redirect → `/mail` (legacy mail demo path)                         |
+| `/weekly-report`           | `views/weekly-report/index.vue`                                    |
+| `/zentao`                  | `views/zentao/index.vue`                                           |
+| `/api-client`              | `views/api-project/index.vue`                                      |
+| `/api-client/projects/:id` | `views/api-client-workspace/index.vue` (name `api-client-project`) |
+| `/docs`                    | `views/docs/index.vue` (markdown 文档管理)                         |
+| `/pm`                      | `views/pm/index.vue` (PM persona chat)                             |
+| `/app-setting`             | `views/app-setting/index.vue`                                      |
+| `/:pathMatch(.*)*`         | `pages/errors/404.vue`                                             |
 
 ---
 
@@ -93,14 +93,16 @@ pnpm preview                # vite preview (serves dist/)
 pnpm tauri                  # delegate to @tauri-apps/cli (dev / build / info)
 pnpm test                   # vitest run (one-shot, node env)
 pnpm exec vitest            # watch mode
-pnpm lint:eslint            # eslint "src/**/*.{vue,ts,tsx}" --fix (ESLint cache → node_modules/.cache/eslint/)
-pnpm lint:ui                # eslint src/components/ui/**/*.{vue,ts,tsx} --fix (shadcn-vue generated)
-pnpm lint:lint-staged       # runs lint-staged (pre-commit hook wiring)
+pnpm lint                   # oxlint (config: .oxlintrc.json)
+pnpm lint:fix               # oxlint --fix
+pnpm format                 # oxfmt --write . (config: .oxfmtrc.json)
+pnpm format:check           # oxfmt --check .
+pnpm lint:lint-staged       # runs lint-staged (wired to pre-commit via simple-git-hooks)
 ```
 
 Tauri dev runs `pnpm dev` first (`beforeDevCommand` in `tauri.conf.json`), then opens the native window. Tauri build runs `pnpm build` first (`beforeBuildCommand`).
 
-There is **no Prettier**; formatting comes from `@antfu/eslint-config` (2-space indent, single quotes, semicolons, jsx on, stylistic on).
+Linting is **oxlint** (`.oxlintrc.json`, `correctness` category as errors); formatting is **oxfmt** (`.oxfmtrc.json`: 2-space indent, single quotes, semicolons, printWidth 120, `sortImports`). Pre-commit runs lint-staged (oxlint --fix + oxfmt) via simple-git-hooks. There is **no Prettier and no ESLint**.
 
 There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/coverage-istanbul` if you need it.
 
@@ -151,7 +153,7 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 
 - Vue macros + `src/composables/**/*.ts` + `src/enum/**/*.ts` + `src/store/**/*.ts` are auto-imported → `src/types/auto-import.d.ts`.
 - `src/components/ui/*` are auto-registered → `src/types/auto-import-components.d.ts`.
-- The generated dts files are checked in but ignored by ESLint; regenerate by running dev once after adding new composables.
+- The generated dts files are checked in but ignored by oxlint/oxfmt; regenerate by running dev once after adding new composables.
 
 **Theming**
 
@@ -167,25 +169,25 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 
 ## Important Files
 
-| Purpose                         | Path                                                            |
-|---------------------------------|-----------------------------------------------------------------|
-| Vue entry                       | `src/main.ts`, `src/App.vue`                                    |
-| Router                          | `src/router/index.ts`                                           |
-| App shell                       | `src/layout/index.vue`, `src/layout/app-sidebar/index.vue`      |
-| Global confirm                  | `src/composables/use-confirm.ts`, `src/components/ConfirmDialog.vue` |
-| Settings store (persisted)      | `src/stores/app.ts`                                             |
-| API client store (factory)      | `src/stores/api-client.ts`                                      |
-| API client services             | `src/services/api-client/{projects,groups,requests,environments,history,execution,ai,types,mappers,index}.ts` |
-| Provider / MCP services         | `src/services/{provider_config,mcp_service,default_model}.ts`   |
-| Pure API-client helpers         | `src/views/api-client/utils/{request,response,ai}-helpers.ts`   |
-| API client DTOs                 | `src/types/api-client/index.ts`                                 |
-| Provider registry               | `src/config/provider-registry.ts`                               |
-| shadcn-vue config               | `components.json`                                               |
-| Tauri config                    | `src-tauri/tauri.conf.json`                                     |
-| Rust entry / lib                | `src-tauri/src/main.rs`, `src-tauri/src/lib.rs`                 |
-| Tauri commands                  | `src-tauri/src/commands/*.rs`                                   |
-| Tauri capabilities              | `src-tauri/capabilities/default.json`                           |
-| Design docs                     | `docs/api-client-design.md`, `docs/api-client-implementation-plan.md`, `docs/agent-design.md` |
+| Purpose                    | Path                                                                                                          |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Vue entry                  | `src/main.ts`, `src/App.vue`                                                                                  |
+| Router                     | `src/router/index.ts`                                                                                         |
+| App shell                  | `src/layout/index.vue`, `src/layout/app-sidebar/index.vue`                                                    |
+| Global confirm             | `src/composables/use-confirm.ts`, `src/components/ConfirmDialog.vue`                                          |
+| Settings store (persisted) | `src/stores/app.ts`                                                                                           |
+| API client store (factory) | `src/stores/api-client.ts`                                                                                    |
+| API client services        | `src/services/api-client/{projects,groups,requests,environments,history,execution,ai,types,mappers,index}.ts` |
+| Provider / MCP services    | `src/services/{provider_config,mcp_service,default_model}.ts`                                                 |
+| Pure API-client helpers    | `src/views/api-client/utils/{request,response,ai}-helpers.ts`                                                 |
+| API client DTOs            | `src/types/api-client/index.ts`                                                                               |
+| Provider registry          | `src/config/provider-registry.ts`                                                                             |
+| shadcn-vue config          | `components.json`                                                                                             |
+| Tauri config               | `src-tauri/tauri.conf.json`                                                                                   |
+| Rust entry / lib           | `src-tauri/src/main.rs`, `src-tauri/src/lib.rs`                                                               |
+| Tauri commands             | `src-tauri/src/commands/*.rs`                                                                                 |
+| Tauri capabilities         | `src-tauri/capabilities/default.json`                                                                         |
+| Design docs                | `docs/api-client-design.md`, `docs/api-client-implementation-plan.md`, `docs/agent-design.md`                 |
 
 ---
 
@@ -199,7 +201,7 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 - **Window**: default `800x600`, resizable, not fullscreen, CSP `null` (permissive — keep it permissive or update both `tauri.conf.json` and capability files).
 - **Cross-platform**: bundle targets `all`; icons include `.icns` and `.ico`. There is no `target_os`-gated Rust code in the current surface.
 - **External services**: Tauri uses `system-proxy` for HTTP; AI providers are configured per provider via `PROVIDER_REGISTRY`; MCP via `rmcp` (child-process + streamable-http transports).
-- **Editor**: VS Code; only `Vue.volar` is recommended. `formatOnSave` is on; ESLint flat config fixes on save (`source.fixAll.eslint`).
+- **Editor**: VS Code; `Vue.volar` + `oxc.oxc-vscode` recommended. `formatOnSave` is on via the Oxc extension (oxfmt formats, `source.fixAll.oxc` applies oxlint fixes); json/markdown use Prettier, rust uses rust-analyzer.
 - **Agent tooling**: `.gitignore` excludes `.specstory/` and `.cursorindexingignore` (intentional).
 - **MCP for shadcn-vue**: configured in `opencode.json` (server `shadcnVue`, command `npx shadcn-vue@latest mcp`).
 
@@ -237,7 +239,8 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 ```bash
 pnpm exec vue-tsc -b        # type-check (matches the gate run by `pnpm build`)
 pnpm test                   # one-shot vitest
-pnpm lint:eslint            # lint src/**
+pnpm lint                   # oxlint src/**
+pnpm format:check           # oxfmt formatting gate
 ```
 
 **Manual verification surface** (no browser harness wired up): launch `pnpm tauri dev`, exercise the changed flow in the native window, and confirm behavior. The API client, mail, weekly report, ZenTao, docs, PM persona, and app settings are all visible there.
@@ -246,7 +249,7 @@ pnpm lint:eslint            # lint src/**
 
 **Verification split** (project rule):
 
-- The assistant **runs** headless verification itself: `pnpm exec vue-tsc -b`, `pnpm test`, `pnpm lint:eslint`, targeted Vitest specs, build, Rust `cargo check` / `cargo test` when backend is touched. No need to ask.
+- The assistant **runs** headless verification itself: `pnpm exec vue-tsc -b`, `pnpm test`, `pnpm lint`, `pnpm format:check`, targeted Vitest specs, build, Rust `cargo check` / `cargo test` when backend is touched. No need to ask.
 - The user **runs** all visual / interactive verification: launching `pnpm dev`, `pnpm tauri dev`, `pnpm preview`, or any browser/desktop UI. The assistant does **not** start dev servers or open the native window on the user's behalf.
 
 ## Known Quirks (worth knowing before editing)

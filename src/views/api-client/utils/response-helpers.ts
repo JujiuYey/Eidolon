@@ -1,8 +1,4 @@
-import type {
-  ApiClientHistoryExecutionStatus,
-  ApiClientResponseKind,
-  ApiClientResponseView,
-} from '@/types/api-client';
+import type { ApiClientHistoryExecutionStatus, ApiClientResponseKind, ApiClientResponseView } from '@/types/api-client';
 
 export interface ResponseBuildInput {
   kind: ApiClientResponseKind;
@@ -15,9 +11,10 @@ export interface ResponseBuildInput {
 }
 
 export function buildResponseView(input: ResponseBuildInput): ApiClientResponseView {
-  const formatted = input.kind === 'success' || input.kind === 'http_error'
-    ? tryFormatResponseJson(input.rawText)
-    : { formatted: null as string | null, isTruncated: !!input.isJsonTruncated };
+  const formatted =
+    input.kind === 'success' || input.kind === 'http_error'
+      ? tryFormatResponseJson(input.rawText)
+      : { formatted: null as string | null, isTruncated: !!input.isJsonTruncated };
 
   return {
     kind: input.kind,

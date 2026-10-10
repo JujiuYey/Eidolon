@@ -70,7 +70,10 @@ export function buildAiCandidateFailed(options: {
   };
 }
 
-export function applyCandidateToBody(body: ApiClientRequestBody, candidate: ApiClientAiCandidate): ApiClientRequestBody {
+export function applyCandidateToBody(
+  body: ApiClientRequestBody,
+  candidate: ApiClientAiCandidate,
+): ApiClientRequestBody {
   if (!candidate.isJsonValid) {
     return body;
   }
@@ -113,10 +116,9 @@ export function buildAiContextPayload(input: AiContextBuildInput): AiContextPayl
   return {
     prompt: input.prompt,
     reference: input.reference,
-    hasCurrentBody: input.includeCurrentBody && input.currentBody.kind === 'json' && input.currentBody.text.trim().length > 0,
-    currentBodyJson: input.includeCurrentBody && input.currentBody.kind === 'json'
-      ? input.currentBody.text
-      : null,
+    hasCurrentBody:
+      input.includeCurrentBody && input.currentBody.kind === 'json' && input.currentBody.text.trim().length > 0,
+    currentBodyJson: input.includeCurrentBody && input.currentBody.kind === 'json' ? input.currentBody.text : null,
     currentBodyKind: input.currentBody.kind,
     requestName: input.requestName,
     method: input.method,

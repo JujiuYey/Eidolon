@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
 import { AlertCircle, Layers, Loader2, Plus, Trash2 } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
+
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,6 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useConfirm } from '@/composables/use-confirm';
 import { useApiClientStore } from '@/stores/api-client';
 import type { ApiClientEnvironment, ApiClientKeyValueRow } from '@/types/api-client';
+
 import KeyValueEditor from './KeyValueEditor.vue';
 
 interface Props {
@@ -40,16 +42,14 @@ const draftVariables = ref<ApiClientKeyValueRow[]>([]);
 const saving = ref(false);
 
 const environments = computed(() => store.environments);
-const isEditingExisting = computed(() =>
-  !isCreating.value && selectedId.value !== null && environments.value.some(env => env.id === selectedId.value),
+const isEditingExisting = computed(
+  () => !isCreating.value && selectedId.value !== null && environments.value.some(env => env.id === selectedId.value),
 );
 
 const showEditor = computed(() => isCreating.value || isEditingExisting.value);
 
 const selectedEnvironment = computed(() =>
-  selectedId.value
-    ? environments.value.find(env => env.id === selectedId.value) ?? null
-    : null,
+  selectedId.value ? (environments.value.find(env => env.id === selectedId.value) ?? null) : null,
 );
 
 const dirty = computed(() => {
@@ -58,9 +58,9 @@ const dirty = computed(() => {
   }
   const env = selectedEnvironment.value;
   return (
-    env.name !== draftName.value.trim()
-    || env.baseUrl !== draftBaseUrl.value.trim()
-    || JSON.stringify(env.variables) !== JSON.stringify(draftVariables.value)
+    env.name !== draftName.value.trim() ||
+    env.baseUrl !== draftBaseUrl.value.trim() ||
+    JSON.stringify(env.variables) !== JSON.stringify(draftVariables.value)
   );
 });
 
@@ -272,20 +272,12 @@ watch(
               </div>
               <div class="grid gap-2">
                 <Label for="env-name">名称</Label>
-                <Input
-                  id="env-name"
-                  v-model="draftName"
-                  placeholder="例如：开发 / 预发 / 生产"
-                />
+                <Input id="env-name" v-model="draftName" placeholder="例如：开发 / 预发 / 生产" />
               </div>
 
               <div class="grid gap-2">
                 <Label for="env-base-url">Base URL</Label>
-                <Input
-                  id="env-base-url"
-                  v-model="draftBaseUrl"
-                  placeholder="https://api.example.com"
-                />
+                <Input id="env-base-url" v-model="draftBaseUrl" placeholder="https://api.example.com" />
               </div>
 
               <div class="grid gap-2">
@@ -315,14 +307,8 @@ watch(
         </Button>
 
         <div class="flex items-center gap-2">
-          <Button variant="outline" size="sm" @click="handleOpenChange(false)">
-            关闭
-          </Button>
-          <Button
-            size="sm"
-            :disabled="!canSave"
-            @click="persistDraft"
-          >
+          <Button variant="outline" size="sm" @click="handleOpenChange(false)"> 关闭 </Button>
+          <Button size="sm" :disabled="!canSave" @click="persistDraft">
             <Loader2 v-if="saving || store.isMutatingEnvironment" class="size-4 animate-spin" />
             {{ isEditingExisting ? '保存修改' : '创建环境' }}
           </Button>

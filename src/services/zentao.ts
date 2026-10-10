@@ -1,10 +1,11 @@
+import { invoke } from '@tauri-apps/api/core';
+
 import type {
   TestZentaoConnectionRequest,
   TestZentaoConnectionResponse,
   ZentaoAccount,
   ZentaoMyWork,
 } from '@/types/zentao';
-import { invoke } from '@tauri-apps/api/core';
 
 export async function listZentaoAccounts(): Promise<ZentaoAccount[]> {
   return invoke<ZentaoAccount[]>('list_zentao_accounts');

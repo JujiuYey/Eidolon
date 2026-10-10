@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Pencil } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -31,10 +32,8 @@ const submitting = ref(false);
 
 const trimmedName = computed(() => name.value.trim());
 const originalName = computed(() => (props.currentName ?? '').trim());
-const canSubmit = computed(() =>
-  trimmedName.value.length > 0
-  && trimmedName.value !== originalName.value
-  && !submitting.value,
+const canSubmit = computed(
+  () => trimmedName.value.length > 0 && trimmedName.value !== originalName.value && !submitting.value,
 );
 
 function reset(): void {
@@ -66,35 +65,18 @@ function onSubmit(): void {
           <Pencil class="size-5 text-primary" />
           <DialogTitle>重命名分组</DialogTitle>
         </div>
-        <DialogDescription>
-          修改分组名称；保存后立即生效。
-        </DialogDescription>
+        <DialogDescription> 修改分组名称；保存后立即生效。 </DialogDescription>
       </DialogHeader>
 
       <form class="flex flex-col gap-4" @submit.prevent="onSubmit">
         <div class="flex flex-col gap-1">
           <Label for="rename-group-name" class="mb-1">分组名称</Label>
-          <Input
-            id="rename-group-name"
-            v-model="name"
-            placeholder="例如：订单管理"
-            :disabled="submitting"
-            required
-          />
+          <Input id="rename-group-name" v-model="name" placeholder="例如：订单管理" :disabled="submitting" required />
         </div>
 
         <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            :disabled="submitting"
-            @click="onOpenChange(false)"
-          >
-            取消
-          </Button>
-          <Button type="submit" :disabled="!canSubmit">
-            保存
-          </Button>
+          <Button type="button" variant="outline" :disabled="submitting" @click="onOpenChange(false)"> 取消 </Button>
+          <Button type="submit" :disabled="!canSubmit"> 保存 </Button>
         </DialogFooter>
       </form>
     </DialogContent>

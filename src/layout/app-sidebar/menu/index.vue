@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import type { Component } from 'vue';
 import { Bot, FileText, Mail, NotebookPen, Network, ListTodo } from 'lucide-vue-next';
+import type { Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 interface Menu {
@@ -70,11 +70,7 @@ const getMenuButtonClass = computed(() => (key: string) => ({
       <SidebarGroupLabel>应用</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          <SidebarMenuItem
-            v-for="item of menus"
-            :key="item.key"
-            @click="handleClick(item)"
-          >
+          <SidebarMenuItem v-for="item of menus" :key="item.key" @click="handleClick(item)">
             <SidebarMenuButton as-child :class="getMenuButtonClass(item.key)">
               <span>
                 <component :is="item.icon" />

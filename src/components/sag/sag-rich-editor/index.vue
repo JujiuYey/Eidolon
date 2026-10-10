@@ -1,4 +1,12 @@
 <script setup lang="ts">
+import Placeholder from '@tiptap/extension-placeholder';
+import Table from '@tiptap/extension-table';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
+import TableRow from '@tiptap/extension-table-row';
+import StarterKit from '@tiptap/starter-kit';
+import type { Editor } from '@tiptap/vue-3';
+import { EditorContent, useEditor } from '@tiptap/vue-3';
 import {
   Bold,
   Code,
@@ -16,17 +24,9 @@ import {
   Table as TableIcon,
   Undo2,
 } from 'lucide-vue-next';
-import type { Editor } from '@tiptap/vue-3';
-import { EditorContent, useEditor } from '@tiptap/vue-3';
-import StarterKit from '@tiptap/starter-kit';
-import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
-import { MermaidCodeBlock } from './mermaid-code-block';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableHeader from '@tiptap/extension-table-header';
-import TableCell from '@tiptap/extension-table-cell';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -37,11 +37,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 
-const props = withDefaults(defineProps<{
-  placeholder?: string;
-}>(), {
-  placeholder: '开始写吧，⌘S / Ctrl+S 保存。',
-});
+import { MermaidCodeBlock } from './mermaid-code-block';
+
+const props = withDefaults(
+  defineProps<{
+    placeholder?: string;
+  }>(),
+  {
+    placeholder: '开始写吧，⌘S / Ctrl+S 保存。',
+  },
+);
 
 /**
  * 共享富文本编辑器：TipTap 所见即所得，v-model 是 **markdown 字符串**。
@@ -106,13 +111,15 @@ function syncHistoryState() {
   canRedo.value = editor.value?.can().redo() ?? false;
 }
 
-onMounted(() => nextTick(() => {
-  const current = editor.value;
-  if (current) {
-    current.on('transaction', syncHistoryState);
-    syncHistoryState();
-  }
-}));
+onMounted(() =>
+  nextTick(() => {
+    const current = editor.value;
+    if (current) {
+      current.on('transaction', syncHistoryState);
+      syncHistoryState();
+    }
+  }),
+);
 
 onBeforeUnmount(() => {
   editor.value?.off('transaction', syncHistoryState);
@@ -148,10 +155,34 @@ const toggles = computed<ToolbarToggle[]>(() => {
     make('italic', Italic, '斜体', 'italic'),
     make('strike', Strikethrough, '删除线', 'strike'),
     make('code', Code, '行内代码', 'code'),
-    { key: 'bullet', icon: List, label: '无序列表', active: e.isActive('bulletList'), run: () => e.chain().focus().toggleBulletList().run() },
-    { key: 'ordered', icon: ListOrdered, label: '有序列表', active: e.isActive('orderedList'), run: () => e.chain().focus().toggleOrderedList().run() },
-    { key: 'quote', icon: Quote, label: '引用', active: e.isActive('blockquote'), run: () => e.chain().focus().toggleBlockquote().run() },
-    { key: 'codeblock', icon: SquareCode, label: '代码块', active: e.isActive('codeBlock'), run: () => e.chain().focus().toggleCodeBlock().run() },
+    {
+      key: 'bullet',
+      icon: List,
+      label: '无序列表',
+      active: e.isActive('bulletList'),
+      run: () => e.chain().focus().toggleBulletList().run(),
+    },
+    {
+      key: 'ordered',
+      icon: ListOrdered,
+      label: '有序列表',
+      active: e.isActive('orderedList'),
+      run: () => e.chain().focus().toggleOrderedList().run(),
+    },
+    {
+      key: 'quote',
+      icon: Quote,
+      label: '引用',
+      active: e.isActive('blockquote'),
+      run: () => e.chain().focus().toggleBlockquote().run(),
+    },
+    {
+      key: 'codeblock',
+      icon: SquareCode,
+      label: '代码块',
+      active: e.isActive('codeBlock'),
+      run: () => e.chain().focus().toggleCodeBlock().run(),
+    },
     { key: 'hr', icon: Minus, label: '分隔线', active: false, run: () => e.chain().focus().setHorizontalRule().run() },
   ];
 });
@@ -169,7 +200,11 @@ const headings = computed(() => {
 });
 
 const tableActions = [
-  { key: 'insert', label: '插入表格（3×3）', run: (e: Editor) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+  {
+    key: 'insert',
+    label: '插入表格（3×3）',
+    run: (e: Editor) => e.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+  },
   { key: 'row-above', label: '上方插入行', run: (e: Editor) => e.chain().focus().addRowBefore().run() },
   { key: 'row-below', label: '下方插入行', run: (e: Editor) => e.chain().focus().addRowAfter().run() },
   { key: 'col-left', label: '左侧插入列', run: (e: Editor) => e.chain().focus().addColumnBefore().run() },
@@ -205,10 +240,7 @@ const tableActions = [
         <Redo2 class="h-4 w-4" />
       </Button>
 
-      <Separator
-        orientation="vertical"
-        class="mx-1 !h-5"
-      />
+      <Separator orientation="vertical" class="mx-1 !h-5" />
 
       <Button
         v-for="heading of headings"
@@ -219,16 +251,10 @@ const tableActions = [
         size="icon"
         @click="chain()?.toggleHeading({ level: heading.level }).run()"
       >
-        <component
-          :is="heading.icon"
-          class="h-4 w-4"
-        />
+        <component :is="heading.icon" class="h-4 w-4" />
       </Button>
 
-      <Separator
-        orientation="vertical"
-        class="mx-1 !h-5"
-      />
+      <Separator orientation="vertical" class="mx-1 !h-5" />
 
       <Button
         v-for="item of toggles"
@@ -239,16 +265,10 @@ const tableActions = [
         size="icon"
         @click="item.run()"
       >
-        <component
-          :is="item.icon"
-          class="h-4 w-4"
-        />
+        <component :is="item.icon" class="h-4 w-4" />
       </Button>
 
-      <Separator
-        orientation="vertical"
-        class="mx-1 !h-5"
-      />
+      <Separator orientation="vertical" class="mx-1 !h-5" />
 
       <DropdownMenu>
         <DropdownMenuTrigger as-child>

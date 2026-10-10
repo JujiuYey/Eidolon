@@ -1,32 +1,25 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+
 import { PROVIDER_REGISTRY } from '@/config/provider-registry';
-import {
-  listProviderModels,
-  listProviderSettings,
-} from '@/services';
-import type {
-  ProviderModel,
-  ProviderRegistryItem,
-  ProviderSetting,
-} from '@/types/provider';
-import ProviderList from './_components/provider-list.vue';
+import { listProviderModels, listProviderSettings } from '@/services';
+import type { ProviderModel, ProviderRegistryItem, ProviderSetting } from '@/types/provider';
+
 import ProviderConfigPanel from './_components/provider-config-panel.vue';
+import ProviderList from './_components/provider-list.vue';
 
 const providerSettings = ref<ProviderSetting[]>([]);
 const providerModels = ref<ProviderModel[]>([]);
 const selectedProviderId = ref(PROVIDER_REGISTRY[0]?.provider_id ?? '');
 
-const configuredProviderIds = computed(() =>
-  providerSettings.value.map(setting => setting.provider_id),
+const configuredProviderIds = computed(() => providerSettings.value.map(setting => setting.provider_id));
+
+const selectedProvider = computed<ProviderRegistryItem | null>(
+  () => PROVIDER_REGISTRY.find(provider => provider.provider_id === selectedProviderId.value) ?? null,
 );
 
-const selectedProvider = computed<ProviderRegistryItem | null>(() =>
-  PROVIDER_REGISTRY.find(provider => provider.provider_id === selectedProviderId.value) ?? null,
-);
-
-const selectedProviderSetting = computed(() =>
-  providerSettings.value.find(setting => setting.provider_id === selectedProviderId.value) ?? null,
+const selectedProviderSetting = computed(
+  () => providerSettings.value.find(setting => setting.provider_id === selectedProviderId.value) ?? null,
 );
 
 const selectedProviderModels = computed(() =>
@@ -45,10 +38,7 @@ function syncSelection() {
 }
 
 async function loadData() {
-  const [settings, models] = await Promise.all([
-    listProviderSettings(),
-    listProviderModels(),
-  ]);
+  const [settings, models] = await Promise.all([listProviderSettings(), listProviderModels()]);
 
   providerSettings.value = settings;
   providerModels.value = models;

@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
+
 import type { ApiClientProject } from '@/types/api-client';
+
 import { toFrontendProject } from './mappers';
 import type { TauriDeletionSummary, TauriProject } from './types';
 
@@ -30,7 +32,9 @@ export async function updateApiProject(
   return toFrontendProject(raw);
 }
 
-export async function getApiProjectDeletionImpact(projectId: string): Promise<{ deletedRequests: number; deletedHistories: number }> {
+export async function getApiProjectDeletionImpact(
+  projectId: string,
+): Promise<{ deletedRequests: number; deletedHistories: number }> {
   const raw = await invoke<TauriDeletionSummary>('get_api_project_deletion_impact', { projectId });
   return {
     deletedRequests: raw.deleted_requests,
@@ -38,7 +42,9 @@ export async function getApiProjectDeletionImpact(projectId: string): Promise<{ 
   };
 }
 
-export async function deleteApiProject(projectId: string): Promise<{ deletedRequests: number; deletedHistories: number }> {
+export async function deleteApiProject(
+  projectId: string,
+): Promise<{ deletedRequests: number; deletedHistories: number }> {
   const raw = await invoke<TauriDeletionSummary>('delete_api_project', { projectId });
   return {
     deletedRequests: raw.deleted_requests,

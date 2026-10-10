@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, defineStore, setActivePinia } from 'pinia';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { createDocsStore } from '@/stores/docs';
 import type { DocsService } from '@/stores/docs';
 import type { DocsEntry, DocsSearchResult } from '@/types/docs';
@@ -17,10 +18,12 @@ function createService(overrides: Partial<DocsService> = {}): DocsService {
   return {
     getDocsSettings: vi.fn().mockResolvedValue({ root_dir: '/tmp/docs' }),
     upsertDocsSettings: vi.fn().mockResolvedValue({ root_dir: '/tmp/docs' }),
-    listDocsEntries: vi.fn().mockResolvedValue([
-      makeEntry({ name: '周报', path: '周报', is_dir: true }),
-      makeEntry({ name: 'readme.md', path: 'readme.md', is_dir: false }),
-    ]),
+    listDocsEntries: vi
+      .fn()
+      .mockResolvedValue([
+        makeEntry({ name: '周报', path: '周报', is_dir: true }),
+        makeEntry({ name: 'readme.md', path: 'readme.md', is_dir: false }),
+      ]),
     readDocsFile: vi.fn().mockImplementation((path: string) => Promise.resolve(`content of ${path}`)),
     saveDocsFile: vi.fn().mockResolvedValue(makeEntry({ name: 'readme.md', path: 'readme.md', is_dir: false })),
     createDocsFile: vi.fn().mockResolvedValue(makeEntry({ name: '新.md', path: '新.md', is_dir: false })),
@@ -118,20 +121,24 @@ describe('docs store', () => {
 
   it('删除当前文档后回退到第一篇', async () => {
     const service = createService({
-      listDocsEntries: vi.fn().mockResolvedValue([
-        makeEntry({ name: '周报', path: '周报', is_dir: true }),
-        makeEntry({ name: 'a.md', path: 'a.md', is_dir: false }),
-        makeEntry({ name: 'b.md', path: 'b.md', is_dir: false }),
-      ]),
+      listDocsEntries: vi
+        .fn()
+        .mockResolvedValue([
+          makeEntry({ name: '周报', path: '周报', is_dir: true }),
+          makeEntry({ name: 'a.md', path: 'a.md', is_dir: false }),
+          makeEntry({ name: 'b.md', path: 'b.md', is_dir: false }),
+        ]),
     });
     const store = bindStore(service);
     await store.initialize();
     await store.openFile('b.md');
 
-    service.listDocsEntries = vi.fn().mockResolvedValue([
-      makeEntry({ name: '周报', path: '周报', is_dir: true }),
-      makeEntry({ name: 'a.md', path: 'a.md', is_dir: false }),
-    ]);
+    service.listDocsEntries = vi
+      .fn()
+      .mockResolvedValue([
+        makeEntry({ name: '周报', path: '周报', is_dir: true }),
+        makeEntry({ name: 'a.md', path: 'a.md', is_dir: false }),
+      ]);
     await store.removeEntry('b.md');
 
     expect(store.activePath).toBe('a.md');
@@ -139,9 +146,9 @@ describe('docs store', () => {
 
   it('搜索空关键词清空结果', async () => {
     const service = createService({
-      searchDocs: vi.fn().mockResolvedValue([
-        { path: 'a.md', name: 'a.md', line_number: 3, line_text: '包含 keyword 的行' },
-      ]),
+      searchDocs: vi
+        .fn()
+        .mockResolvedValue([{ path: 'a.md', name: 'a.md', line_number: 3, line_text: '包含 keyword 的行' }]),
     });
     const store = bindStore(service);
 
@@ -155,8 +162,9 @@ describe('docs store', () => {
 
   it('setRootDir 重置活动文档并重新加载', async () => {
     const service = createService({
-      upsertDocsSettings: vi.fn().mockImplementation((settings: { root_dir: string | null }) =>
-        Promise.resolve(settings)),
+      upsertDocsSettings: vi
+        .fn()
+        .mockImplementation((settings: { root_dir: string | null }) => Promise.resolve(settings)),
     });
     const store = bindStore(service);
     await store.initialize();

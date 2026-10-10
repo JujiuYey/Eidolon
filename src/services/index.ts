@@ -1,9 +1,6 @@
 export * from './api-client';
 
-export {
-  listDefaultModelSettings,
-  upsertDefaultModelSetting,
-} from './default_model';
+export { listDefaultModelSettings, upsertDefaultModelSetting } from './default_model';
 
 export {
   createDocsDirectory,
@@ -32,12 +29,7 @@ export {
   upsertSmtpAccount,
 } from './mail';
 
-export {
-  deleteMcpService,
-  discoverMcpService,
-  listMcpServices,
-  upsertMcpService,
-} from './mcp_service';
+export { deleteMcpService, discoverMcpService, listMcpServices, upsertMcpService } from './mcp_service';
 
 export {
   createPmConversation,

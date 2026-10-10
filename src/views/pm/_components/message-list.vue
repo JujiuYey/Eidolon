@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import type { PmMessage } from '@/types/pm';
-import MarkdownRender from 'markstream-vue';
 import { Bot } from 'lucide-vue-next';
+import MarkdownRender from 'markstream-vue';
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
+
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
+import type { PmMessage } from '@/types/pm';
 
 interface Props {
   messages: PmMessage[];
@@ -68,10 +69,7 @@ const showEmptyState = () => !props.isLoading && props.messages.length === 0;
 </script>
 
 <template>
-  <div
-    ref="scrollElement"
-    class="min-h-0 flex-1 overflow-y-auto px-6 py-6"
-  >
+  <div ref="scrollElement" class="min-h-0 flex-1 overflow-y-auto px-6 py-6">
     <template v-if="isLoading">
       <div class="space-y-6">
         <Skeleton class="ml-auto h-10 w-1/3 rounded-2xl" />
@@ -80,10 +78,7 @@ const showEmptyState = () => !props.isLoading && props.messages.length === 0;
       </div>
     </template>
 
-    <div
-      v-else-if="showEmptyState()"
-      class="flex h-full flex-col items-center justify-center gap-4 py-10 text-center"
-    >
+    <div v-else-if="showEmptyState()" class="flex h-full flex-col items-center justify-center gap-4 py-10 text-center">
       <div class="flex h-11 w-11 items-center justify-center rounded-full border bg-card">
         <Bot class="h-5 w-5 text-primary" />
       </div>
@@ -108,10 +103,7 @@ const showEmptyState = () => !props.isLoading && props.messages.length === 0;
       </div>
     </div>
 
-    <div
-      v-else
-      class="mx-auto flex max-w-3xl flex-col gap-6"
-    >
+    <div v-else class="mx-auto flex max-w-3xl flex-col gap-6">
       <div
         v-for="message of messages"
         :key="message.id"
@@ -133,22 +125,11 @@ const showEmptyState = () => !props.isLoading && props.messages.length === 0;
           </div>
           <div class="min-w-0 flex-1">
             <div class="pm-markdown text-sm leading-relaxed">
-              <MarkdownRender
-                :content="message.content"
-                custom-id="pm-message-list"
-              />
+              <MarkdownRender :content="message.content" custom-id="pm-message-list" />
             </div>
-            <div
-              v-if="message.skills_used.length > 0"
-              class="mt-2 flex flex-wrap items-center gap-1.5"
-            >
+            <div v-if="message.skills_used.length > 0" class="mt-2 flex flex-wrap items-center gap-1.5">
               <span class="text-xs text-muted-foreground">参考框架</span>
-              <Badge
-                v-for="slug of message.skills_used"
-                :key="slug"
-                variant="secondary"
-                class="font-mono text-[11px]"
-              >
+              <Badge v-for="slug of message.skills_used" :key="slug" variant="secondary" class="font-mono text-[11px]">
                 {{ slug }}
               </Badge>
             </div>
@@ -157,10 +138,7 @@ const showEmptyState = () => !props.isLoading && props.messages.length === 0;
       </div>
 
       <!-- 发送中指示 -->
-      <div
-        v-if="sending"
-        class="flex items-center gap-2 text-xs text-muted-foreground"
-      >
+      <div v-if="sending" class="flex items-center gap-2 text-xs text-muted-foreground">
         <Spinner class="h-3.5 w-3.5" />
         <span>正在思考</span>
         <span class="tabular-nums">{{ elapsedSeconds }}s</span>

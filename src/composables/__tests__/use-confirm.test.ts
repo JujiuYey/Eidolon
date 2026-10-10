@@ -1,5 +1,7 @@
 import { strict as assert } from 'node:assert';
+
 import { describe, it } from 'vitest';
+
 import { useConfirm } from '@/composables/use-confirm';
 
 describe('useConfirm', () => {

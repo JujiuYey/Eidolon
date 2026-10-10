@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "import", "promise", "vue", "vitest", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "vitest/require-mock-type-parameters": "off"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "globals": {},
+  "ignorePatterns": ["dist/**", "public/**", "docs/**", "src-tauri/**", "src/types/auto-import*.d.ts"]
+}

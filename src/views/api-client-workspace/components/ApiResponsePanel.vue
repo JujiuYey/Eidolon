@@ -2,6 +2,7 @@
 import { Clipboard, Loader2 } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -90,9 +91,7 @@ async function onCopy(): Promise<void> {
   <div class="flex flex-col gap-3 rounded-lg border bg-card p-4">
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <h3 class="text-sm font-semibold">
-          响应
-        </h3>
+        <h3 class="text-sm font-semibold">响应</h3>
         <Badge :variant="statusVariant">
           {{ statusLabel }}
         </Badge>
@@ -140,15 +139,11 @@ async function onCopy(): Promise<void> {
       <Tabs
         :model-value="showFormatted ? 'formatted' : 'raw'"
         class="w-full"
-        @update:model-value="value => showFormatted = value === 'formatted'"
+        @update:model-value="value => (showFormatted = value === 'formatted')"
       >
         <TabsList>
-          <TabsTrigger value="raw">
-            原文
-          </TabsTrigger>
-          <TabsTrigger value="formatted" :disabled="!response.formattedJson">
-            格式化
-          </TabsTrigger>
+          <TabsTrigger value="raw"> 原文 </TabsTrigger>
+          <TabsTrigger value="formatted" :disabled="!response.formattedJson"> 格式化 </TabsTrigger>
         </TabsList>
         <TabsContent value="raw" class="mt-0">
           <ScrollArea class="h-64 rounded-md border bg-muted/30 p-3">
@@ -162,16 +157,12 @@ async function onCopy(): Promise<void> {
           <ScrollArea class="h-64 rounded-md border bg-muted/30 p-3">
             <pre class="whitespace-pre-wrap break-words font-mono text-xs">{{ formattedText }}</pre>
           </ScrollArea>
-          <p v-if="!response.formattedJson" class="mt-2 text-xs text-muted-foreground">
-            响应不是合法 JSON。
-          </p>
+          <p v-if="!response.formattedJson" class="mt-2 text-xs text-muted-foreground">响应不是合法 JSON。</p>
         </TabsContent>
       </Tabs>
 
       <details v-if="response.meta" class="rounded-md border bg-muted/20 p-3">
-        <summary class="cursor-pointer text-xs font-medium">
-          响应头 ({{ response.meta.headers.length }})
-        </summary>
+        <summary class="cursor-pointer text-xs font-medium">响应头 ({{ response.meta.headers.length }})</summary>
         <ScrollArea class="mt-2 h-32">
           <ul class="space-y-1 text-xs">
             <li v-for="header of response.meta.headers" :key="header.id" class="flex gap-2">

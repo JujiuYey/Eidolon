@@ -14,9 +14,7 @@ const selectedProviderId = defineModel<string>('selectedProviderId', {
 <template>
   <aside class="flex h-full w-[248px] shrink-0 flex-col border-r bg-muted/10">
     <div class="flex items-center gap-2 px-4 py-3">
-      <h2 class="text-sm font-semibold">
-        模型服务
-      </h2>
+      <h2 class="text-sm font-semibold">模型服务</h2>
     </div>
     <nav class="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-3 pb-3">
       <button
@@ -24,22 +22,16 @@ const selectedProviderId = defineModel<string>('selectedProviderId', {
         :key="provider.provider_id"
         type="button"
         class="flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition-colors"
-        :class="selectedProviderId === provider.provider_id
-          ? 'border-primary bg-primary/20 shadow-xs'
-          : 'border-transparent hover:bg-primary/10'"
+        :class="
+          selectedProviderId === provider.provider_id
+            ? 'border-primary bg-primary/20 shadow-xs'
+            : 'border-transparent hover:bg-primary/10'
+        "
         @click="selectedProviderId = provider.provider_id"
       >
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-background ring-1 ring-black/5">
-          <img
-            v-if="provider.icon"
-            :src="provider.icon"
-            :alt="provider.name"
-            class="h-6 w-6 object-contain"
-          />
-          <span
-            v-else
-            class="text-xs font-semibold text-muted-foreground"
-          >
+          <img v-if="provider.icon" :src="provider.icon" :alt="provider.name" class="h-6 w-6 object-contain" />
+          <span v-else class="text-xs font-semibold text-muted-foreground">
             {{ provider.name.slice(0, 2).toUpperCase() }}
           </span>
         </div>
@@ -48,18 +40,10 @@ const selectedProviderId = defineModel<string>('selectedProviderId', {
           <p class="truncate text-sm font-medium text-foreground">
             {{ provider.name }}
           </p>
-          <p
-            v-if="configuredProviderIds.includes(provider.provider_id)"
-            class="truncate text-xs text-emerald-500"
-          >
+          <p v-if="configuredProviderIds.includes(provider.provider_id)" class="truncate text-xs text-emerald-500">
             已配置
           </p>
-          <p
-            v-else
-            class="truncate text-xs text-muted-foreground"
-          >
-            未配置
-          </p>
+          <p v-else class="truncate text-xs text-muted-foreground">未配置</p>
         </div>
       </button>
     </nav>

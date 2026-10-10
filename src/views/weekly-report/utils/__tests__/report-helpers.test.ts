@@ -138,9 +138,7 @@ describe('collectCommits', () => {
 
     expect(collected.repo_count).toBe(1);
     expect(collected.commits).toHaveLength(1);
-    expect(collected.errors).toEqual([
-      { repo_name: 'broken', error: 'git log 失败: not a repository' },
-    ]);
+    expect(collected.errors).toEqual([{ repo_name: 'broken', error: 'git log 失败: not a repository' }]);
   });
 });
 
@@ -198,10 +196,7 @@ describe('aggregateCommits', () => {
 
   it('appends failed repos as a warning block', () => {
     const markdown = aggregateCommits(
-      [
-        log('Eidolon', [{ hash: '1', subject: 'feat: 新功能' }]),
-        log('broken', [], '目录不是 git 仓库'),
-      ],
+      [log('Eidolon', [{ hash: '1', subject: 'feat: 新功能' }]), log('broken', [], '目录不是 git 仓库')],
       { range, groupBy: 'type' },
     );
 

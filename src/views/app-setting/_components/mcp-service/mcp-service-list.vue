@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Loader2, Plus, Server, Settings2, Trash2 } from 'lucide-vue-next';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -90,11 +91,7 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
         <Server class="h-4 w-4 text-primary" />
         MCP服务
       </h2>
-      <Button
-        size="sm"
-        variant="outline"
-        @click="emit('create')"
-      >
+      <Button size="sm" variant="outline" @click="emit('create')">
         <Plus class="h-4 w-4" />
         新增服务
       </Button>
@@ -103,10 +100,7 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
 
     <ScrollArea class="min-h-0 flex-1">
       <div class="px-5 py-4">
-        <div
-          v-if="isLoading"
-          class="flex items-center justify-center rounded-xl border border-dashed py-16"
-        >
+        <div v-if="isLoading" class="flex items-center justify-center rounded-xl border border-dashed py-16">
           <Loader2 class="size-6 animate-spin text-muted-foreground" />
         </div>
 
@@ -114,16 +108,11 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
           v-else-if="services.length === 0"
           class="rounded-xl border border-dashed bg-muted/10 px-6 py-12 text-center"
         >
-          <h2 class="text-lg font-semibold text-foreground">
-            还没有 MCP 服务
-          </h2>
+          <h2 class="text-lg font-semibold text-foreground">还没有 MCP 服务</h2>
           <p class="mt-2 text-sm text-muted-foreground">
             先添加一个服务，然后在详情页里测试连接并发现工具、提示和资源。
           </p>
-          <Button
-            class="mt-5"
-            @click="emit('create')"
-          >
+          <Button class="mt-5" @click="emit('create')">
             <Plus class="size-4" />
             新增第一个服务
           </Button>
@@ -143,7 +132,11 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
                       <h2 class="truncate text-[1.2rem] font-semibold tracking-tight">
                         {{ service.name }}
                       </h2>
-                      <Badge v-if="!service.enabled" variant="outline" class="border-border bg-muted text-muted-foreground">
+                      <Badge
+                        v-if="!service.enabled"
+                        variant="outline"
+                        class="border-border bg-muted text-muted-foreground"
+                      >
                         已禁用
                       </Badge>
                     </div>
@@ -161,10 +154,7 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
                   </div>
 
                   <div class="flex items-center gap-1.5 self-end sm:self-auto">
-                    <Switch
-                      :model-value="service.enabled"
-                      @update:model-value="updateEnabled(service.id, $event)"
-                    />
+                    <Switch :model-value="service.enabled" @update:model-value="updateEnabled(service.id, $event)" />
                     <Button variant="ghost" size="icon-sm" @click="emit('requestDelete', service.id)">
                       <Trash2 class="size-4" />
                       <span class="sr-only">删除服务</span>

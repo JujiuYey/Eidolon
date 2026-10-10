@@ -334,10 +334,7 @@ export function collectMissingVariablesInRows(
   return Array.from(missing);
 }
 
-export function collectMissingVariablesInBody(
-  body: ApiClientRequestBody,
-  lookup: EnvironmentVariableLookup,
-): string[] {
+export function collectMissingVariablesInBody(body: ApiClientRequestBody, lookup: EnvironmentVariableLookup): string[] {
   const missing = new Set<string>();
   const textResult = resolveVariables(body.text, lookup);
   for (const name of textResult.missing) {
@@ -441,9 +438,7 @@ export function rowsEqual(a: ApiClientKeyValueRow[], b: ApiClientKeyValueRow[]):
     if (!left || !right) {
       return false;
     }
-    if (left.enabled !== right.enabled
-      || left.key !== right.key
-      || left.value !== right.value) {
+    if (left.enabled !== right.enabled || left.key !== right.key || left.value !== right.value) {
       return false;
     }
   }
@@ -457,9 +452,7 @@ export function bodyEqual(a: ApiClientRequestBody, b: ApiClientRequestBody): boo
   return rowsEqual(a.form, b.form);
 }
 
-export function maskHeadersForHistory(
-  rows: ApiClientKeyValueRow[],
-): ApiClientKeyValueRow[] {
+export function maskHeadersForHistory(rows: ApiClientKeyValueRow[]): ApiClientKeyValueRow[] {
   return rows.map(row => {
     if (!row.enabled || !row.key.trim()) {
       return { ...row };
@@ -511,11 +504,7 @@ export function prepareExecution(input: ExecutionPreparationInput): ExecutionPre
 
   const headerMissing = lookup ? collectMissingVariablesInRows(input.headers, lookup) : [];
   const bodyMissing = lookup ? collectMissingVariablesInBody(input.body, lookup) : [];
-  const missingVariables = Array.from(new Set([
-    ...urlResolution.missingVariables,
-    ...headerMissing,
-    ...bodyMissing,
-  ]));
+  const missingVariables = Array.from(new Set([...urlResolution.missingVariables, ...headerMissing, ...bodyMissing]));
 
   return {
     snapshot: buildRequestSnapshot({

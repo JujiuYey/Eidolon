@@ -46,9 +46,7 @@ export function buildDocsTree(entries: DocsEntry[]): DocsTreeNode[] {
 
 /** 根层目录路径，用于初始化默认展开集合 */
 export function firstLevelDirPaths(entries: DocsEntry[]): string[] {
-  return entries
-    .filter(entry => entry.is_dir && !entry.path.includes('/'))
-    .map(entry => entry.path);
+  return entries.filter(entry => entry.is_dir && !entry.path.includes('/')).map(entry => entry.path);
 }
 
 /** 按展开集合把树拍平成带缩进深度的可见行，供单层 v-for 渲染 */

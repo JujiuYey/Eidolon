@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { ComponentPublicInstance } from 'vue';
 import { SendHorizonal } from 'lucide-vue-next';
+import type { ComponentPublicInstance } from 'vue';
 import { ref } from 'vue';
+
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,17 +60,9 @@ defineExpose({ clear, focus });
 
 <template>
   <div class="shrink-0 border-t px-6 py-4">
-    <p
-      v-if="error"
-      class="mb-2 text-xs text-destructive"
-    >
-      {{ error }} 内容已保留，可直接重试。
-    </p>
+    <p v-if="error" class="mb-2 text-xs text-destructive">{{ error }} 内容已保留，可直接重试。</p>
 
-    <form
-      class="mx-auto flex max-w-3xl items-end gap-2"
-      @submit.prevent="submit"
-    >
+    <form class="mx-auto flex max-w-3xl items-end gap-2" @submit.prevent="submit">
       <Textarea
         ref="inputElement"
         v-model="draft"
@@ -79,20 +72,9 @@ defineExpose({ clear, focus });
         :disabled="sending"
         @keydown="handleKeydown"
       />
-      <Button
-        aria-label="发送"
-        class="h-11 shrink-0"
-        type="submit"
-        :disabled="sending || !draft.trim()"
-      >
-        <Spinner
-          v-if="sending"
-          class="h-4 w-4"
-        />
-        <SendHorizonal
-          v-else
-          class="h-4 w-4"
-        />
+      <Button aria-label="发送" class="h-11 shrink-0" type="submit" :disabled="sending || !draft.trim()">
+        <Spinner v-if="sending" class="h-4 w-4" />
+        <SendHorizonal v-else class="h-4 w-4" />
         {{ sending ? '思考中' : '发送' }}
       </Button>
     </form>

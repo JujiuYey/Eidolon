@@ -3,23 +3,15 @@ import { refDebounced } from '@vueuse/core';
 import { Search } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
+
 import { Input } from '@/components/ui/input';
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from '@/components/ui/resizable';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMailStore } from '@/stores/mail';
 import type { SentEmail } from '@/types/mail';
+
 import ComposePanel from './ComposePanel.vue';
 import SentDisplay from './SentDisplay.vue';
 import SentList from './SentList.vue';
@@ -39,11 +31,12 @@ const filteredSentList = computed(() => {
     return store.sentEmails;
   }
 
-  return store.sentEmails.filter((email: SentEmail) =>
-    email.subject.toLowerCase().includes(keyword)
-    || email.to_addresses.toLowerCase().includes(keyword)
-    || email.account_email.toLowerCase().includes(keyword)
-    || email.body.toLowerCase().includes(keyword),
+  return store.sentEmails.filter(
+    (email: SentEmail) =>
+      email.subject.toLowerCase().includes(keyword) ||
+      email.to_addresses.toLowerCase().includes(keyword) ||
+      email.account_email.toLowerCase().includes(keyword) ||
+      email.body.toLowerCase().includes(keyword),
   );
 });
 
@@ -75,9 +68,7 @@ function handleResend() {
 <template>
   <div class="flex h-full flex-col">
     <header class="flex shrink-0 items-center gap-3 px-6 pt-6">
-      <h1 class="text-lg leading-none font-semibold">
-        邮件
-      </h1>
+      <h1 class="text-lg leading-none font-semibold">邮件</h1>
 
       <div class="ml-auto flex items-center gap-2">
         <Select
@@ -89,11 +80,7 @@ function handleResend() {
             <SelectValue placeholder="选择发件账户" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem
-              v-for="account of store.accounts"
-              :key="account.id"
-              :value="account.id"
-            >
+            <SelectItem v-for="account of store.accounts" :key="account.id" :value="account.id">
               {{ account.name }}（{{ account.email }}）
             </SelectItem>
           </SelectContent>
@@ -107,20 +94,12 @@ function handleResend() {
           请先在设置中配置发件账户
         </button>
 
-        <Tabs
-          :model-value="store.viewMode"
-          @update:model-value="handleViewChange"
-        >
+        <Tabs :model-value="store.viewMode" @update:model-value="handleViewChange">
           <TabsList>
-            <TabsTrigger value="compose">
-              写信
-            </TabsTrigger>
+            <TabsTrigger value="compose"> 写信 </TabsTrigger>
             <TabsTrigger value="sent">
               已发送
-              <span
-                v-if="store.sentEmails.length > 0"
-                class="ml-1 text-xs text-muted-foreground tabular-nums"
-              >
+              <span v-if="store.sentEmails.length > 0" class="ml-1 text-xs text-muted-foreground tabular-nums">
                 {{ store.sentEmails.length }}
               </span>
             </TabsTrigger>
@@ -131,18 +110,9 @@ function handleResend() {
 
     <Separator class="mx-6 mt-4 shrink-0" />
 
-    <ResizablePanelGroup
-      id="mail-panel-group"
-      direction="horizontal"
-      class="min-h-0 flex-1"
-    >
+    <ResizablePanelGroup id="mail-panel-group" direction="horizontal" class="min-h-0 flex-1">
       <!-- 左栏：写信时选模板，已发送时列历史 -->
-      <ResizablePanel
-        id="mail-list-panel"
-        class="flex h-full min-h-0 flex-col"
-        :default-size="34"
-        :min-size="25"
-      >
+      <ResizablePanel id="mail-list-panel" class="flex h-full min-h-0 flex-col" :default-size="34" :min-size="25">
         <TemplatePicker
           v-if="store.viewMode === 'compose'"
           v-model:selected-template-id="store.selectedTemplateId"
@@ -158,11 +128,7 @@ function handleResend() {
               <Input v-model="searchValue" placeholder="搜索主题、收件人或正文" class="pl-8" />
             </div>
           </div>
-          <SentList
-            v-model:selected-id="store.selectedSentEmailId"
-            class="min-h-0 flex-1"
-            :items="filteredSentList"
-          />
+          <SentList v-model:selected-id="store.selectedSentEmailId" class="min-h-0 flex-1" :items="filteredSentList" />
         </template>
       </ResizablePanel>
       <ResizableHandle id="mail-display-handle" with-handle />
@@ -170,11 +136,7 @@ function handleResend() {
       <!-- 右栏：写信表单或发送详情 -->
       <ResizablePanel id="mail-display-panel" :default-size="66">
         <ComposePanel v-if="store.viewMode === 'compose'" />
-        <SentDisplay
-          v-else
-          :mail="store.selectedSentEmail"
-          @resend="handleResend"
-        />
+        <SentDisplay v-else :mail="store.selectedSentEmail" @resend="handleResend" />
       </ResizablePanel>
     </ResizablePanelGroup>
 

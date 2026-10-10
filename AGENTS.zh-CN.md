@@ -37,58 +37,58 @@ Eidolon 是一个 **Tauri 2 + Vue 3 桌面客户端**（产品名 "Eidolon"，�
 
 **前后端对应关系**
 
-| 前端模块                              | 后端命令                                              |
-|---------------------------------------|-------------------------------------------------------|
-| `src/services/api-client/*`           | `commands/api_client.rs`、`api_request.rs`、`api_generate.rs`、`codegen.rs`、`test_connection.rs` |
-| `src/services/agent-conversation.ts`  | `commands/agent_conversation.rs`                      |
-| `src/services/agent-profile-storage.ts` | `commands/agent_profile.rs`                         |
-| `src/services/provider_config.ts`     | `commands/model_config.rs`、`default_model.rs`、`test_connection.rs` |
-| `src/services/mcp_service.ts`         | `commands/mcp_service.rs`、`services/mcp_service.rs`   |
-| `src/services/codegen.ts`             | `commands/codegen.rs`、`services/codegen/*`           |
-| `src/services/project-files.ts`       | `commands/app_paths.rs`、`services/work_directory.rs` |
+| 前端模块                                | 后端命令                                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/services/api-client/*`             | `commands/api_client.rs`、`api_request.rs`、`api_generate.rs`、`codegen.rs`、`test_connection.rs` |
+| `src/services/agent-conversation.ts`    | `commands/agent_conversation.rs`                                                                  |
+| `src/services/agent-profile-storage.ts` | `commands/agent_profile.rs`                                                                       |
+| `src/services/provider_config.ts`       | `commands/model_config.rs`、`default_model.rs`、`test_connection.rs`                              |
+| `src/services/mcp_service.ts`           | `commands/mcp_service.rs`、`services/mcp_service.rs`                                              |
+| `src/services/codegen.ts`               | `commands/codegen.rs`、`services/codegen/*`                                                       |
+| `src/services/project-files.ts`         | `commands/app_paths.rs`、`services/work_directory.rs`                                             |
 
 ---
 
 ## 关键目录
 
-| 路径                              | 用途                                                                          |
-|-----------------------------------|-------------------------------------------------------------------------------|
-| `src/main.ts`                     | 应用入口：创建 Vue 应用、安装 Pinia 与 router、挂载 `#app`。                  |
-| `src/App.vue`                     | 根组件：`<RouterView/>` + vue-sonner 的 `<Toaster/>`。                        |
-| `src/router/index.ts`             | 路由（见下表），`/` → `/agent`。                                              |
-| `src/layout/`                     | 应用骨架：`index.vue` + `app-sidebar/{logo,menu,recent-conversations,footer}`。|
-| `src/views/`                      | 业务页面（一个路由一个文件夹），内含 `components/`、`__tests__/`、`utils/`。 |
-| `src/stores/`                     | Pinia setup 风格 store。`api-client.ts` 最大；另有 `agent-workspace.ts`、`app.ts`。|
-| `src/services/`                   | **唯一**调用 `invoke()` 的地方；按业务分子目录（`api-client/` 等）。          |
-| `src/composables/`                | 自动导入的 hooks（`useConfirm`、`useTheme`、`useAppPaths`）。                 |
-| `src/components/`                 | `ui/*`（shadcn-vue）、`ai-elements/*`（注册表副本）、`sag/*`（自研）、`ConfirmDialog.vue`。|
-| `src/types/`                      | 手写 DTO + 自动生成的 `auto-import.d.ts`、`auto-import-components.d.ts`。      |
-| `src/enum/`                       | 由 `unplugin-auto-import` 自动导入的枚举。                                   |
-| `src/utils/`、`src/lib/`          | 纯辅助（`theme`、`crypto`、`helpers`，`cn()` 在 `lib/utils.ts`）。            |
-| `src/config/provider-registry.ts` | 静态 `PROVIDER_REGISTRY`（minimax、volcengine、deepseek、ollama）。          |
-| `src-tauri/src/commands/`         | 每个命令族一个文件，通过 `lib.rs` 中 `tauri::generate_handler!` 注册。        |
-| `src-tauri/src/services/`         | 后端业务逻辑（HTTP、代码生成、MCP、工作目录）。                               |
-| `src-tauri/src/db/`               | 通过 `rusqlite` 操作 SQLite，`repositories/` 与 `db/migrations/` 下的 SQL 迁移。|
-| `src-tauri/src/models/`           | Rust DTO（snake_case）；前端在 `src/types/` 与 `services/api-client/types.ts` 中镜像。|
-| `src-tauri/templates/`            | Rust 代码生成使用的 Tera 模板（非用户脚本）。                                 |
-| `src-tauri/capabilities/default.json` | Tauri 2 默认窗口权限。                                                   |
-| `docs/`                           | 设计 + 方案文档（`api-client-design.md`、`api-client-implementation-plan.md`）。|
+| 路径                                  | 用途                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `src/main.ts`                         | 应用入口：创建 Vue 应用、安装 Pinia 与 router、挂载 `#app`。                                |
+| `src/App.vue`                         | 根组件：`<RouterView/>` + vue-sonner 的 `<Toaster/>`。                                      |
+| `src/router/index.ts`                 | 路由（见下表），`/` → `/agent`。                                                            |
+| `src/layout/`                         | 应用骨架：`index.vue` + `app-sidebar/{logo,menu,recent-conversations,footer}`。             |
+| `src/views/`                          | 业务页面（一个路由一个文件夹），内含 `components/`、`__tests__/`、`utils/`。                |
+| `src/stores/`                         | Pinia setup 风格 store。`api-client.ts` 最大；另有 `agent-workspace.ts`、`app.ts`。         |
+| `src/services/`                       | **唯一**调用 `invoke()` 的地方；按业务分子目录（`api-client/` 等）。                        |
+| `src/composables/`                    | 自动导入的 hooks（`useConfirm`、`useTheme`、`useAppPaths`）。                               |
+| `src/components/`                     | `ui/*`（shadcn-vue）、`ai-elements/*`（注册表副本）、`sag/*`（自研）、`ConfirmDialog.vue`。 |
+| `src/types/`                          | 手写 DTO + 自动生成的 `auto-import.d.ts`、`auto-import-components.d.ts`。                   |
+| `src/enum/`                           | 由 `unplugin-auto-import` 自动导入的枚举。                                                  |
+| `src/utils/`、`src/lib/`              | 纯辅助（`theme`、`crypto`、`helpers`，`cn()` 在 `lib/utils.ts`）。                          |
+| `src/config/provider-registry.ts`     | 静态 `PROVIDER_REGISTRY`（minimax、volcengine、deepseek、ollama）。                         |
+| `src-tauri/src/commands/`             | 每个命令族一个文件，通过 `lib.rs` 中 `tauri::generate_handler!` 注册。                      |
+| `src-tauri/src/services/`             | 后端业务逻辑（HTTP、代码生成、MCP、工作目录）。                                             |
+| `src-tauri/src/db/`                   | 通过 `rusqlite` 操作 SQLite，`repositories/` 与 `db/migrations/` 下的 SQL 迁移。            |
+| `src-tauri/src/models/`               | Rust DTO（snake_case）；前端在 `src/types/` 与 `services/api-client/types.ts` 中镜像。      |
+| `src-tauri/templates/`                | Rust 代码生成使用的 Tera 模板（非用户脚本）。                                               |
+| `src-tauri/capabilities/default.json` | Tauri 2 默认窗口权限。                                                                      |
+| `docs/`                               | 设计 + 方案文档（`api-client-design.md`、`api-client-implementation-plan.md`）。            |
 
 **路由**
 
-| 路径                              | 视图                                       |
-|-----------------------------------|--------------------------------------------|
-| `/agent`                          | `views/agent/index.vue`（智能体列表）      |
-| `/agent/new`                      | `views/agent/create.vue`                   |
-| `/agent/:id/edit`                 | `views/agent/edit.vue`                     |
-| `/agent/:id`                      | 重定向到 `/agent/workspace?agent=<id>`     |
-| `/agent/workspace`                | `views/workspace/index.vue`                |
-| `/index`                          | `views/mail/index.vue`（示例视图）         |
-| `/codegen`                        | `views/codegen/index.vue`                  |
-| `/api-client`                     | `views/api-project/index.vue`              |
-| `/api-client/projects/:id`        | `views/api-client-workspace/index.vue`（路由名 `api-client-project`） |
-| `/app-setting`                    | `views/app-setting/index.vue`              |
-| `/:pathMatch(.*)*`                | `pages/errors/404.vue`                     |
+| 路径                       | 视图                                                                  |
+| -------------------------- | --------------------------------------------------------------------- |
+| `/agent`                   | `views/agent/index.vue`（智能体列表）                                 |
+| `/agent/new`               | `views/agent/create.vue`                                              |
+| `/agent/:id/edit`          | `views/agent/edit.vue`                                                |
+| `/agent/:id`               | 重定向到 `/agent/workspace?agent=<id>`                                |
+| `/agent/workspace`         | `views/workspace/index.vue`                                           |
+| `/index`                   | `views/mail/index.vue`（示例视图）                                    |
+| `/codegen`                 | `views/codegen/index.vue`                                             |
+| `/api-client`              | `views/api-project/index.vue`                                         |
+| `/api-client/projects/:id` | `views/api-client-workspace/index.vue`（路由名 `api-client-project`） |
+| `/app-setting`             | `views/app-setting/index.vue`                                         |
+| `/:pathMatch(.*)*`         | `pages/errors/404.vue`                                                |
 
 ---
 
@@ -104,15 +104,16 @@ pnpm preview                # vite preview（服务 dist/）
 pnpm tauri                  # 转发给 @tauri-apps/cli（dev / build / info）
 pnpm test                   # vitest run（单次，node 环境）
 pnpm exec vitest            # watch 模式
-pnpm lint:eslint            # eslint "src/**/*.{vue,ts,tsx}" --fix（缓存 → node_modules/.cache/eslint/）
-pnpm lint:ui                # eslint src/components/ui/**/*.{vue,ts,tsx} --fix（shadcn-vue 生成代码）
-pnpm lint:ui2               # eslint src/components/ai-elements/**/*.{vue,ts,tsx} --fix
-pnpm lint:lint-staged       # 运行 lint-staged（pre-commit 钩子接线）
+pnpm lint                   # oxlint（配置：.oxlintrc.json）
+pnpm lint:fix               # oxlint --fix
+pnpm format                 # oxfmt --write .（配置：.oxfmtrc.json）
+pnpm format:check           # oxfmt --check .
+pnpm lint:lint-staged       # 运行 lint-staged（经 simple-git-hooks 接到 pre-commit）
 ```
 
 Tauri dev 会先执行 `pnpm dev`（`tauri.conf.json` 中的 `beforeDevCommand`），再打开原生窗口；Tauri build 会先执行 `pnpm build`（`beforeBuildCommand`）。
 
-**没有 Prettier**；格式化由 `@antfu/eslint-config` 提供（2 空格缩进、单引号、分号、jsx on、stylistic on）。
+Lint 用 **oxlint**（`.oxlintrc.json`，`correctness` 类别为 error）；格式化用 **oxfmt**（`.oxfmtrc.json`：2 空格缩进、单引号、分号、printWidth 120、`sortImports`）。pre-commit 经 simple-git-hooks 跑 lint-staged（oxlint --fix + oxfmt）。**没有 Prettier，也没有 ESLint**。
 
 **没有覆盖率工具**；如需请自行添加 `@vitest/coverage-v8` 或 `@vitest/coverage-istanbul`。
 
@@ -164,7 +165,7 @@ Tauri dev 会先执行 `pnpm dev`（`tauri.conf.json` 中的 `beforeDevCommand`�
 
 - Vue 宏 + `src/composables/**/*.ts` + `src/enum/**/*.ts` + `src/store/**/*.ts` 自动导入 → `src/types/auto-import.d.ts`。
 - `src/components/ui/*` 自动注册 → `src/types/auto-import-components.d.ts`。
-- 生成出的 dts 已纳入版本控制但被 ESLint 忽略；新增 composable 后跑一次 dev 即可重新生成。
+- 生成出的 dts 已纳入版本控制但被 oxlint/oxfmt 忽略；新增 composable 后跑一次 dev 即可重新生成。
 
 **主题**
 
@@ -180,28 +181,28 @@ Tauri dev 会先执行 `pnpm dev`（`tauri.conf.json` 中的 `beforeDevCommand`�
 
 ## 重要文件
 
-| 用途                          | 路径                                                                                          |
-|-------------------------------|-----------------------------------------------------------------------------------------------|
-| Vue 入口                      | `src/main.ts`、`src/App.vue`                                                                  |
-| 路由                          | `src/router/index.ts`                                                                         |
-| 应用骨架                      | `src/layout/index.vue`、`src/layout/app-sidebar/index.vue`                                    |
-| 全局确认弹窗                  | `src/composables/use-confirm.ts`、`src/components/ConfirmDialog.vue`                          |
-| 设置 store（已持久化）        | `src/stores/app.ts`                                                                           |
-| 接口客户端 store（工厂）      | `src/stores/api-client.ts`                                                                    |
-| 智能体工作台 store            | `src/stores/agent-workspace.ts`                                                               |
-| 接口客户端服务                | `src/services/api-client/{projects,groups,requests,environments,history,execution,ai,types,mappers,index}.ts` |
-| 智能体服务                    | `src/services/{agent-conversation,agent-profile-storage}.ts`                                  |
-| 提供商 / MCP 服务             | `src/services/{provider_config,mcp_service,default_model}.ts`                                 |
-| 代码生成服务                  | `src/services/codegen.ts`                                                                     |
-| 纯辅助函数                    | `src/views/api-client/utils/{request,response,ai}-helpers.ts`                                 |
-| 接口客户端 DTO                | `src/types/api-client/index.ts`                                                               |
-| 提供商注册表                  | `src/config/provider-registry.ts`                                                             |
-| shadcn-vue 配置               | `components.json`                                                                             |
-| Tauri 配置                    | `src-tauri/tauri.conf.json`                                                                   |
-| Rust 入口 / lib               | `src-tauri/src/main.rs`、`src-tauri/src/lib.rs`                                               |
-| Tauri 命令                    | `src-tauri/src/commands/*.rs`                                                                 |
-| Tauri 权限                    | `src-tauri/capabilities/default.json`                                                         |
-| 设计文档                      | `docs/api-client-design.md`、`docs/api-client-implementation-plan.md`                         |
+| 用途                     | 路径                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| Vue 入口                 | `src/main.ts`、`src/App.vue`                                                                                  |
+| 路由                     | `src/router/index.ts`                                                                                         |
+| 应用骨架                 | `src/layout/index.vue`、`src/layout/app-sidebar/index.vue`                                                    |
+| 全局确认弹窗             | `src/composables/use-confirm.ts`、`src/components/ConfirmDialog.vue`                                          |
+| 设置 store（已持久化）   | `src/stores/app.ts`                                                                                           |
+| 接口客户端 store（工厂） | `src/stores/api-client.ts`                                                                                    |
+| 智能体工作台 store       | `src/stores/agent-workspace.ts`                                                                               |
+| 接口客户端服务           | `src/services/api-client/{projects,groups,requests,environments,history,execution,ai,types,mappers,index}.ts` |
+| 智能体服务               | `src/services/{agent-conversation,agent-profile-storage}.ts`                                                  |
+| 提供商 / MCP 服务        | `src/services/{provider_config,mcp_service,default_model}.ts`                                                 |
+| 代码生成服务             | `src/services/codegen.ts`                                                                                     |
+| 纯辅助函数               | `src/views/api-client/utils/{request,response,ai}-helpers.ts`                                                 |
+| 接口客户端 DTO           | `src/types/api-client/index.ts`                                                                               |
+| 提供商注册表             | `src/config/provider-registry.ts`                                                                             |
+| shadcn-vue 配置          | `components.json`                                                                                             |
+| Tauri 配置               | `src-tauri/tauri.conf.json`                                                                                   |
+| Rust 入口 / lib          | `src-tauri/src/main.rs`、`src-tauri/src/lib.rs`                                                               |
+| Tauri 命令               | `src-tauri/src/commands/*.rs`                                                                                 |
+| Tauri 权限               | `src-tauri/capabilities/default.json`                                                                         |
+| 设计文档                 | `docs/api-client-design.md`、`docs/api-client-implementation-plan.md`                                         |
 
 ---
 
@@ -215,7 +216,7 @@ Tauri dev 会先执行 `pnpm dev`（`tauri.conf.json` 中的 `beforeDevCommand`�
 - **窗口**：默认 `800x600`、可缩放、非全屏、CSP `null`（宽松策略；如要收紧需同时改 `tauri.conf.json` 与 capability 文件）。
 - **跨平台**：bundle 目标 `all`；图标包含 `.icns` 和 `.ico`。当前没有按 `target_os` 区分的 Rust 代码。
 - **外部服务**：Tauri HTTP 使用 `system-proxy`；AI 提供商通过 `PROVIDER_REGISTRY` 配置；MCP 使用 `rmcp`（子进程 + streamable-http 传输）。
-- **编辑器**：VS Code；仅推荐 `Vue.volar`。`formatOnSave` 开启；ESLint flat config 保存时自动修复（`source.fixAll.eslint`）。
+- **编辑器**：VS Code；推荐 `Vue.volar` + `oxc.oxc-vscode`。`formatOnSave` 开启，由 Oxc 扩展负责（oxfmt 格式化、`source.fixAll.oxc` 应用 oxlint 修复）；json/markdown 用 Prettier，rust 用 rust-analyzer。
 - **Agent 工具**：`/.gitignore` 排除 `.specstory/` 与 `.cursorindexingignore`（故意）。
 - **shadcn-vue MCP**：在 `opencode.json` 中配置（服务器名 `shadcnVue`，命令 `npx shadcn-vue@latest mcp`）。
 
@@ -246,7 +247,8 @@ Tauri dev 会先执行 `pnpm dev`（`tauri.conf.json` 中的 `beforeDevCommand`�
 ```bash
 pnpm exec vue-tsc -b        # 类型检查（与 `pnpm build` 的把关一致）
 pnpm test                   # 单次跑 vitest
-pnpm lint:eslint            # 校验 src/**
+pnpm lint                   # oxlint 校验 src/**
+pnpm format:check           # oxfmt 格式化门禁
 ```
 
 **手动验证**（未接入浏览器自动化）：启动 `pnpm tauri dev`，在原生窗口中走一遍改动路径并确认行为。接口客户端、智能体工作台、代码生成、提供商设置都能在这里看到。
@@ -255,7 +257,7 @@ pnpm lint:eslint            # 校验 src/**
 
 **验证分工**（项目约定）：
 
-- **我来跑**：所有无头验证——`pnpm exec vue-tsc -b`、`pnpm test`、`pnpm lint:eslint`、指定 Vitest 套件、构建、涉及后端时的 `cargo check` / `cargo test`。无需你确认。
+- **我来跑**：所有无头验证——`pnpm exec vue-tsc -b`、`pnpm test`、`pnpm lint`、`pnpm format:check`、指定 Vitest 套件、构建、涉及后端时的 `cargo check` / `cargo test`。无需你确认。
 - **你来跑**：所有视觉与交互验证——启动 `pnpm dev`、`pnpm tauri dev`、`pnpm preview`，或在桌面端点 UI、看效果。我**不会**帮你起开发服务器或打开原生窗口。
 
 ---

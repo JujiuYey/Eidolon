@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
 import { ArrowLeft, CircleHelp, FlaskConical, Loader2, Save, Trash2 } from 'lucide-vue-next';
+import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
+
+import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,14 +13,9 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  deleteMcpService,
-  discoverMcpService,
-  upsertMcpService,
-} from '@/services';
+import { deleteMcpService, discoverMcpService, upsertMcpService } from '@/services';
 import type {
   McpDiscoveredResource,
   McpDiscoveredResourceTemplate,
@@ -28,6 +25,7 @@ import type {
   McpTransportType,
 } from '@/types/mcp-service';
 import { getErrorMessage } from '@/utils/helpers';
+
 import type { McpServiceFormMode } from './types';
 
 interface McpServiceFormState {
@@ -237,13 +235,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
 <template>
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
     <div class="flex flex-wrap items-center gap-2 px-4 py-3">
-      <Button
-        variant="ghost"
-        size="icon"
-        class="h-8 w-8 shrink-0"
-        aria-label="返回 MCP 服务列表"
-        @click="emit('back')"
-      >
+      <Button variant="ghost" size="icon" class="h-8 w-8 shrink-0" aria-label="返回 MCP 服务列表" @click="emit('back')">
         <ArrowLeft class="size-4" />
       </Button>
       <h2 class="min-w-0 truncate text-sm font-semibold">
@@ -256,62 +248,26 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
       >
         STDIO
       </Badge>
-      <Badge
-        v-else
-        variant="outline"
-        class="border-primary/20 bg-primary/10 text-primary"
-      >
-        HTTP
-      </Badge>
-      <Badge
-        v-if="hasDiscovery"
-        variant="outline"
-        class="border-border bg-muted text-muted-foreground"
-      >
+      <Badge v-else variant="outline" class="border-primary/20 bg-primary/10 text-primary"> HTTP </Badge>
+      <Badge v-if="hasDiscovery" variant="outline" class="border-border bg-muted text-muted-foreground">
         {{ toolItems.length }} 工具
       </Badge>
 
       <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
         <span class="text-sm text-muted-foreground">启用</span>
         <Switch v-model="form.enabled" />
-        <Button
-          variant="outline"
-          size="sm"
-          :disabled="!canTest"
-          @click="testConnection"
-        >
-          <Loader2
-            v-if="isTesting"
-            class="size-4 animate-spin"
-          />
-          <FlaskConical
-            v-else
-            class="size-4"
-          />
+        <Button variant="outline" size="sm" :disabled="!canTest" @click="testConnection">
+          <Loader2 v-if="isTesting" class="size-4 animate-spin" />
+          <FlaskConical v-else class="size-4" />
           <span>测试连接</span>
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          :disabled="!showDeleteAction"
-          @click="deleteConfirmOpen = true"
-        >
+        <Button variant="outline" size="sm" :disabled="!showDeleteAction" @click="deleteConfirmOpen = true">
           <Trash2 class="size-4" />
           <span>删除</span>
         </Button>
-        <Button
-          size="sm"
-          :disabled="!canSave || isSaving"
-          @click="saveConfig"
-        >
-          <Loader2
-            v-if="isSaving"
-            class="size-4 animate-spin"
-          />
-          <Save
-            v-else
-            class="size-4"
-          />
+        <Button size="sm" :disabled="!canSave || isSaving" @click="saveConfig">
+          <Loader2 v-if="isSaving" class="size-4 animate-spin" />
+          <Save v-else class="size-4" />
           <span>保存</span>
         </Button>
       </div>
@@ -321,42 +277,28 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
     <ScrollArea class="min-h-0 flex-1">
       <div class="px-5 py-4">
         <p class="mb-4 text-sm text-muted-foreground">
-          {{ hasDiscovery && form.discovery?.server_name
-            ? `${form.discovery.server_name}${form.discovery.server_version ? ` · ${form.discovery.server_version}` : ''}`
-            : '先保存配置，再测试连接并发现工具、提示和资源。' }}
+          {{
+            hasDiscovery && form.discovery?.server_name
+              ? `${form.discovery.server_name}${form.discovery.server_version ? ` · ${form.discovery.server_version}` : ''}`
+              : '先保存配置，再测试连接并发现工具、提示和资源。'
+          }}
         </p>
-        <p
-          v-if="lastTestedLabel"
-          class="mb-4 text-xs text-muted-foreground"
-        >
-          最近测试：{{ lastTestedLabel }}
-        </p>
+        <p v-if="lastTestedLabel" class="mb-4 text-xs text-muted-foreground">最近测试：{{ lastTestedLabel }}</p>
 
-        <Tabs
-          v-model="activeTab"
-          class="space-y-6"
-        >
+        <Tabs v-model="activeTab" class="space-y-6">
           <TabsList class="grid w-full grid-cols-4">
-            <TabsTrigger value="general">
-              通用
-            </TabsTrigger>
+            <TabsTrigger value="general"> 通用 </TabsTrigger>
             <TabsTrigger value="tools">
               工具
               <span v-if="toolItems.length > 0" class="text-muted-foreground">({{ toolItems.length }})</span>
             </TabsTrigger>
-            <TabsTrigger value="prompts">
-              提示
-            </TabsTrigger>
-            <TabsTrigger value="resources">
-              资源
-            </TabsTrigger>
+            <TabsTrigger value="prompts"> 提示 </TabsTrigger>
+            <TabsTrigger value="resources"> 资源 </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" class="mt-0 space-y-6">
             <section v-if="form.discovery?.instructions" class="rounded-xl border bg-muted/20 p-4">
-              <p class="text-sm font-medium text-foreground">
-                服务说明
-              </p>
+              <p class="text-sm font-medium text-foreground">服务说明</p>
               <p class="mt-2 text-sm leading-6 text-muted-foreground">
                 {{ form.discovery.instructions }}
               </p>
@@ -367,20 +309,12 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                 <span class="text-primary">*</span>
                 <Label>名称</Label>
               </div>
-              <Input
-                v-model="form.name"
-                placeholder="MCP 服务名称"
-                class="h-11"
-              />
+              <Input v-model="form.name" placeholder="MCP 服务名称" class="h-11" />
             </section>
 
             <section class="space-y-2.5">
               <Label>描述</Label>
-              <Textarea
-                v-model="form.description"
-                placeholder="给这个服务写一段备注，方便后续识别"
-                class="min-h-24"
-              />
+              <Textarea v-model="form.description" placeholder="给这个服务写一段备注，方便后续识别" class="min-h-24" />
             </section>
 
             <section class="space-y-2.5">
@@ -388,10 +322,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                 <span class="text-primary">*</span>
                 <Label>类型</Label>
               </div>
-              <NativeSelect
-                v-model="form.transportType"
-                class="h-11 w-full"
-              >
+              <NativeSelect v-model="form.transportType" class="h-11 w-full">
                 <option v-for="option of transportOptions" :key="option.value" :value="option.value">
                   {{ option.label }}
                 </option>
@@ -404,11 +335,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                   <span class="text-primary">*</span>
                   <Label>命令</Label>
                 </div>
-                <Input
-                  v-model="form.command"
-                  placeholder="例如: npx、uvx、node"
-                  class="h-11"
-                />
+                <Input v-model="form.command" placeholder="例如: npx、uvx、node" class="h-11" />
               </section>
 
               <section class="space-y-2.5">
@@ -416,11 +343,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                   <Label>参数</Label>
                   <CircleHelp class="size-4 text-muted-foreground" />
                 </div>
-                <Textarea
-                  v-model="form.args"
-                  :placeholder="argsPlaceholder"
-                  class="min-h-[96px]"
-                />
+                <Textarea v-model="form.args" :placeholder="argsPlaceholder" class="min-h-[96px]" />
               </section>
 
               <section class="space-y-2.5">
@@ -428,11 +351,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                   <Label>环境变量</Label>
                   <CircleHelp class="size-4 text-muted-foreground" />
                 </div>
-                <Textarea
-                  v-model="form.env"
-                  :placeholder="envPlaceholder"
-                  class="min-h-[96px]"
-                />
+                <Textarea v-model="form.env" :placeholder="envPlaceholder" class="min-h-[96px]" />
               </section>
 
               <section class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -450,11 +369,7 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                   <span class="text-primary">*</span>
                   <Label>Streamable HTTP 地址</Label>
                 </div>
-                <Input
-                  v-model="form.url"
-                  placeholder="例如: http://localhost:3000/mcp"
-                  class="h-11"
-                />
+                <Input v-model="form.url" placeholder="例如: http://localhost:3000/mcp" class="h-11" />
               </section>
             </template>
 
@@ -464,31 +379,22 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
                 <CircleHelp class="size-4 text-muted-foreground" />
               </div>
               <InputGroup>
-                <InputGroupInput
-                  v-model="form.timeout"
-                  class="h-11"
-                />
-                <InputGroupAddon
-                  align="inline-end"
-                  class="h-11 px-3 text-sm text-foreground/70"
-                >
-                  s
-                </InputGroupAddon>
+                <InputGroupInput v-model="form.timeout" class="h-11" />
+                <InputGroupAddon align="inline-end" class="h-11 px-3 text-sm text-foreground/70"> s </InputGroupAddon>
               </InputGroup>
             </section>
           </TabsContent>
 
           <TabsContent value="tools" class="mt-0">
-            <div v-if="toolItems.length === 0" class="rounded-xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground">
+            <div
+              v-if="toolItems.length === 0"
+              class="rounded-xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground"
+            >
               连接成功后，这里会显示 MCP server 暴露的工具。你可以提前在“通用”里测试连接。
             </div>
 
             <div v-else class="space-y-3">
-              <article
-                v-for="tool of toolItems"
-                :key="tool.name"
-                class="rounded-xl border px-4 py-4"
-              >
+              <article v-for="tool of toolItems" :key="tool.name" class="rounded-xl border px-4 py-4">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div class="min-w-0 flex-1 space-y-2">
                     <div class="flex flex-wrap items-center gap-2">
@@ -507,22 +413,14 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
 
                   <div class="grid shrink-0 grid-cols-2 gap-6 sm:min-w-[220px]">
                     <div class="space-y-1 text-sm">
-                      <p class="font-medium text-foreground">
-                        启用工具
-                      </p>
-                      <p class="text-xs text-muted-foreground">
-                        后续对话阶段是否允许使用
-                      </p>
+                      <p class="font-medium text-foreground">启用工具</p>
+                      <p class="text-xs text-muted-foreground">后续对话阶段是否允许使用</p>
                       <Switch v-model="tool.enabled" />
                     </div>
 
                     <div class="space-y-1 text-sm">
-                      <p class="font-medium text-foreground">
-                        自动批准
-                      </p>
-                      <p class="text-xs text-muted-foreground">
-                        后续执行时是否跳过人工确认
-                      </p>
+                      <p class="font-medium text-foreground">自动批准</p>
+                      <p class="text-xs text-muted-foreground">后续执行时是否跳过人工确认</p>
                       <Switch v-model="tool.auto_approve" />
                     </div>
                   </div>
@@ -532,16 +430,15 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
           </TabsContent>
 
           <TabsContent value="prompts" class="mt-0">
-            <div v-if="promptItems.length === 0" class="rounded-xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground">
+            <div
+              v-if="promptItems.length === 0"
+              class="rounded-xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground"
+            >
               这个 MCP server 目前没有暴露提示模板，或者还没有完成连接测试。
             </div>
 
             <div v-else class="space-y-3">
-              <article
-                v-for="prompt of promptItems"
-                :key="prompt.name"
-                class="rounded-xl border px-4 py-4"
-              >
+              <article v-for="prompt of promptItems" :key="prompt.name" class="rounded-xl border px-4 py-4">
                 <div class="space-y-2">
                   <div class="flex flex-wrap items-center gap-2">
                     <h3 class="text-sm font-semibold text-foreground">
@@ -574,24 +471,21 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
           <TabsContent value="resources" class="mt-0 space-y-6">
             <section class="space-y-3">
               <div class="flex items-center gap-2">
-                <h3 class="text-sm font-semibold text-foreground">
-                  资源
-                </h3>
+                <h3 class="text-sm font-semibold text-foreground">资源</h3>
                 <Badge variant="outline" class="border-border bg-muted text-muted-foreground">
                   {{ resourceItems.length }}
                 </Badge>
               </div>
 
-              <div v-if="resourceItems.length === 0" class="rounded-xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground">
+              <div
+                v-if="resourceItems.length === 0"
+                class="rounded-xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground"
+              >
                 暂无可列举的资源。
               </div>
 
               <template v-else>
-                <article
-                  v-for="resource of resourceItems"
-                  :key="resource.uri"
-                  class="rounded-xl border px-4 py-4"
-                >
+                <article v-for="resource of resourceItems" :key="resource.uri" class="rounded-xl border px-4 py-4">
                   <h4 class="text-sm font-semibold text-foreground">
                     {{ resource.title || resource.name }}
                   </h4>
@@ -607,15 +501,16 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
 
             <section class="space-y-3">
               <div class="flex items-center gap-2">
-                <h3 class="text-sm font-semibold text-foreground">
-                  资源模板
-                </h3>
+                <h3 class="text-sm font-semibold text-foreground">资源模板</h3>
                 <Badge variant="outline" class="border-border bg-muted text-muted-foreground">
                   {{ resourceTemplateItems.length }}
                 </Badge>
               </div>
 
-              <div v-if="resourceTemplateItems.length === 0" class="rounded-xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground">
+              <div
+                v-if="resourceTemplateItems.length === 0"
+                class="rounded-xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground"
+              >
                 暂无资源模板。
               </div>
 

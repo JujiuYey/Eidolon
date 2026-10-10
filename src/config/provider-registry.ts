@@ -1,8 +1,8 @@
-import type { ProviderRegistryItem } from '@/types/provider';
 import deepseekIcon from '@/assets/model-icon/deepseek.svg';
 import minimaxIcon from '@/assets/model-icon/minimax.svg';
 import ollamaIcon from '@/assets/model-icon/ollama.svg';
 import volcengineIcon from '@/assets/model-icon/volcengine.svg';
+import type { ProviderRegistryItem } from '@/types/provider';
 
 export const PROVIDER_REGISTRY: ProviderRegistryItem[] = [
   {

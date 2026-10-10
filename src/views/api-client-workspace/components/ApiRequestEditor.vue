@@ -2,15 +2,17 @@
 import { ClipboardPaste, Loader2, Save, Send, Square, Sparkles } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { toast } from 'vue-sonner';
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useApiClientStore } from '@/stores/api-client';
 import type { ApiClientEnvironment, ApiClientHttpMethod, ApiClientRequestBody } from '@/types/api-client';
 import { API_CLIENT_HTTP_METHODS } from '@/types/api-client';
-import { useApiClientStore } from '@/stores/api-client';
+
 import BodyEditor from './BodyEditor.vue';
 import KeyValueEditor from './KeyValueEditor.vue';
 
@@ -59,7 +61,9 @@ const emit = defineEmits<{
 const store = useApiClientStore();
 
 const hasAuthHeader = computed(() => {
-  return props.draftHeaders.some(row => row.enabled && /^(authorization|proxy-authorization|x-api-key|api-key)$/i.test(row.key.trim()));
+  return props.draftHeaders.some(
+    row => row.enabled && /^(authorization|proxy-authorization|x-api-key|api-key)$/i.test(row.key.trim()),
+  );
 });
 
 function emitRows(rows: NonNullable<Props['draftQuery']>): void {
@@ -220,30 +224,25 @@ void store;
 
       <Alert v-if="unsavedHint">
         <AlertTitle>存在未保存修改</AlertTitle>
-        <AlertDescription>
-          切换请求、项目或关闭页面前，请保存或放弃当前编辑。
-        </AlertDescription>
+        <AlertDescription> 切换请求、项目或关闭页面前，请保存或放弃当前编辑。 </AlertDescription>
       </Alert>
 
-      <Alert v-if="!hasAuthHeader && (draftMethod === 'POST' || draftMethod === 'PUT' || draftMethod === 'PATCH' || draftMethod === 'DELETE')">
+      <Alert
+        v-if="
+          !hasAuthHeader &&
+          (draftMethod === 'POST' || draftMethod === 'PUT' || draftMethod === 'PATCH' || draftMethod === 'DELETE')
+        "
+      >
         <AlertTitle>认证提示</AlertTitle>
-        <AlertDescription>
-          如需鉴权，请使用 Headers 配置 Bearer Token、API Key 等认证。
-        </AlertDescription>
+        <AlertDescription> 如需鉴权，请使用 Headers 配置 Bearer Token、API Key 等认证。 </AlertDescription>
       </Alert>
     </div>
 
     <Tabs default-value="params" class="rounded-lg bg-card">
       <TabsList>
-        <TabsTrigger value="params">
-          Params
-        </TabsTrigger>
-        <TabsTrigger value="headers">
-          Headers
-        </TabsTrigger>
-        <TabsTrigger value="body">
-          Body
-        </TabsTrigger>
+        <TabsTrigger value="params"> Params </TabsTrigger>
+        <TabsTrigger value="headers"> Headers </TabsTrigger>
+        <TabsTrigger value="body"> Body </TabsTrigger>
       </TabsList>
 
       <TabsContent value="params">

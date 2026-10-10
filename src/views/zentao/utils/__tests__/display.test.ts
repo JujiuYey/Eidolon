@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+
 import type { ZentaoBug, ZentaoTask } from '@/types/zentao';
+
 import {
   bugStatusLabel,
   formatHours,

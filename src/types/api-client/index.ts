@@ -1,11 +1,4 @@
-export type ApiClientHttpMethod
-  = | 'GET'
-    | 'POST'
-    | 'PUT'
-    | 'PATCH'
-    | 'DELETE'
-    | 'HEAD'
-    | 'OPTIONS';
+export type ApiClientHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
 export const API_CLIENT_HTTP_METHODS: ApiClientHttpMethod[] = [
   'GET',
@@ -81,24 +74,24 @@ export interface ApiClientEnvironment {
   updatedAt: number;
 }
 
-export type ApiClientHistoryExecutionStatus
-  = | 'success'
-    | 'http_error'
-    | 'network_error'
-    | 'timeout'
-    | 'cancelled'
-    | 'oversize';
+export type ApiClientHistoryExecutionStatus =
+  | 'success'
+  | 'http_error'
+  | 'network_error'
+  | 'timeout'
+  | 'cancelled'
+  | 'oversize';
 
-export type ApiClientResponseKind
-  = | 'idle'
-    | 'loading'
-    | 'success'
-    | 'http_error'
-    | 'network_error'
-    | 'timeout'
-    | 'cancelled'
-    | 'oversize'
-    | 'binary';
+export type ApiClientResponseKind =
+  | 'idle'
+  | 'loading'
+  | 'success'
+  | 'http_error'
+  | 'network_error'
+  | 'timeout'
+  | 'cancelled'
+  | 'oversize'
+  | 'binary';
 
 export interface ApiClientRequestSnapshot {
   method: ApiClientHttpMethod;

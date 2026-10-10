@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import { ListTodo, Plus } from 'lucide-vue-next';
+import { onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
+
 import { Button } from '@/components/ui/button';
 import { listZentaoAccounts } from '@/services';
 import type { ZentaoAccount } from '@/types/zentao';
 import { getErrorMessage } from '@/utils/helpers';
+
 import ZentaoAccountForm from './_components/zentao-account-form.vue';
 import ZentaoAccountList from './_components/zentao-account-list.vue';
 
@@ -26,8 +28,7 @@ async function loadData(keepSelection = true) {
   if (!keepSelection || !accounts.value.some(account => account.id === selectedAccountId.value)) {
     selectedAccountId.value = accounts.value[0]?.id ?? '';
   }
-  selectedAccount.value = accounts.value.find(account => account.id === selectedAccountId.value)
-    ?? null;
+  selectedAccount.value = accounts.value.find(account => account.id === selectedAccountId.value) ?? null;
 }
 
 function handleSelect(accountId: string) {
@@ -63,20 +64,12 @@ onMounted(() => {
           <ListTodo class="h-4 w-4 text-primary" />
           禅道账户
         </h2>
-        <Button
-          size="sm"
-          variant="outline"
-          @click="handleCreate"
-        >
+        <Button size="sm" variant="outline" @click="handleCreate">
           <Plus class="h-4 w-4" />
           新建
         </Button>
       </div>
-      <ZentaoAccountList
-        v-model:selected-account-id="selectedAccountId"
-        :accounts="accounts"
-        @select="handleSelect"
-      />
+      <ZentaoAccountList v-model:selected-account-id="selectedAccountId" :accounts="accounts" @select="handleSelect" />
     </div>
     <ZentaoAccountForm
       :key="selectedAccountId"

@@ -1,4 +1,5 @@
 import { computed } from 'vue';
+
 import { useAppStore } from '@/stores/app';
 import type { Theme, ThemeColor } from '@/types';
 

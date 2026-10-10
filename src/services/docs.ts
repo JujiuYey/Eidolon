@@ -1,5 +1,6 @@
-import type { DocsEntry, DocsSearchResult, DocsSettings } from '@/types/docs';
 import { invoke } from '@tauri-apps/api/core';
+
+import type { DocsEntry, DocsSearchResult, DocsSettings } from '@/types/docs';
 
 export async function getDocsSettings(): Promise<DocsSettings> {
   return invoke<DocsSettings>('get_docs_settings');

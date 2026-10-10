@@ -182,10 +182,7 @@ export function collectCommits(logs: RepoCommitLog[]): CollectedCommits {
 }
 
 /** 单条提交的展示文本（不含列表符号） */
-function formatCommitLine(
-  commit: CollectedCommits['commits'][number],
-  groupBy: ReportGroupBy,
-): string {
+function formatCommitLine(commit: CollectedCommits['commits'][number], groupBy: ReportGroupBy): string {
   const parsed = parseCommitSubject(commit.subject);
 
   if (groupBy === 'repo') {
@@ -203,10 +200,7 @@ function formatCommitLine(
  * 结构：标题 + 统计行 + 分组小节 + 失败仓库备注。
  * 没有任何提交时返回空串，由调用方决定空态展示。
  */
-export function aggregateCommits(
-  logs: RepoCommitLog[],
-  options: { range: DateRange; groupBy: ReportGroupBy },
-): string {
+export function aggregateCommits(logs: RepoCommitLog[], options: { range: DateRange; groupBy: ReportGroupBy }): string {
   const { commits, errors, repo_count: repoCount } = collectCommits(logs);
 
   if (commits.length === 0 && errors.length === 0) {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -51,32 +52,16 @@ function confirm() {
 </script>
 
 <template>
-  <Dialog
-    :open="open"
-    @update:open="value => emit('update:open', value)"
-  >
+  <Dialog :open="open" @update:open="value => emit('update:open', value)">
     <DialogContent class="sm:max-w-sm">
       <DialogHeader>
         <DialogTitle>{{ title }}</DialogTitle>
         <DialogDescription>{{ description }}</DialogDescription>
       </DialogHeader>
-      <Input
-        v-model="draft"
-        aria-label="名称"
-        maxlength="80"
-        @keydown.enter="confirm"
-      />
+      <Input v-model="draft" aria-label="名称" maxlength="80" @keydown.enter="confirm" />
       <DialogFooter>
-        <Button
-          variant="outline"
-          @click="emit('update:open', false)"
-        >
-          取消
-        </Button>
-        <Button
-          :disabled="!draft.trim()"
-          @click="confirm"
-        >
+        <Button variant="outline" @click="emit('update:open', false)"> 取消 </Button>
+        <Button :disabled="!draft.trim()" @click="confirm">
           {{ confirmLabel }}
         </Button>
       </DialogFooter>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { CarouselEmits, CarouselProps, WithClassAsProps } from './interface';
 import { cn } from '@/lib/utils';
+
+import type { CarouselEmits, CarouselProps, WithClassAsProps } from './interface';
 import { useProvideCarousel } from './useCarousel';
 
 const props = withDefaults(defineProps<CarouselProps & WithClassAsProps>(), {
@@ -9,7 +10,8 @@ const props = withDefaults(defineProps<CarouselProps & WithClassAsProps>(), {
 
 const emits = defineEmits<CarouselEmits>();
 
-const { canScrollNext, canScrollPrev, carouselApi, carouselRef, orientation, scrollNext, scrollPrev } = useProvideCarousel(props, emits);
+const { canScrollNext, canScrollPrev, carouselApi, carouselRef, orientation, scrollNext, scrollPrev } =
+  useProvideCarousel(props, emits);
 
 defineExpose({
   canScrollNext,
@@ -48,6 +50,14 @@ function onKeyDown(event: KeyboardEvent) {
     tabindex="0"
     @keydown="onKeyDown"
   >
-    <slot :can-scroll-next="canScrollNext" :can-scroll-prev="canScrollPrev" :carousel-api="carouselApi" :carousel-ref="carouselRef" :orientation="orientation" :scroll-next="scrollNext" :scroll-prev="scrollPrev" />
+    <slot
+      :can-scroll-next="canScrollNext"
+      :can-scroll-prev="canScrollPrev"
+      :carousel-api="carouselApi"
+      :carousel-ref="carouselRef"
+      :orientation="orientation"
+      :scroll-next="scrollNext"
+      :scroll-prev="scrollPrev"
+    />
   </div>
 </template>

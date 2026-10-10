@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { PanelLeftOpen, PanelLeftClose, Settings } from 'lucide-vue-next';
-import { useSidebar } from '@/components/ui/sidebar';
 import { useRouter, useRoute } from 'vue-router';
+
+import { useSidebar } from '@/components/ui/sidebar';
 
 const { state, toggleSidebar } = useSidebar();
 const router = useRouter();
@@ -14,7 +15,8 @@ function handleClick() {
 }
 const getMenuButtonClass = computed(() => {
   return {
-    'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground': currentKey.value === 'app-setting',
+    'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground':
+      currentKey.value === 'app-setting',
   };
 });
 </script>

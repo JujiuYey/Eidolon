@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
+
 import type { AppSettings, Theme, ThemeColor } from '@/types';
 import { applyTheme, applyThemeColor, DEFAULT_THEME_COLOR, isThemeColor } from '@/utils/theme';
 
@@ -12,9 +13,8 @@ function createDefaultSettings(): AppSettings {
 
 function normalizeSettings(settings: Partial<AppSettings>): AppSettings {
   return {
-    theme: settings.theme === 'light' || settings.theme === 'dark' || settings.theme === 'system'
-      ? settings.theme
-      : 'light',
+    theme:
+      settings.theme === 'light' || settings.theme === 'dark' || settings.theme === 'system' ? settings.theme : 'light',
     themeColor: isThemeColor(settings.themeColor) ? settings.themeColor : DEFAULT_THEME_COLOR,
   };
 }
@@ -24,46 +24,50 @@ function applyAppearance(settings: AppSettings) {
   applyThemeColor(settings.themeColor);
 }
 
-export const useAppStore = defineStore('app', () => {
-  // 状态 (state)
-  const settings = ref<AppSettings>(createDefaultSettings());
-  const isInitialized = ref(false);
+export const useAppStore = defineStore(
+  'app',
+  () => {
+    // 状态 (state)
+    const settings = ref<AppSettings>(createDefaultSettings());
+    const isInitialized = ref(false);
 
-  const updateSettings = (partialSettings: Partial<AppSettings>) => {
-    settings.value = normalizeSettings({
-      ...settings.value,
-      ...partialSettings,
-    });
+    const updateSettings = (partialSettings: Partial<AppSettings>) => {
+      settings.value = normalizeSettings({
+        ...settings.value,
+        ...partialSettings,
+      });
 
-    applyAppearance(settings.value);
-  };
+      applyAppearance(settings.value);
+    };
 
-  const setTheme = (theme: Theme) => {
-    updateSettings({ theme });
-  };
+    const setTheme = (theme: Theme) => {
+      updateSettings({ theme });
+    };
 
-  const setThemeColor = (themeColor: ThemeColor) => {
-    updateSettings({ themeColor });
-  };
+    const setThemeColor = (themeColor: ThemeColor) => {
+      updateSettings({ themeColor });
+    };
 
-  const init = () => {
-    if (isInitialized.value) {
-      return;
-    }
+    const init = () => {
+      if (isInitialized.value) {
+        return;
+      }
 
-    applyAppearance(settings.value);
-    isInitialized.value = true;
-  };
+      applyAppearance(settings.value);
+      isInitialized.value = true;
+    };
 
-  return {
-    settings,
-    setTheme,
-    setThemeColor,
-    init,
-  };
-}, {
-  persist: {
-    key: 'eidolon-app-settings',
-    pick: ['settings'],
+    return {
+      settings,
+      setTheme,
+      setThemeColor,
+      init,
+    };
   },
-});
+  {
+    persist: {
+      key: 'eidolon-app-settings',
+      pick: ['settings'],
+    },
+  },
+);

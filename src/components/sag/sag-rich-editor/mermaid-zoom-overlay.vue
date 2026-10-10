@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { RotateCcw, X, ZoomIn, ZoomOut } from 'lucide-vue-next';
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 
 /**
  * mermaid 图表全屏预览:拖动平移、滚轮缩放(锚定鼠标位置)、
@@ -139,9 +139,7 @@ onBeforeUnmount(() => {
       aria-label="Mermaid 图表预览"
     >
       <div class="flex shrink-0 items-center justify-between px-4 py-3">
-        <p class="text-sm text-white/80">
-          Mermaid 图表
-        </p>
+        <p class="text-sm text-white/80">Mermaid 图表</p>
         <button
           type="button"
           class="inline-flex h-8 w-8 items-center justify-center rounded-md text-white/80 transition-colors duration-100 hover:bg-white/10 hover:text-white"

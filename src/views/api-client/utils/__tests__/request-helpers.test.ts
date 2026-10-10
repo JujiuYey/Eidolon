@@ -1,5 +1,8 @@
 import { strict as assert } from 'node:assert';
+
 import { describe, it } from 'vitest';
+
+import type { ApiClientEnvironment, ApiClientKeyValueRow, ApiClientRequestBody } from '@/types/api-client';
 import {
   appendParamsToUrl,
   buildEnvironmentLookup,
@@ -25,11 +28,6 @@ import {
   trimRows,
   tryFormatJson,
 } from '@/views/api-client/utils/request-helpers';
-import type {
-  ApiClientEnvironment,
-  ApiClientKeyValueRow,
-  ApiClientRequestBody,
-} from '@/types/api-client';
 
 function makeRow(overrides: Partial<ApiClientKeyValueRow> = {}): ApiClientKeyValueRow {
   return {
@@ -89,7 +87,14 @@ describe('parseFullUrl + splitUrlIntoBaseAndParams', () => {
       assert.equal(row.enabled, true);
       assert.notEqual(row.id, '');
     }
-    assert.deepEqual(rows.map(r => [r.key, r.value]), [['a', '1'], ['a', '2'], ['b', '3']]);
+    assert.deepEqual(
+      rows.map(r => [r.key, r.value]),
+      [
+        ['a', '1'],
+        ['a', '2'],
+        ['b', '3'],
+      ],
+    );
   });
 
   it('isAbsoluteUrl detects only scheme-prefixed URLs', () => {
@@ -111,9 +116,7 @@ describe('appendParamsToUrl', () => {
   });
 
   it('preserves existing query string in base URL', () => {
-    const url = appendParamsToUrl('https://example.com/api?z=0', [
-      makeRow({ key: 'a', value: '1' }),
-    ]);
+    const url = appendParamsToUrl('https://example.com/api?z=0', [makeRow({ key: 'a', value: '1' })]);
     assert.equal(url, 'https://example.com/api?z=0&a=1');
   });
 
@@ -208,10 +211,7 @@ describe('tryFormatJson', () => {
 
 describe('resolveVariables', () => {
   const lookup = buildEnvironmentLookup(
-    [
-      makeRow({ key: 'baseUrl', value: 'https://api.example.com' }),
-      makeRow({ key: 'token', value: 'secret' }),
-    ],
+    [makeRow({ key: 'baseUrl', value: 'https://api.example.com' }), makeRow({ key: 'token', value: 'secret' })],
     false,
   );
 
@@ -559,9 +559,7 @@ describe('prepareExecution', () => {
     const result = prepareExecution({
       url: 'https://{{host}}/{{path}}',
       query: [],
-      headers: [
-        makeRow({ enabled: true, key: 'X-Auth', value: 'Bearer {{token}}' }),
-      ],
+      headers: [makeRow({ enabled: true, key: 'X-Auth', value: 'Bearer {{token}}' })],
       body: { kind: 'json', text: '{"body":"{{bodyVar}}"}', form: [] },
       method: 'POST',
       timeoutMs: 5000,
@@ -589,13 +587,8 @@ describe('prepareExecution', () => {
 
   it('forwards body and header rows to the snapshot without dropping disabled ones', () => {
     const env = makeEnvironment();
-    const query = [
-      makeRow({ key: 'a', value: '1', enabled: true }),
-      makeRow({ key: 'b', value: '2', enabled: false }),
-    ];
-    const headers = [
-      makeRow({ key: 'X-Test', value: 'yes', enabled: true }),
-    ];
+    const query = [makeRow({ key: 'a', value: '1', enabled: true }), makeRow({ key: 'b', value: '2', enabled: false })];
+    const headers = [makeRow({ key: 'X-Test', value: 'yes', enabled: true })];
 
     const result = prepareExecution({
       url: 'https://api.example.com/x',

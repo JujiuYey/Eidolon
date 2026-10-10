@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { FilePlus2, LayoutTemplate } from 'lucide-vue-next';
-import { cn } from '@/lib/utils';
+
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import type { MailTemplate } from '@/types/mail';
 
 defineProps<{
@@ -23,29 +24,31 @@ const selectedTemplateId = defineModel<string>('selectedTemplateId', {
     <div class="flex flex-col gap-2 px-4 pb-4">
       <button
         type="button"
-        :class="cn(
-          'flex flex-col items-start gap-1 rounded-lg border p-3 text-left text-sm outline-none transition-colors duration-150 hover:border-ring/40 hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring/50',
-          selectedTemplateId === '' && 'border-primary/40 bg-muted',
-        )"
+        :class="
+          cn(
+            'flex flex-col items-start gap-1 rounded-lg border p-3 text-left text-sm outline-none transition-colors duration-150 hover:border-ring/40 hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring/50',
+            selectedTemplateId === '' && 'border-primary/40 bg-muted',
+          )
+        "
         @click="selectedTemplateId = ''"
       >
         <div class="flex items-center gap-2 font-medium">
           <FilePlus2 class="size-4 text-muted-foreground" />
           空白邮件
         </div>
-        <div class="text-xs text-muted-foreground">
-          不使用模板，从零开始写
-        </div>
+        <div class="text-xs text-muted-foreground">不使用模板，从零开始写</div>
       </button>
 
       <button
         v-for="template of templates"
         :key="template.id"
         type="button"
-        :class="cn(
-          'flex flex-col items-start gap-1 rounded-lg border p-3 text-left text-sm outline-none transition-colors duration-150 hover:border-ring/40 hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring/50',
-          selectedTemplateId === template.id && 'border-primary/40 bg-muted',
-        )"
+        :class="
+          cn(
+            'flex flex-col items-start gap-1 rounded-lg border p-3 text-left text-sm outline-none transition-colors duration-150 hover:border-ring/40 hover:bg-muted/40 focus-visible:ring-[3px] focus-visible:ring-ring/50',
+            selectedTemplateId === template.id && 'border-primary/40 bg-muted',
+          )
+        "
         @click="selectedTemplateId = template.id"
       >
         <div class="w-full truncate font-medium">
@@ -63,12 +66,7 @@ const selectedTemplateId = defineModel<string>('selectedTemplateId', {
         还没有模板，点击下方按钮创建
       </div>
 
-      <Button
-        type="button"
-        variant="outline"
-        class="mt-2"
-        @click="emit('manage')"
-      >
+      <Button type="button" variant="outline" class="mt-2" @click="emit('manage')">
         <LayoutTemplate class="mr-2 h-4 w-4" />
         管理模板
       </Button>
