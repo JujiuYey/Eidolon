@@ -59,6 +59,8 @@ export interface ApiClientRequest {
   timeoutMs: number;
   aiPrompt: string;
   aiReference: string;
+  /** 代码导入身份（如 `smp/sys/user#find_page`）；手工创建的请求为 null */
+  externalKey: string | null;
   sort: number;
   createdAt: number;
   updatedAt: number;

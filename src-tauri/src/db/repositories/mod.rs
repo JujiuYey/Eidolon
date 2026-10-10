@@ -4,6 +4,7 @@ pub mod api_client_repo_common;
 pub mod api_environment_repo;
 pub mod api_group_repo;
 pub mod api_history;
+pub mod api_import_repo;
 pub mod api_project_repo;
 pub mod api_request_repo;
 pub mod git_account_repo;

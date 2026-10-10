@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Loader2, Network, Pencil, Plus, Trash2 } from 'lucide-vue-next';
+import { FolderInput, Loader2, Network, Pencil, Plus, Trash2 } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
@@ -13,6 +13,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useConfirm } from '@/composables/use-confirm';
 import { useApiClientStore } from '@/stores/api-client';
 
+import CodeImportDialog from './components/CodeImportDialog.vue';
 import ProjectFormDialog from './components/ProjectFormDialog.vue';
 
 const router = useRouter();
@@ -23,8 +24,20 @@ const createDialogOpen = ref(false);
 const editDialogOpen = ref(false);
 const editingProjectId = ref<string | null>(null);
 const backendError = ref<string | null>(null);
+const importDialogProjectId = ref<string | null>(null);
 
 const sortedProjects = computed(() => store.sortedProjects);
+
+const importDialogProject = computed(() => {
+  if (!importDialogProjectId.value) {
+    return null;
+  }
+  return store.projects.find(item => item.id === importDialogProjectId.value) ?? null;
+});
+
+function openImportDialog(projectId: string): void {
+  importDialogProjectId.value = projectId;
+}
 
 async function bootstrap(): Promise<void> {
   backendError.value = null;
@@ -203,6 +216,14 @@ onBeforeUnmount(() => {
             <Button
               variant="ghost"
               size="icon-sm"
+              :aria-label="`从代码导入 ${project.name}`"
+              @click="openImportDialog(project.id)"
+            >
+              <FolderInput class="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
               :disabled="store.isDeletingProject === project.id"
               :aria-label="`编辑项目 ${project.name}`"
               @click="openEditProjectDialog(project.id)"
@@ -256,6 +277,12 @@ onBeforeUnmount(() => {
       :initial-description="editingProject?.description"
       @update:open="(value: boolean) => (editDialogOpen = value)"
       @submit="handleEditProjectSubmit"
+    />
+
+    <CodeImportDialog
+      :open="importDialogProjectId !== null"
+      :project="importDialogProject"
+      @update:open="(value: boolean) => !value && (importDialogProjectId = null)"
     />
   </div>
 </template>

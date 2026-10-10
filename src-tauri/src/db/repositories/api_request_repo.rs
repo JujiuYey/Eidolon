@@ -31,7 +31,7 @@ impl<'a> ApiRequestRepository<'a> {
                 .prepare(
                     "SELECT r.id, r.group_id, g.project_id, r.name, r.method, r.url, r.query_json,
                             r.headers_json, r.body_kind, r.body_text, r.body_form_json, r.timeout_ms,
-                            r.ai_prompt, r.ai_reference, r.sort, r.created_at, r.updated_at
+                            r.ai_prompt, r.ai_reference, r.external_key, r.sort, r.created_at, r.updated_at
                      FROM api_requests r
                      JOIN api_groups g ON g.id = r.group_id
                      WHERE g.project_id = ?1
@@ -81,6 +81,7 @@ impl<'a> ApiRequestRepository<'a> {
                 timeout_ms: DEFAULT_TIMEOUT_MS,
                 ai_prompt: String::new(),
                 ai_reference: String::new(),
+                external_key: None,
                 sort,
                 created_at: now,
                 updated_at: now,
@@ -156,6 +157,7 @@ impl<'a> ApiRequestRepository<'a> {
             let copy = ApiRequest {
                 id: format!("areq_{}", nanoid!(10)),
                 name: format!("{} 副本", source.name),
+                external_key: None,
                 sort,
                 created_at: now,
                 updated_at: now,
@@ -310,8 +312,9 @@ fn insert_request(transaction: &Transaction<'_>, request: &ApiRequest) -> Result
         .execute(
             "INSERT INTO api_requests
                 (id, group_id, name, method, url, query_json, headers_json, body_kind, body_text,
-                 body_form_json, timeout_ms, ai_prompt, ai_reference, sort, created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
+                 body_form_json, timeout_ms, ai_prompt, ai_reference, external_key, sort,
+                 created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
             params![
                 request.id,
                 request.group_id,
@@ -326,6 +329,7 @@ fn insert_request(transaction: &Transaction<'_>, request: &ApiRequest) -> Result
                 request.timeout_ms as i64,
                 request.ai_prompt,
                 request.ai_reference,
+                request.external_key,
                 request.sort,
                 request.created_at,
                 request.updated_at
@@ -339,7 +343,7 @@ fn insert_request(transaction: &Transaction<'_>, request: &ApiRequest) -> Result
 fn request_columns() -> &'static str {
     "r.id, r.group_id, g.project_id, r.name, r.method, r.url, r.query_json, r.headers_json,
      r.body_kind, r.body_text, r.body_form_json, r.timeout_ms, r.ai_prompt, r.ai_reference,
-     r.sort, r.created_at, r.updated_at"
+     r.external_key, r.sort, r.created_at, r.updated_at"
 }
 
 fn map_request(row: &Row<'_>) -> rusqlite::Result<Result<ApiRequest, String>> {
@@ -363,9 +367,10 @@ fn map_request(row: &Row<'_>) -> rusqlite::Result<Result<ApiRequest, String>> {
             timeout_ms: timeout_ms.max(0) as u64,
             ai_prompt: row.get(12)?,
             ai_reference: row.get(13)?,
-            sort: row.get(14)?,
-            created_at: row.get(15)?,
-            updated_at: row.get(16)?,
+            external_key: row.get(14)?,
+            sort: row.get(15)?,
+            created_at: row.get(16)?,
+            updated_at: row.get(17)?,
         })
     })();
 

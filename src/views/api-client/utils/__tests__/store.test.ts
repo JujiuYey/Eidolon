@@ -86,6 +86,7 @@ function makeRequest(overrides: Partial<ApiClientRequest> = {}): ApiClientReques
     timeoutMs: 5000,
     aiPrompt: '',
     aiReference: '',
+    externalKey: null,
     sort: 0,
     createdAt: 0,
     updatedAt: 0,

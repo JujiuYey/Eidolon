@@ -29,13 +29,14 @@ View (Vue SFC)  →  Store (Pinia, setup-style)  →  Service (TS)  →  Tauri C
 
 Key modules (frontend ↔ backend):
 
-| Frontend module                   | Backend command(s)                                                                                                                                          |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/services/api-client/*`       | `commands/api_client.rs`, `api_request.rs`, `api_generate.rs`, `test_connection.rs`                                                                         |
-| `src/services/pm.ts`              | `commands/pm.rs`, `services/pm_chat.rs`, `services/pm_skills.rs` (skills bundled at `src-tauri/resources/pm-skills/`, overridable via a settings directory) |
-| `src/services/docs.ts`            | `commands/docs.rs`, `services/docs.rs` (sandboxed via `services/work_directory.rs`)                                                                         |
-| `src/services/provider_config.ts` | `commands/model_config.rs`, `default_model.rs`, `test_connection.rs`                                                                                        |
-| `src/services/mcp_service.ts`     | `commands/mcp_service.rs`, `services/mcp_service.rs`                                                                                                        |
+| Frontend module                         | Backend command(s)                                                                                                                                          |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/services/api-client/*`             | `commands/api_client.rs`, `api_request.rs`, `api_generate.rs`, `test_connection.rs`                                                                         |
+| `src/services/api-client/code-import/*` | `commands/code_import.rs`, `services/code_export.rs` (框架适配器 vef-go：仓库内跑导出命令 + 单事务批量导入)                                                 |
+| `src/services/pm.ts`                    | `commands/pm.rs`, `services/pm_chat.rs`, `services/pm_skills.rs` (skills bundled at `src-tauri/resources/pm-skills/`, overridable via a settings directory) |
+| `src/services/docs.ts`                  | `commands/docs.rs`, `services/docs.rs` (sandboxed via `services/work_directory.rs`)                                                                         |
+| `src/services/provider_config.ts`       | `commands/model_config.rs`, `default_model.rs`, `test_connection.rs`                                                                                        |
+| `src/services/mcp_service.ts`           | `commands/mcp_service.rs`, `services/mcp_service.rs`                                                                                                        |
 
 ---
 
@@ -218,6 +219,7 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 - `src/stores/__tests__/mail.test.ts`
 - `src/views/api-client/__tests__/store.test.ts`
 - `src/views/api-client/utils/__tests__/{request,response,ai}-helpers.test.ts`
+- `src/services/api-client/code-import/__tests__/vef-go.test.ts`
 - `src/views/api-client-workspace/components/__tests__/build-group-tree.test.ts`
 - `src/views/mail/utils/__tests__/template-helpers.test.ts`
 - `src/views/weekly-report/utils/__tests__/report-helpers.test.ts`

@@ -49,6 +49,7 @@ export interface TauriRequest {
   timeout_ms: number;
   ai_prompt: string;
   ai_reference: string;
+  external_key: string | null;
   sort: number;
   created_at: number;
   updated_at: number;

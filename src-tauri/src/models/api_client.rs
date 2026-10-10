@@ -191,6 +191,10 @@ pub struct ApiRequest {
     #[serde(default)]
     pub ai_reference: String,
 
+    /// 代码导入身份（如 `smp/sys/user#find_page`）；手工创建的请求为 `None`
+    #[serde(default)]
+    pub external_key: Option<String>,
+
     #[serde(default)]
     pub sort: i64,
 
@@ -223,6 +227,94 @@ pub struct ApiEnvironment {
 
     #[serde(default)]
     pub updated_at: i64,
+}
+
+/// 代码导入源：项目与后端仓库的绑定（框架类型 + 本地路径）。
+/// 每个项目最多一条，再次导入时更新。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ApiImportSource {
+    #[serde(default)]
+    pub id: String,
+
+    #[serde(default)]
+    pub project_id: String,
+
+    #[serde(default)]
+    pub framework: String,
+
+    #[serde(default)]
+    pub repo_path: String,
+
+    #[serde(default)]
+    pub created_at: i64,
+
+    #[serde(default)]
+    pub updated_at: i64,
+}
+
+/// 代码导入的分组定义。`key` 由导入方（前端适配器）生成，
+/// 用于在导入事务中建立父子关系并让请求挂到分组上。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ImportGroupSpec {
+    #[serde(default)]
+    pub key: String,
+
+    #[serde(default)]
+    pub parent_key: Option<String>,
+
+    #[serde(default)]
+    pub name: String,
+}
+
+/// 代码导入的请求定义。`group_key` 引用 [`ImportGroupSpec::key`]，
+/// 事务内解析为真实分组 ID 后落库。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ImportRequestSpec {
+    #[serde(default)]
+    pub group_key: String,
+
+    #[serde(default)]
+    pub external_key: Option<String>,
+
+    #[serde(default)]
+    pub name: String,
+
+    #[serde(default = "default_method")]
+    pub method: String,
+
+    #[serde(default)]
+    pub url: String,
+
+    #[serde(default)]
+    pub query: Vec<KeyValueRow>,
+
+    #[serde(default)]
+    pub headers: Vec<KeyValueRow>,
+
+    #[serde(default)]
+    pub body: RequestBody,
+
+    #[serde(default = "default_timeout_ms")]
+    pub timeout_ms: u64,
+}
+
+/// 导入结果摘要，供前端展示
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ImportSummary {
+    #[serde(default)]
+    pub created_groups: i64,
+
+    #[serde(default)]
+    pub created_requests: i64,
+
+    #[serde(default)]
+    pub deleted_groups: i64,
+
+    #[serde(default)]
+    pub deleted_requests: i64,
+
+    #[serde(default)]
+    pub deleted_histories: i64,
 }
 
 /// 执行状态。4xx/5xx 属于收到的响应，与连接失败、超时、取消区分
