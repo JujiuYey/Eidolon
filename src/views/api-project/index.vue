@@ -24,7 +24,7 @@ const editDialogOpen = ref(false);
 const editingProjectId = ref<string | null>(null);
 const backendError = ref<string | null>(null);
 
-const sortedProjects = computed(() => [...store.projects].sort((a, b) => a.sort - b.sort));
+const sortedProjects = computed(() => store.sortedProjects);
 
 async function bootstrap(): Promise<void> {
   backendError.value = null;

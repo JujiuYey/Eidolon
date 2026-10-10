@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Network } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch as vueWatch } from 'vue';
-import { useRouter } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
@@ -107,6 +107,16 @@ async function promptUnsavedChange(): Promise<boolean> {
   }
   store.discardDraftChanges();
   return true;
+}
+
+onBeforeRouteLeave(() => guardUnsavedOnRouteChange());
+onBeforeRouteUpdate(() => guardUnsavedOnRouteChange());
+
+async function guardUnsavedOnRouteChange(): Promise<boolean> {
+  if (!store.isDirty) {
+    return true;
+  }
+  return promptUnsavedChange();
 }
 const pendingCreateGroupParent = ref<{ id: string; name: string } | null>(null);
 const renameGroupDialogOpen = ref(false);

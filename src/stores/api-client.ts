@@ -108,6 +108,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
   const searchKeyword = computed(() => requestListFilter.value.trim().toLowerCase());
 
   const activeProject = computed(() => projects.value.find(project => project.id === activeProjectId.value) ?? null);
+  const sortedProjects = computed(() => [...projects.value].sort((a, b) => a.sort - b.sort));
   const activeGroup = computed(() => groups.value.find(group => group.id === activeGroupId.value) ?? null);
   const activeEnvironment = computed(
     () => environments.value.find(env => env.id === activeEnvironmentId.value) ?? null,
@@ -958,6 +959,7 @@ export function createApiClientStore(options: CreateApiClientStoreOptions = {}) 
     requestListFilter,
     searchKeyword,
     activeProject,
+    sortedProjects,
     activeGroup,
     activeEnvironment,
     activeRequest,
