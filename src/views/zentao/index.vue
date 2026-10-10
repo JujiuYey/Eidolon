@@ -1,33 +1,75 @@
 <script setup lang="ts">
-import { Bug as BugIcon, CircleDotDashed, CloudOff, ListTodo, RefreshCw, Settings } from 'lucide-vue-next';
-import { computed, onMounted } from 'vue';
+import { Bug as BugIcon, CloudOff, Lightbulb, ListTodo, MessagesSquare, RefreshCw, Settings } from 'lucide-vue-next';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useZentaoStore } from '@/stores/zentao';
 import { getErrorMessage } from '@/utils/helpers';
 
 import BugList from './_components/bug-list.vue';
+import StoryList from './_components/story-list.vue';
 import TaskList from './_components/task-list.vue';
-import { formatTimestamp, sortBugs, sortTasks } from './utils/display';
+import { formatTimestamp, sortBugs, sortStories, sortTasks } from './utils/display';
 
 const store = useZentaoStore();
 const router = useRouter();
 
 const tasks = computed(() => store.myWork?.tasks ?? []);
 const bugs = computed(() => store.myWork?.bugs ?? []);
-const doingCount = computed(() => tasks.value.filter(task => task.status === 'doing').length);
+/** 研发需求（story）与用户需求（requirement）由同一份需求列表按类型拆分 */
+const devStories = computed(() => (store.myWork?.stories ?? []).filter(story => story.story_type === 'story'));
+const userStories = computed(() => (store.myWork?.stories ?? []).filter(story => story.story_type === 'requirement'));
 const hasAccount = computed(() => store.accounts.length > 0);
 
 const sortedTasks = computed(() => sortTasks(tasks.value));
 const sortedBugs = computed(() => sortBugs(bugs.value));
+const sortedDevStories = computed(() => sortStories(devStories.value));
+const sortedUserStories = computed(() => sortStories(userStories.value));
+
+/** 卡片即导航：点哪张卡，下方列表就展示哪类工作项 */
+type WorkSection = 'tasks' | 'dev-stories' | 'user-stories' | 'bugs';
+const activeSection = ref<WorkSection>('tasks');
+
+const workSections = computed(() => [
+  {
+    key: 'tasks' as const,
+    label: '进行中任务',
+    count: tasks.value.length,
+    icon: ListTodo,
+    tileClass: 'bg-primary/10',
+    iconClass: 'text-primary',
+  },
+  {
+    key: 'dev-stories' as const,
+    label: '研发需求',
+    count: devStories.value.length,
+    icon: Lightbulb,
+    tileClass: 'bg-primary/10',
+    iconClass: 'text-primary',
+  },
+  {
+    key: 'user-stories' as const,
+    label: '用户需求',
+    count: userStories.value.length,
+    icon: MessagesSquare,
+    tileClass: 'bg-primary/10',
+    iconClass: 'text-primary',
+  },
+  {
+    key: 'bugs' as const,
+    label: '未关闭 Bug',
+    count: bugs.value.length,
+    icon: BugIcon,
+    tileClass: 'bg-destructive/10',
+    iconClass: 'text-destructive',
+  },
+]);
 
 onMounted(async () => {
   try {
@@ -50,7 +92,10 @@ async function refreshWork(notify = true) {
     toast.warning(warning);
   }
   if (notify) {
-    toast.success(`已刷新：${tasks.value.length} 个任务、${bugs.value.length} 个 Bug`);
+    toast.success(
+      `已刷新：${tasks.value.length} 个任务、${bugs.value.length} 个 Bug、` +
+        `${devStories.value.length} 个研发需求、${userStories.value.length} 个用户需求`,
+    );
   }
 }
 
@@ -111,7 +156,7 @@ function goSettings() {
       <div class="space-y-1">
         <p class="text-sm font-medium">还没有配置禅道账户</p>
         <p class="max-w-sm text-xs text-muted-foreground">
-          在应用设置中添加禅道站点与登录账号后，即可在这里查看名下的任务与 Bug。
+          在应用设置中添加禅道站点与登录账号后，即可在这里查看名下的任务、Bug 与需求。
         </p>
       </div>
       <Button size="sm" @click="goSettings">
@@ -121,47 +166,33 @@ function goSettings() {
     </div>
 
     <template v-else>
-      <!-- 统计卡 -->
-      <div v-if="store.myWork" class="grid grid-cols-3 gap-3 px-6 pt-4">
-        <Card class="py-4">
-          <CardContent class="flex items-center gap-3 px-4">
-            <div class="flex size-9 items-center justify-center rounded-md bg-primary/10">
-              <ListTodo class="size-4.5 text-primary" />
-            </div>
-            <div>
-              <p class="text-xl leading-none font-semibold tabular-nums">
-                {{ tasks.length }}
-              </p>
-              <p class="mt-1 text-xs text-muted-foreground">进行中任务</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card class="py-4">
-          <CardContent class="flex items-center gap-3 px-4">
-            <div class="flex size-9 items-center justify-center rounded-md bg-primary/10">
-              <CircleDotDashed class="size-4.5 text-primary" />
-            </div>
-            <div>
-              <p class="text-xl leading-none font-semibold tabular-nums">
-                {{ doingCount }}
-              </p>
-              <p class="mt-1 text-xs text-muted-foreground">正在开发</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card class="py-4">
-          <CardContent class="flex items-center gap-3 px-4">
-            <div class="flex size-9 items-center justify-center rounded-md bg-destructive/10">
-              <BugIcon class="size-4.5 text-destructive" />
-            </div>
-            <div>
-              <p class="text-xl leading-none font-semibold tabular-nums">
-                {{ bugs.length }}
-              </p>
-              <p class="mt-1 text-xs text-muted-foreground">未关闭 Bug</p>
-            </div>
-          </CardContent>
-        </Card>
+      <!-- 统计卡即导航：点击切换下方列表 -->
+      <div v-if="store.myWork" class="grid grid-cols-2 gap-3 px-6 pt-4 sm:grid-cols-4">
+        <button
+          v-for="section of workSections"
+          :key="section.key"
+          type="button"
+          class="rounded-xl text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          :aria-pressed="activeSection === section.key"
+          @click="activeSection = section.key"
+        >
+          <Card
+            class="py-4 transition-colors"
+            :class="activeSection === section.key ? 'border-primary/50 bg-primary/5' : 'hover:border-ring/40'"
+          >
+            <CardContent class="flex items-center gap-3 px-4">
+              <div class="flex size-9 items-center justify-center rounded-md" :class="section.tileClass">
+                <component :is="section.icon" class="size-4.5" :class="section.iconClass" />
+              </div>
+              <div>
+                <p class="text-xl leading-none font-semibold tabular-nums">
+                  {{ section.count }}
+                </p>
+                <p class="mt-1 text-xs text-muted-foreground">{{ section.label }}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </button>
       </div>
 
       <Separator class="mt-5" />
@@ -194,43 +225,46 @@ function goSettings() {
           <p class="text-sm">正在从禅道拉取数据…</p>
         </div>
 
-        <Tabs v-else default-value="tasks" class="gap-4">
-          <TabsList>
-            <TabsTrigger value="tasks">
-              我的任务
-              <Badge v-if="tasks.length" variant="secondary" class="ml-1">
-                {{ tasks.length }}
-              </Badge>
-            </TabsTrigger>
-            <TabsTrigger value="bugs">
-              我的 Bug
-              <Badge v-if="bugs.length" variant="secondary" class="ml-1">
-                {{ bugs.length }}
-              </Badge>
-            </TabsTrigger>
-          </TabsList>
+        <template v-if="activeSection === 'tasks'">
+          <div
+            v-if="tasks.length === 0"
+            class="flex flex-col items-center justify-center gap-1 py-20 text-muted-foreground"
+          >
+            <p class="text-sm">没有进行中的任务</p>
+            <p class="text-xs">休息一下吧</p>
+          </div>
+          <TaskList v-else :tasks="sortedTasks" />
+        </template>
 
-          <TabsContent value="tasks">
-            <div
-              v-if="tasks.length === 0"
-              class="flex flex-col items-center justify-center gap-1 py-20 text-muted-foreground"
-            >
-              <p class="text-sm">没有进行中的任务</p>
-              <p class="text-xs">休息一下吧</p>
-            </div>
-            <TaskList v-else :tasks="sortedTasks" />
-          </TabsContent>
+        <template v-else-if="activeSection === 'dev-stories'">
+          <div
+            v-if="devStories.length === 0"
+            class="flex flex-col items-center justify-center gap-1 py-20 text-muted-foreground"
+          >
+            <p class="text-sm">没有指派给你的研发需求</p>
+          </div>
+          <StoryList v-else :stories="sortedDevStories" />
+        </template>
 
-          <TabsContent value="bugs">
-            <div
-              v-if="bugs.length === 0"
-              class="flex flex-col items-center justify-center gap-1 py-20 text-muted-foreground"
-            >
-              <p class="text-sm">没有未关闭的 Bug</p>
-            </div>
-            <BugList v-else :bugs="sortedBugs" />
-          </TabsContent>
-        </Tabs>
+        <template v-else-if="activeSection === 'user-stories'">
+          <div
+            v-if="userStories.length === 0"
+            class="flex flex-col items-center justify-center gap-1 py-20 text-muted-foreground"
+          >
+            <p class="text-sm">没有指派给你的用户需求</p>
+          </div>
+          <StoryList v-else :stories="sortedUserStories" />
+        </template>
+
+        <template v-else>
+          <div
+            v-if="bugs.length === 0"
+            class="flex flex-col items-center justify-center gap-1 py-20 text-muted-foreground"
+          >
+            <p class="text-sm">没有未关闭的 Bug</p>
+          </div>
+          <BugList v-else :bugs="sortedBugs" />
+        </template>
       </div>
     </template>
   </div>

@@ -20,6 +20,14 @@ pub const CLOSED_BUG_STATUS: &str = "closed";
 /// 视为"活跃"的执行状态，已关闭执行不再拉取任务
 pub const ACTIVE_EXECUTION_STATUSES: [&str; 2] = ["wait", "doing"];
 
+/// 需求类型：story = 研发需求，requirement = 用户需求
+/// （禅道把用户需求存为 `type='requirement'` 的需求，v1 API 无独立路由）
+pub const STORY_TYPE_STORY: &str = "story";
+pub const STORY_TYPE_REQUIREMENT: &str = "requirement";
+
+/// 视为"未关闭"的需求状态：assignedTo 是我且未关闭就算我的需求
+pub const CLOSED_STORY_STATUS: &str = "closed";
+
 // ===== 禅道 API 原始结构 =====
 
 /// 人员字段：任务列表是 `{account, realname}` 对象，Bug 列表是纯账号字符串
@@ -183,6 +191,56 @@ pub struct ZentaoApiBug {
     pub execution: i64,
 }
 
+/// 产品列表项，`/api.php/v1/products`；需求按产品维度展开
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ZentaoApiProduct {
+    #[serde(default, deserialize_with = "deserialize_flexible_i64")]
+    pub id: i64,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub name: String,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub status: String,
+}
+
+/// 需求列表项，`/api.php/v1/products/{id}/stories?type=all`
+///
+/// 怪癖：`type` 是关键字需 rename；`estimate` 实测下发字符串 `"0.00"`；
+/// `parent` 字段可能是数组或数字，但本结构不消费它（serde 忽略未知字段）；
+/// 需求没有 deadline 字段。
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ZentaoApiStory {
+    #[serde(default, deserialize_with = "deserialize_flexible_i64")]
+    pub id: i64,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub title: String,
+    #[serde(default, deserialize_with = "deserialize_flexible_i64")]
+    pub pri: i64,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub status: String,
+    /// 研发阶段（wait/projected/developing/developed/…）
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub stage: String,
+    /// story = 研发需求，requirement = 用户需求
+    #[serde(
+        default,
+        deserialize_with = "deserialize_nullable_string",
+        rename = "type"
+    )]
+    pub story_type: String,
+    #[serde(default, deserialize_with = "deserialize_zentao_user")]
+    pub assigned_to: ZentaoApiUser,
+    #[serde(default, deserialize_with = "deserialize_flexible_i64")]
+    pub product: i64,
+    #[serde(default, deserialize_with = "deserialize_flexible_f64")]
+    pub estimate: f64,
+    #[serde(default, deserialize_with = "deserialize_zentao_user")]
+    pub opened_by: ZentaoApiUser,
+    #[serde(default, deserialize_with = "deserialize_nullable_string")]
+    pub opened_date: String,
+}
+
 // ===== 前端 DTO =====
 
 /// 禅道账户（对应 `zentao_accounts` 表）
@@ -259,6 +317,28 @@ pub struct ZentaoBug {
     pub execution_name: String,
 }
 
+/// 指派给当前用户的需求（研发需求 / 用户需求同结构，`story_type` 区分）
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct ZentaoStory {
+    pub id: i64,
+    pub title: String,
+    pub pri: i64,
+    pub status: String,
+    /// 研发阶段（wait/projected/developing/developed/…）
+    pub stage: String,
+    /// story = 研发需求，requirement = 用户需求
+    pub story_type: String,
+    pub assigned_to: ZentaoUser,
+    pub product: i64,
+    /// 所属产品名称，由服务层从产品列表回填
+    pub product_name: String,
+    /// 预计工时
+    pub estimate: f64,
+    pub opened_by: ZentaoUser,
+    pub opened_date: String,
+}
+
 /// 禅道用户（统一为对象形态暴露给前端）
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -280,14 +360,15 @@ impl ZentaoUser {
     }
 }
 
-/// "我的工作台"聚合结果：当前账户名下的任务与 Bug
+/// "我的工作台"聚合结果：当前账户名下的任务、Bug 与需求
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct ZentaoMyWork {
     pub account_id: String,
     pub tasks: Vec<ZentaoTask>,
     pub bugs: Vec<ZentaoBug>,
-    /// 非致命告警（如个别执行拉取失败），不阻断整体结果
+    pub stories: Vec<ZentaoStory>,
+    /// 非致命告警（如个别执行/产品拉取失败），不阻断整体结果
     pub warnings: Vec<String>,
     /// 拉取完成时间，Unix 毫秒
     pub fetched_at: i64,
@@ -319,6 +400,18 @@ pub fn filter_my_bugs<'a>(
         .filter(|bug| {
             bug.assigned_to.account == account && bug.status != CLOSED_BUG_STATUS
         })
+        .cloned()
+        .collect()
+}
+
+/// 过滤出分配给 `account` 且未关闭的需求（研发 + 用户两类）
+pub fn filter_my_stories<'a>(
+    stories: impl IntoIterator<Item = &'a ZentaoApiStory>,
+    account: &str,
+) -> Vec<ZentaoApiStory> {
+    stories
+        .into_iter()
+        .filter(|story| story.assigned_to.account == account && story.status != CLOSED_STORY_STATUS)
         .cloned()
         .collect()
 }
@@ -367,6 +460,25 @@ mod tests {
         }
     }
 
+    fn story(id: i64, account: &str, status: &str, story_type: &str) -> ZentaoApiStory {
+        ZentaoApiStory {
+            id,
+            title: format!("需求{id}"),
+            pri: 3,
+            status: status.to_string(),
+            stage: "projected".to_string(),
+            story_type: story_type.to_string(),
+            assigned_to: ZentaoApiUser {
+                account: account.to_string(),
+                realname: String::new(),
+            },
+            product: 15,
+            estimate: 0.0,
+            opened_by: ZentaoApiUser::default(),
+            opened_date: String::new(),
+        }
+    }
+
     #[test]
     fn filter_tasks_keeps_only_active_mine() {
         let tasks = [
@@ -404,6 +516,51 @@ mod tests {
         let mine = filter_my_bugs(&bugs, "hjc");
         let ids: Vec<i64> = mine.iter().map(|item| item.id).collect();
         assert_eq!(ids, vec![1, 2]);
+    }
+
+    #[test]
+    fn filter_stories_keeps_unclosed_mine_both_types() {
+        let stories = [
+            story(1, "hjc", "active", STORY_TYPE_STORY),
+            story(2, "hjc", "reviewing", STORY_TYPE_REQUIREMENT),
+            story(3, "hjc", "draft", STORY_TYPE_STORY),
+            story(4, "hjc", "closed", STORY_TYPE_STORY),
+            story(5, "lwb", "active", STORY_TYPE_STORY),
+        ];
+
+        let mine = filter_my_stories(&stories, "hjc");
+        let ids: Vec<i64> = mine.iter().map(|item| item.id).collect();
+        assert_eq!(ids, vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn deserialize_story_tolerates_real_payload_shapes() {
+        // 2026-10 对禅道 22.4 实测的形态：estimate 是字符串、
+        // assignedTo/openedBy 是对象、parent 是数组、type 是关键字
+        let raw = r#"{
+            "id": "2146",
+            "title": "清镇妇幼总检诊断合并跟拆分后建议编辑的建议重置了",
+            "type": "requirement",
+            "status": "reviewing",
+            "stage": "wait",
+            "pri": "3",
+            "estimate": "0.00",
+            "parent": [],
+            "grade": 1,
+            "product": 1,
+            "plan": "0",
+            "assignedTo": {"id": 19, "account": "hjc", "realname": "胡建成"},
+            "openedBy": {"id": 85, "account": "zxc", "realname": "周星才"},
+            "openedDate": "2026-10-08T03:18:43Z"
+        }"#;
+
+        let story: ZentaoApiStory = serde_json::from_str(raw).unwrap();
+        assert_eq!(story.id, 2146);
+        assert_eq!(story.story_type, "requirement");
+        assert_eq!(story.pri, 3);
+        assert_eq!(story.estimate, 0.0);
+        assert_eq!(story.assigned_to.account, "hjc");
+        assert_eq!(story.opened_by.realname, "周星才");
     }
 
     #[test]

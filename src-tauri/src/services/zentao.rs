@@ -1,28 +1,35 @@
 //! 禅道 REST API v1 客户端。
 //!
-//! 负责：登录 token 的获取与内存缓存（失效自动重取一次）、执行/任务/Bug 的
-//! 分页拉取、"我的"数据过滤。禅道列表接口会忽略查询参数，过滤一律在客户端做。
+//! 负责：登录 token 的获取与内存缓存（失效自动重取一次）、执行/任务/Bug/产品/需求
+//! 的分页拉取、"我的"数据过滤。禅道列表接口大多忽略查询参数，过滤一律在客户端做；
+//! 例外是需求列表的 `type` 过滤真实生效（且此时分页 total 不可信）。
 //!
 //! 接口实测结论（2026-10，禅道 22.4）：
 //! - `POST /api.php/v1/tokens` 换 token，请求头 `Token: <token>` 携带
-//! - `GET /api.php/v1/executions`、`/executions/{id}/tasks|bugs` 均为
-//!   `{page, total, limit, <资源>}` 分页包装，每页上限 100
+//! - `GET /api.php/v1/executions`、`/executions/{id}/tasks|bugs`、
+//!   `/products`、`/products/{id}/stories` 均为 `{page, total, limit, <资源>}`
+//!   分页包装，每页上限 100
 //! - v1 没有"我的任务"用户维度路由，需按执行展开后过滤 `assignedTo`
+//! - 用户需求不是独立资源，是 `type='requirement'` 的需求（研发需求为
+//!   `type='story'`），`/urstories` 等路由不存在；需求挂产品下，用
+//!   `?type=all` 一次拉全
+//! - 无权限的执行/产品会把失败提示与真实数据拼成连体 JSON
+//!   （`{"status":"fail",…}{…数据…}`），解析需宽容处理
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-use futures_util::future::join;
+use futures_util::future::{join, join_all};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
 use crate::db::api_client::ApiClientDatabase;
 use crate::db::repositories::zentao_account_repo::ZentaoAccountRepository;
 use crate::models::zentao::{
-    filter_my_bugs, filter_my_tasks, ZentaoAccount, ZentaoApiBug, ZentaoApiExecution,
-    ZentaoApiTask, ZentaoBug, ZentaoMyWork, ZentaoTask, ZentaoUser,
-    ACTIVE_EXECUTION_STATUSES,
+    filter_my_bugs, filter_my_stories, filter_my_tasks, ZentaoAccount, ZentaoApiBug,
+    ZentaoApiExecution, ZentaoApiProduct, ZentaoApiStory, ZentaoApiTask, ZentaoBug, ZentaoMyWork,
+    ZentaoStory, ZentaoTask, ZentaoUser, ACTIVE_EXECUTION_STATUSES,
 };
 
 const API_PREFIX: &str = "/api.php/v1";
@@ -63,6 +70,22 @@ struct BugPage {
     total: i64,
     #[serde(default)]
     bugs: Vec<ZentaoApiBug>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ProductPage {
+    #[serde(default)]
+    total: i64,
+    #[serde(default)]
+    products: Vec<ZentaoApiProduct>,
+}
+
+#[derive(Debug, Deserialize)]
+struct StoryPage {
+    #[serde(default)]
+    total: i64,
+    #[serde(default)]
+    stories: Vec<ZentaoApiStory>,
 }
 
 struct CachedToken {
@@ -107,9 +130,10 @@ impl ZentaoClient {
         self.request_token(&base, &probe).await.map(|_| ())
     }
 
-    /// 拉取"我的工作台"：当前账户名下的进行中任务与未关闭 Bug。
+    /// 拉取"我的工作台"：当前账户名下的进行中任务、未关闭 Bug 与指派给我的需求。
     ///
-    /// 只展开活跃执行（wait/doing）；单个执行失败不阻断整体，记入 warnings。
+    /// 任务/Bug 只展开活跃执行（wait/doing），需求按产品展开（需求挂产品下，
+    /// 指派时可能尚未关联执行）；单个执行/产品失败不阻断整体，记入 warnings。
     pub async fn fetch_my_work(
         &self,
         database: &ApiClientDatabase,
@@ -139,18 +163,13 @@ impl ZentaoClient {
         {
             let tasks_path = format!("/executions/{}/tasks", execution.id);
             let bugs_path = format!("/executions/{}/bugs", execution.id);
-            let task_future = self.fetch_all_pages(
-                &base,
-                &account,
-                &tasks_path,
-                |page: TaskPage| (page.total, page.tasks),
-            );
-            let bug_future = self.fetch_all_pages(
-                &base,
-                &account,
-                &bugs_path,
-                |page: BugPage| (page.total, page.bugs),
-            );
+            let task_future =
+                self.fetch_all_pages(&base, &account, tasks_path, |page: TaskPage| {
+                    (page.total, page.tasks)
+                });
+            let bug_future = self.fetch_all_pages(&base, &account, bugs_path, |page: BugPage| {
+                (page.total, page.bugs)
+            });
 
             let (task_result, bug_result) = join(task_future, bug_future).await;
 
@@ -211,10 +230,67 @@ impl ZentaoClient {
             })
             .collect();
 
+        // 需求按产品展开；`type=all` 同时携带研发需求与用户需求
+        let products = self
+            .fetch_all_pages(
+                &base,
+                &account,
+                "/products".to_string(),
+                |page: ProductPage| (page.total, page.products),
+            )
+            .await?;
+        let product_names: HashMap<i64, String> = products
+            .iter()
+            .map(|product| (product.id, product.name.clone()))
+            .collect();
+
+        let story_futures = products.iter().map(|product| {
+            self.fetch_all_pages(
+                &base,
+                &account,
+                format!("/products/{}/stories?type=all", product.id),
+                |page: StoryPage| (page.total, page.stories),
+            )
+        });
+        let story_results = join_all(story_futures).await;
+
+        let mut api_stories = Vec::new();
+        for (product, result) in products.iter().zip(story_results) {
+            match result {
+                Ok(stories) => api_stories.extend(stories),
+                Err(error) => warnings.push(format!("拉取产品「{}」失败: {error}", product.name)),
+            }
+        }
+
+        // 不同产品间理论上去重不会命中，这里防御 product 归属异常的脏数据
+        let mut seen_story_ids = HashSet::new();
+        api_stories.retain(|story| seen_story_ids.insert(story.id));
+        let my_stories = filter_my_stories(&api_stories, &account.account)
+            .into_iter()
+            .map(|story| ZentaoStory {
+                id: story.id,
+                title: story.title,
+                pri: story.pri,
+                status: story.status,
+                stage: story.stage,
+                story_type: story.story_type,
+                assigned_to: ZentaoUser::from_api(&story.assigned_to),
+                product: story.product,
+                product_name: product_names
+                    .get(&story.product)
+                    .cloned()
+                    .unwrap_or_default(),
+                estimate: story.estimate,
+                opened_by: ZentaoUser::from_api(&story.opened_by),
+                opened_date: story.opened_date,
+            })
+            .collect();
+
         Ok(ZentaoMyWork {
             account_id: account_id.to_string(),
             tasks,
             bugs,
+            stories: my_stories,
             warnings,
             fetched_at: chrono::Utc::now().timestamp_millis(),
         })
@@ -225,18 +301,24 @@ impl ZentaoClient {
         base: &str,
         account: &ZentaoAccount,
     ) -> Result<Vec<ZentaoApiExecution>, String> {
-        self.fetch_all_pages(base, account, "/executions", |page: ExecutionPage| {
-            (page.total, page.executions)
-        })
+        self.fetch_all_pages(
+            base,
+            account,
+            "/executions".to_string(),
+            |page: ExecutionPage| (page.total, page.executions),
+        )
         .await
     }
 
-    /// 分页拉取一个列表资源，直到取满 total 或到达翻页上限
+    /// 分页拉取一个列表资源，直到取满 total、取到不满页或到达翻页上限
+    ///
+    /// total 兜底：部分列表（如需求 `type` 过滤）的 total 不可信（实测偏小），
+    /// 因此只要整页取满就继续翻页，避免 total 偏小导致漏数据
     async fn fetch_all_pages<P, T, F>(
         &self,
         base: &str,
         account: &ZentaoAccount,
-        path: &str,
+        path: String,
         mut extract: F,
     ) -> Result<Vec<T>, String>
     where
@@ -244,21 +326,21 @@ impl ZentaoClient {
         F: FnMut(P) -> (i64, Vec<T>),
     {
         let mut items = Vec::new();
-        // 首页返回前不知道 total，先用哨兵值保证至少请求一页
-        let mut total = i64::MAX;
         let mut page = 1u64;
 
-        while (items.len() as i64) < total && page <= MAX_PAGES {
+        while page <= MAX_PAGES {
             let separator = if path.contains('?') { '&' } else { '?' };
             let resource_path = format!("{path}{separator}page={page}&limit={PAGE_LIMIT}");
             let page_data: P = self.get_with_retry(base, &resource_path, account).await?;
-            let (page_total, mut page_items) = extract(page_data);
-            total = page_total;
+            let (total, mut page_items) = extract(page_data);
 
             let fetched = page_items.len();
             items.append(&mut page_items);
 
             if fetched == 0 {
+                break;
+            }
+            if (items.len() as i64) >= total && fetched < PAGE_LIMIT as usize {
                 break;
             }
             page += 1;
@@ -366,13 +448,40 @@ impl ZentaoClient {
             ));
         }
 
-        serde_json::from_str(&body).map_err(|error| {
-            format!(
-                "解析禅道响应失败 ({path}): {error}: {}",
-                truncate(&body, 200)
-            )
-        })
+        parse_lenient(&body, path)
     }
+}
+
+/// 解析响应 JSON 为目标类型。
+///
+/// 禅道在权限不足等场景会把失败提示与真实数据拼成连体 JSON
+/// （`{"status":"fail",…}{…数据…}`），严格解析会直接报"尾随字符"错误。
+/// 这里解析出全部文档后从后往前取第一个非失败文档；若只剩失败文档，
+/// 优先把禅道的失败原因作为错误信息返回。
+fn parse_lenient<T: DeserializeOwned>(body: &str, path: &str) -> Result<T, String> {
+    let mut documents: Vec<serde_json::Value> = serde_json::Deserializer::from_str(body)
+        .into_iter::<serde_json::Value>()
+        .map_while(Result::ok)
+        .collect();
+
+    let mut fail_message = None;
+    while let Some(document) = documents.pop() {
+        if document.get("status").and_then(serde_json::Value::as_str) == Some("fail") {
+            fail_message = document
+                .get("message")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string);
+            continue;
+        }
+        if let Ok(parsed) = T::deserialize(document) {
+            return Ok(parsed);
+        }
+    }
+
+    Err(match fail_message {
+        Some(message) => format!("禅道接口 {path} 失败: {message}"),
+        None => format!("解析禅道响应失败 ({path}): {}", truncate(body, 200)),
+    })
 }
 
 /// 连接类失败时补充平台指引：macOS 对第三方应用强制"本地网络"权限，
@@ -438,5 +547,45 @@ mod tests {
         let truncated = truncate(&long, 200);
         assert!(truncated.ends_with('…'));
         assert!(truncated.chars().count() <= 201);
+    }
+
+    #[test]
+    fn parse_lenient_reads_single_document() {
+        let page: TaskPage = parse_lenient(
+            r#"{"page":1,"total":2,"limit":100,"tasks":[{"id":5}]}"#,
+            "/tasks",
+        )
+        .unwrap();
+        assert_eq!(page.total, 2);
+        assert_eq!(page.tasks.len(), 1);
+    }
+
+    #[test]
+    fn parse_lenient_skips_fail_document_before_data() {
+        // 实测的无权限响应：失败提示与真实数据拼成连体 JSON
+        let body = r#"{"status":"fail","message":"您无权访问该迭代！"}{"page":1,"total":1,"limit":100,"tasks":[{"id":7}]}"#;
+        let page: TaskPage = parse_lenient(body, "/executions/1/tasks").unwrap();
+        assert_eq!(page.total, 1);
+        assert_eq!(page.tasks[0].id, 7);
+    }
+
+    #[test]
+    fn parse_lenient_reports_zentao_fail_reason_when_no_data() {
+        let body = r#"{"status":"fail","message":"您无权访问该迭代！"}"#;
+        let error = parse_lenient::<TaskPage>(body, "/executions/1/tasks").unwrap_err();
+        assert!(error.contains("您无权访问该迭代"), "actual: {error}");
+    }
+
+    #[test]
+    fn parse_lenient_ignores_trailing_noise() {
+        let body = r#"{"page":1,"total":0,"limit":100,"bugs":[]} 尾部噪声"#;
+        let page: BugPage = parse_lenient(body, "/bugs").unwrap();
+        assert!(page.bugs.is_empty());
+    }
+
+    #[test]
+    fn parse_lenient_fails_on_garbage_input() {
+        let error = parse_lenient::<TaskPage>("not json at all", "/tasks").unwrap_err();
+        assert!(error.contains("解析禅道响应失败"), "actual: {error}");
     }
 }

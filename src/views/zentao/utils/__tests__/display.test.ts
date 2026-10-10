@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ZentaoBug, ZentaoTask } from '@/types/zentao';
+import type { ZentaoBug, ZentaoStory, ZentaoTask } from '@/types/zentao';
 
 import {
   bugStatusLabel,
@@ -12,7 +12,10 @@ import {
   resolutionLabel,
   severityLabel,
   sortBugs,
+  sortStories,
   sortTasks,
+  storyStageLabel,
+  storyStatusLabel,
   taskStatusLabel,
 } from '../display';
 
@@ -53,6 +56,24 @@ function buildBug(overrides: Partial<ZentaoBug> = {}): ZentaoBug {
   };
 }
 
+function buildStory(overrides: Partial<ZentaoStory> = {}): ZentaoStory {
+  return {
+    id: 1,
+    title: '需求',
+    pri: 3,
+    status: 'active',
+    stage: 'projected',
+    story_type: 'story',
+    assigned_to: { account: 'hjc', realname: '胡建成' },
+    product: 15,
+    product_name: '培训考试管理系统',
+    estimate: 0,
+    opened_by: { account: 'zxc', realname: '周星才' },
+    opened_date: '2026-10-08T03:18:43Z',
+    ...overrides,
+  };
+}
+
 describe('zentao display labels', () => {
   it('maps task statuses to chinese labels', () => {
     expect(taskStatusLabel('wait')).toBe('未开始');
@@ -67,6 +88,19 @@ describe('zentao display labels', () => {
     expect(resolutionLabel('willnotfix')).toBe('不予解决');
     expect(resolutionLabel('')).toBe('');
     expect(resolutionLabel('custom')).toBe('custom');
+  });
+
+  it('maps story statuses and stages', () => {
+    expect(storyStatusLabel('draft')).toBe('草稿');
+    expect(storyStatusLabel('reviewing')).toBe('评审中');
+    expect(storyStatusLabel('active')).toBe('激活');
+    expect(storyStatusLabel('unknown')).toBe('unknown');
+    expect(storyStageLabel('wait')).toBe('未开始');
+    expect(storyStageLabel('projected')).toBe('已计划');
+    expect(storyStageLabel('planned')).toBe('已排期');
+    expect(storyStageLabel('developing')).toBe('研发中');
+    expect(storyStageLabel('released')).toBe('已发布');
+    expect(storyStageLabel('mystery')).toBe('mystery');
   });
 
   it('formats priority and severity', () => {
@@ -135,5 +169,16 @@ describe('sortTasks / sortBugs', () => {
     ];
     const sorted = sortBugs(bugs);
     expect(sorted.map(bug => bug.id)).toEqual([3, 2, 1]);
+  });
+
+  it('sorts stories by priority then type then id', () => {
+    const stories = [
+      buildStory({ id: 5, pri: 3, story_type: 'requirement' }),
+      buildStory({ id: 4, pri: 2, story_type: 'story' }),
+      buildStory({ id: 8, pri: 3, story_type: 'story' }),
+      buildStory({ id: 6, pri: 3, story_type: 'story' }),
+    ];
+    const sorted = sortStories(stories);
+    expect(sorted.map(story => story.id)).toEqual([4, 6, 8, 5]);
   });
 });

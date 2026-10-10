@@ -61,7 +61,7 @@ pub async fn test_zentao_connection(
     })
 }
 
-/// 拉取"我的工作台"：进行中任务 + 未关闭 Bug（客户端过滤）
+/// 拉取"我的工作台"：进行中任务 + 未关闭 Bug + 指派给我的需求（客户端过滤）
 #[tauri::command]
 pub async fn fetch_zentao_my_work(
     database: tauri::State<'_, ApiClientDatabase>,

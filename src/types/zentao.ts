@@ -69,11 +69,35 @@ export interface ZentaoBug {
   execution_name: string;
 }
 
+/** 指派给当前用户的需求（研发/用户需求同结构，`story_type` 区分） */
+export interface ZentaoStory {
+  id: number;
+  title: string;
+  pri: number;
+  /** draft / reviewing / active / changing / closed */
+  status: string;
+  /** 研发阶段：wait / projected / planned / developing / developed… */
+  stage: string;
+  /** story = 研发需求，requirement = 用户需求 */
+  story_type: string;
+  assigned_to: ZentaoUser;
+  product: number;
+  /** 所属产品名称，后端已从产品列表回填 */
+  product_name: string;
+  /** 预计工时 */
+  estimate: number;
+  opened_by: ZentaoUser;
+  /** ISO 时间串 */
+  opened_date: string;
+}
+
 /** "我的工作台"聚合结果 */
 export interface ZentaoMyWork {
   account_id: string;
   tasks: ZentaoTask[];
   bugs: ZentaoBug[];
+  /** 指派给我的需求（研发 + 用户两类） */
+  stories: ZentaoStory[];
   /** 非致命告警（如个别执行拉取失败） */
   warnings: string[];
   /** 拉取完成时间，Unix 毫秒 */

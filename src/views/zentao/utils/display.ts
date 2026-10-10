@@ -4,7 +4,7 @@
  * 状态/优先级文案与徽章变体、逾期判断、工时与时间格式化、列表排序。
  */
 
-import type { ZentaoBug, ZentaoTask } from '@/types/zentao';
+import type { ZentaoBug, ZentaoStory, ZentaoTask } from '@/types/zentao';
 
 /** 任务状态 → 中文文案 */
 export const TASK_STATUS_LABELS: Record<string, string> = {
@@ -36,6 +36,30 @@ export const RESOLUTION_LABELS: Record<string, string> = {
   willnotfix: '不予解决',
 };
 
+/** 需求状态 → 中文文案 */
+export const STORY_STATUS_LABELS: Record<string, string> = {
+  draft: '草稿',
+  reviewing: '评审中',
+  active: '激活',
+  changing: '变更中',
+  closed: '已关闭',
+};
+
+/** 需求研发阶段 → 中文文案（planned/scheduled 禅道两版都用过） */
+export const STORY_STAGE_LABELS: Record<string, string> = {
+  wait: '未开始',
+  projected: '已计划',
+  planned: '已排期',
+  scheduled: '已排期',
+  developing: '研发中',
+  developed: '研发完毕',
+  testing: '测试中',
+  tested: '测试完毕',
+  verified: '已验收',
+  released: '已发布',
+  closed: '已关闭',
+};
+
 export function taskStatusLabel(status: string): string {
   return TASK_STATUS_LABELS[status] ?? status;
 }
@@ -46,6 +70,14 @@ export function bugStatusLabel(status: string): string {
 
 export function resolutionLabel(resolution: string): string {
   return RESOLUTION_LABELS[resolution] ?? resolution;
+}
+
+export function storyStatusLabel(status: string): string {
+  return STORY_STATUS_LABELS[status] ?? status;
+}
+
+export function storyStageLabel(stage: string): string {
+  return STORY_STAGE_LABELS[stage] ?? stage;
 }
 
 /** 优先级徽章：P1 最紧急。0 视为未设置 */
@@ -135,6 +167,19 @@ export function sortBugs(bugs: ZentaoBug[]): ZentaoBug[] {
     }
     if (a.pri !== b.pri) {
       return a.pri - b.pri;
+    }
+    return a.id - b.id;
+  });
+}
+
+/** 需求排序：优先级升序 → 研发需求在前 → id 升序 */
+export function sortStories(stories: ZentaoStory[]): ZentaoStory[] {
+  return [...stories].sort((a, b) => {
+    if (a.pri !== b.pri) {
+      return a.pri - b.pri;
+    }
+    if (a.story_type !== b.story_type) {
+      return a.story_type === 'requirement' ? 1 : -1;
     }
     return a.id - b.id;
   });
