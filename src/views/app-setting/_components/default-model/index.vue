@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
-import { Info, SlidersHorizontal } from 'lucide-vue-next';
+import { Info, SlidersHorizontal, Sparkles } from 'lucide-vue-next';
 import { PROVIDER_REGISTRY } from '@/config/provider-registry';
 import {
   listDefaultModelSettings,
@@ -21,6 +21,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -268,8 +270,6 @@ function applyDefaultModelState(
   settings: DefaultModelSetting[],
   options: ModelOption[],
 ) {
-  const fallbackValue = options[0]?.value ?? '';
-
   cards.forEach(card => {
     const savedSetting = settings.find(setting => setting.key === card.key);
     const matchedOption = savedSetting
@@ -279,7 +279,8 @@ function applyDefaultModelState(
         )
       : null;
 
-    selectedModels[card.key] = matchedOption?.value ?? fallbackValue;
+    // 只回显真正保存过的选择；没保存过就留空，避免"看着已配置、其实没落盘"
+    selectedModels[card.key] = matchedOption?.value ?? '';
 
     parameterForms[card.key] = savedSetting
       ? {
@@ -351,90 +352,110 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-5">
-    <section
-      v-for="card of cards"
-      :key="card.key"
-      class="rounded-[26px] border bg-card px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
-    >
-      <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
-        <span>{{ card.title }}</span>
-        <Info
-          v-if="card.showInfo"
-          class="h-4 w-4 text-muted-foreground"
-        />
-      </div>
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+    <div class="flex items-center gap-2 px-4 py-3">
+      <Sparkles class="h-4 w-4 text-primary" />
+      <h2 class="text-sm font-semibold">
+        默认模型
+      </h2>
+    </div>
+    <Separator />
 
-      <div class="mt-4 flex max-w-[420px] items-center gap-2">
-        <Select
-          :model-value="selectedModels[card.key]"
-          :disabled="isLoading || modelOptions.length === 0"
-          @update:model-value="value => handleModelSelectionChange(card.key, String(value ?? ''))"
+    <ScrollArea class="min-h-0 flex-1">
+      <div class="px-5 py-2">
+        <template
+          v-for="(card, index) of cards"
+          :key="card.key"
         >
-          <SelectTrigger class="h-12 flex-1 rounded-xl">
-            <SelectValue placeholder="暂无可用模型">
-              <span
-                v-if="getSelectedOption(card.key)"
-                class="flex min-w-0 items-center gap-3"
+          <section class="py-3">
+            <div class="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <span>{{ card.title }}</span>
+              <Info
+                v-if="card.showInfo"
+                class="h-4 w-4 text-muted-foreground"
+              />
+            </div>
+
+            <div class="mt-4 flex max-w-[420px] items-center gap-2">
+              <Select
+                :model-value="selectedModels[card.key]"
+                :disabled="isLoading || modelOptions.length === 0"
+                @update:model-value="value => handleModelSelectionChange(card.key, String(value ?? ''))"
               >
-                <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
-                  <img
-                    v-if="getSelectedOption(card.key)?.providerIcon"
-                    :src="getSelectedOption(card.key)?.providerIcon"
-                    :alt="getSelectedOption(card.key)?.providerName"
-                    class="h-4 w-4 object-contain"
-                  />
-                </span>
+                <SelectTrigger class="h-12 flex-1 rounded-xl">
+                  <SelectValue placeholder="暂无可用模型">
+                    <span
+                      v-if="getSelectedOption(card.key)"
+                      class="flex min-w-0 items-center gap-3"
+                    >
+                      <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
+                        <img
+                          v-if="getSelectedOption(card.key)?.providerIcon"
+                          :src="getSelectedOption(card.key)?.providerIcon"
+                          :alt="getSelectedOption(card.key)?.providerName"
+                          class="h-4 w-4 object-contain"
+                        />
+                      </span>
 
-                <span class="min-w-0 truncate text-[15px] text-foreground">
-                  {{ getSelectedOption(card.key)?.modelId }}
-                  <span class="text-muted-foreground"> | {{ getSelectedOption(card.key)?.providerName }}</span>
-                </span>
-              </span>
-            </SelectValue>
-          </SelectTrigger>
+                      <span class="min-w-0 truncate text-[15px] text-foreground">
+                        {{ getSelectedOption(card.key)?.modelId }}
+                        <span class="text-muted-foreground"> | {{ getSelectedOption(card.key)?.providerName }}</span>
+                      </span>
+                    </span>
+                    <span
+                      v-else
+                      class="text-[15px] text-muted-foreground"
+                    >
+                      {{ modelOptions.length === 0 ? '暂无可用模型' : '未选择' }}
+                    </span>
+                  </SelectValue>
+                </SelectTrigger>
 
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem
-                v-for="option of modelOptions"
-                :key="option.value"
-                :value="option.value"
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem
+                      v-for="option of modelOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      <span class="flex min-w-0 items-center gap-3">
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
+                          <img
+                            v-if="option.providerIcon"
+                            :src="option.providerIcon"
+                            :alt="option.providerName"
+                            class="h-4 w-4 object-contain"
+                          />
+                        </span>
+
+                        <span class="min-w-0 truncate">
+                          {{ option.modelId }}
+                          <span class="text-muted-foreground"> | {{ option.providerName }}</span>
+                        </span>
+                      </span>
+                    </SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                @click="openParameterDialog(card.key)"
               >
-                <span class="flex min-w-0 items-center gap-3">
-                  <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-black/5">
-                    <img
-                      v-if="option.providerIcon"
-                      :src="option.providerIcon"
-                      :alt="option.providerName"
-                      class="h-4 w-4 object-contain"
-                    />
-                  </span>
+                <SlidersHorizontal class="h-4 w-4" />
+              </Button>
+            </div>
 
-                  <span class="min-w-0 truncate">
-                    {{ option.modelId }}
-                    <span class="text-muted-foreground"> | {{ option.providerName }}</span>
-                  </span>
-                </span>
-              </SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          @click="openParameterDialog(card.key)"
-        >
-          <SlidersHorizontal class="h-4 w-4" />
-        </Button>
+            <p class="mt-3 text-sm text-muted-foreground">
+              {{ card.description }}
+            </p>
+          </section>
+          <Separator v-if="index < cards.length - 1" />
+        </template>
       </div>
-
-      <p class="mt-3 text-sm text-muted-foreground">
-        {{ card.description }}
-      </p>
-    </section>
+    </ScrollArea>
   </div>
 
   <Dialog v-model:open="parameterDialogOpen">
