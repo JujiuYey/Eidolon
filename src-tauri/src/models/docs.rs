@@ -45,3 +45,24 @@ pub struct DocsSearchResult {
     #[serde(default)]
     pub line_text: String,
 }
+
+/// 文档 AI 助手的一条会话消息（仅前端内存态，不落库）
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DocsAiChatMessage {
+    #[serde(default)]
+    pub role: String,
+
+    #[serde(default)]
+    pub content: String,
+}
+
+/// 一轮文档助手回答
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DocsAiChatResult {
+    #[serde(default)]
+    pub content: String,
+
+    /// 实际使用的模型标识（provider/model）
+    #[serde(default)]
+    pub model_label: String,
+}

@@ -14,6 +14,9 @@ importers:
       '@internationalized/date':
         specifier: ^3.9.0
         version: 3.9.0
+      '@mermaid-js/layout-elk':
+        specifier: ^0.1.9
+        version: 0.1.9(mermaid@11.13.0)
       '@rive-app/webgl2':
         specifier: ^2.35.4
         version: 2.35.4
@@ -26,6 +29,9 @@ importers:
       '@terrastruct/d2':
         specifier: ^0.1.33
         version: 0.1.33
+      '@tiptap/extension-code-block':
+        specifier: ^2.27.3
+        version: 2.27.3(@tiptap/core@2.27.3(@tiptap/pm@2.27.3))(@tiptap/pm@2.27.3)
       '@tiptap/extension-placeholder':
         specifier: ^2.27.3
         version: 2.27.3(@tiptap/core@2.27.3(@tiptap/pm@2.27.3))(@tiptap/pm@2.27.3)
@@ -1209,6 +1215,11 @@ packages:
     resolution: {integrity: sha512-llMXd39jtP0HpQLVI37Bf1m2ADlEb35GYSh1SDSLsBhR+5iCxiNGlT31yqbNtVHygHAtMy6dWFERpU2JgufhPg==}
     engines: {node: '>=18'}
     hasBin: true
+
+  '@mermaid-js/layout-elk@0.1.9':
+    resolution: {integrity: sha512-HuvaqFZBr6yT9PpWYockvKAZPJVd89yn/UjOYPxhzbZxlybL2v+2BjVCg7MVH6vRs1irUohb/s42HEdec1CCZw==}
+    peerDependencies:
+      mermaid: ^11.0.2
 
   '@mermaid-js/parser@1.0.1':
     resolution: {integrity: sha512-opmV19kN1JsK0T6HhhokHpcVkqKpF+x2pPDKKM2ThHtZAB5F4PROopk0amuVYK5qMrIA4erzpNm8gmPNJgMDxQ==}
@@ -4029,6 +4040,9 @@ packages:
 
   electron-to-chromium@1.5.180:
     resolution: {integrity: sha512-ED+GEyEh3kYMwt2faNmgMB0b8O5qtATGgR4RmRsIp4T6p7B8vdMbIedYndnvZfsaXvSzegtpfqRMDNCjjiSduA==}
+
+  elkjs@0.9.3:
+    resolution: {integrity: sha512-f/ZeWvW/BCXbhGEf1Ujp29EASo/lk1FDnETgNKwJrsVvGZhUWCZyg3xLJjAsxfOmt8KjswHmI5EwCQcPMpOYhQ==}
 
   embla-carousel-reactive-utils@8.6.0:
     resolution: {integrity: sha512-fMVUDUEx0/uIEDM0Mz3dHznDhfX+znCCDCeIophYb1QGVM7YThSWX+wz11zlYwWFOr74b4QLGg0hrGPJeG2s4A==}
@@ -8864,6 +8878,12 @@ snapshots:
       - encoding
       - supports-color
 
+  '@mermaid-js/layout-elk@0.1.9(mermaid@11.13.0)':
+    dependencies:
+      d3: 7.9.0
+      elkjs: 0.9.3
+      mermaid: 11.13.0
+
   '@mermaid-js/parser@1.0.1':
     dependencies:
       langium: 4.2.1
@@ -11865,6 +11885,8 @@ snapshots:
   ee-first@1.1.1: {}
 
   electron-to-chromium@1.5.180: {}
+
+  elkjs@0.9.3: {}
 
   embla-carousel-reactive-utils@8.6.0(embla-carousel@8.6.0):
     dependencies:

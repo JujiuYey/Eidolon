@@ -106,6 +106,11 @@ const cards: DefaultModelCard[] = [
     title: '产品经理模型',
     description: '产品经理分身对话使用的模型，理解需求并套用方法论框架给出建议',
   },
+  {
+    key: 'docs_chat',
+    title: '文档助手模型',
+    description: '文档页 AI 面板使用的模型，带着整篇文档上下文对话并帮忙改写',
+  },
 ];
 
 const providerSettings = ref<ProviderSetting[]>([]);
@@ -122,6 +127,7 @@ const selectedModels = reactive<Record<DefaultModelCard['key'], string>>({
   embedding: '',
   weekly_report_polish: '',
   pm_chat: '',
+  docs_chat: '',
 });
 
 const parameterForms = reactive<Record<DefaultModelCard['key'], ModelParameterForm>>({
@@ -131,6 +137,7 @@ const parameterForms = reactive<Record<DefaultModelCard['key'], ModelParameterFo
   embedding: createDefaultParameterForm(),
   weekly_report_polish: createDefaultParameterForm(),
   pm_chat: createDefaultParameterForm(),
+  docs_chat: createDefaultParameterForm(),
 });
 
 const parameterDraft = ref<ModelParameterForm>(createDefaultParameterForm());

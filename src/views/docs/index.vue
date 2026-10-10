@@ -1,18 +1,17 @@
 <script setup lang="ts">
 import type { DocsEntry } from '@/types/docs';
-import { FolderOpen, Save } from 'lucide-vue-next';
+import { FolderOpen, Save, Sparkles } from 'lucide-vue-next';
 import { open } from '@tauri-apps/plugin-dialog';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
-import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { useDocsStore } from '@/stores/docs';
 import { getErrorMessage } from '@/utils/helpers';
+import DocsAiPanel from './_components/docs-ai-panel.vue';
 import DocsSearchResults from './_components/docs-search-results.vue';
 import DocsTree from './_components/docs-tree.vue';
 import EntryNameDialog from './_components/entry-name-dialog.vue';
@@ -193,15 +192,20 @@ async function pickRootDir() {
   }
 }
 
+// ===== AI 助手面板（应用 / 撤销 都只改内存内容，保存仍走 ⌘S） =====
+const aiOpen = ref(false);
+
+function handleAiApply(content: string) {
+  store.content = content;
+  toast.success('已应用到文档，⌘S 保存后写入磁盘');
+}
+
+function handleAiRestore(content: string) {
+  store.content = content;
+  toast.success('已恢复应用前的版本');
+}
+
 // ===== 派生展示 =====
-const fileCount = computed(() => store.entries.filter(entry => !entry.is_dir).length);
-const rootLabel = computed(() => {
-  if (!store.rootDir) {
-    return '未设置文档库目录';
-  }
-  const base = store.rootDir.split('/').filter(Boolean).pop();
-  return `${base ?? store.rootDir} · ${fileCount.value} 篇文档`;
-});
 const isSearching = computed(() => searchKeyword.value.trim().length > 0);
 
 onMounted(() => {
@@ -219,44 +223,35 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex h-full flex-col overflow-hidden">
-    <div class="px-6 pt-6">
-      <SagPageHeader title="文档">
-        <template #meta>
-          {{ rootLabel }}
-        </template>
-        <template #actions>
-          <Input
-            v-model="searchKeyword"
-            aria-label="搜索文档"
-            class="h-9 w-64"
-            placeholder="搜索文档内容"
-          />
-        </template>
-      </SagPageHeader>
-      <Separator class="mt-4 shrink-0" />
-    </div>
-
     <div class="flex min-h-0 flex-1 gap-4 px-6 py-4">
-      <aside class="w-72 shrink-0">
-        <DocsSearchResults
-          v-if="isSearching"
-          :is-searching="store.searching"
-          :keyword="searchKeyword.trim()"
-          :results="store.searchResults"
-          @select="handleSelectFile"
+      <aside class="flex w-72 shrink-0 flex-col gap-3">
+        <Input
+          v-model="searchKeyword"
+          aria-label="搜索文档"
+          class="h-9 shrink-0"
+          placeholder="搜索文档内容"
         />
-        <DocsTree
-          v-else
-          :active-path="store.activePath"
-          :entries="store.entries"
-          :is-loading="store.loading"
-          @change-root="pickRootDir"
-          @create-dir="askCreateDir"
-          @create-file="askCreateFile"
-          @remove="askRemove"
-          @rename="askRename"
-          @select="handleSelectFile"
-        />
+        <div class="min-h-0 flex-1">
+          <DocsSearchResults
+            v-if="isSearching"
+            :is-searching="store.searching"
+            :keyword="searchKeyword.trim()"
+            :results="store.searchResults"
+            @select="handleSelectFile"
+          />
+          <DocsTree
+            v-else
+            :active-path="store.activePath"
+            :entries="store.entries"
+            :is-loading="store.loading"
+            @change-root="pickRootDir"
+            @create-dir="askCreateDir"
+            @create-file="askCreateFile"
+            @remove="askRemove"
+            @rename="askRename"
+            @select="handleSelectFile"
+          />
+        </div>
       </aside>
 
       <!-- 未设置文档库目录 -->
@@ -300,43 +295,61 @@ onBeforeUnmount(() => {
         v-else
         class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card"
       >
-        <div class="flex shrink-0 items-center gap-2 border-b px-4 py-2.5">
-          <p class="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
-            {{ store.activeEntry?.path ?? store.activePath }}
-          </p>
-          <span
-            v-if="store.isDirty"
-            class="flex shrink-0 items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400"
-          >
-            <span class="h-1.5 w-1.5 rounded-full bg-current" />
-            未保存
-          </span>
-          <Button
-            class="h-8 shrink-0"
-            :disabled="!store.isDirty || store.saving"
-            size="sm"
-            @click="handleSave"
-          >
-            <Spinner
-              v-if="store.saving"
-              class="h-4 w-4"
-            />
-            <Save
-              v-else
-              class="h-4 w-4"
-            />
-            保存
-          </Button>
-        </div>
-
         <p
           v-if="store.fileError"
           class="shrink-0 border-b px-4 py-2 text-sm text-destructive"
         >
           {{ store.fileError }}
         </p>
-        <SagRichEditor v-model="store.content" />
+        <SagRichEditor v-model="store.content">
+          <template #actions>
+            <Button
+              :aria-label="aiOpen ? '关闭 AI 助手' : '打开 AI 助手'"
+              class="h-8 w-8" :class="[aiOpen ? 'text-primary' : '']"
+              :title="aiOpen ? '关闭 AI 助手' : '打开 AI 助手'"
+              :variant="aiOpen ? 'secondary' : 'ghost'"
+              size="icon"
+              @click="aiOpen = !aiOpen"
+            >
+              <Sparkles class="h-4 w-4" />
+            </Button>
+            <span
+              v-if="store.isDirty"
+              class="flex shrink-0 items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400"
+            >
+              <span class="h-1.5 w-1.5 rounded-full bg-current" />
+              未保存
+            </span>
+            <Button
+              class="h-8 shrink-0"
+              :disabled="!store.isDirty || store.saving"
+              size="sm"
+              @click="handleSave"
+            >
+              <Spinner
+                v-if="store.saving"
+                class="h-4 w-4"
+              />
+              <Save
+                v-else
+                class="h-4 w-4"
+              />
+              保存
+            </Button>
+          </template>
+        </SagRichEditor>
       </div>
+
+      <!-- AI 助手面板：编辑区右侧，切换文档时随 :key 重建（每篇文档独立会话） -->
+      <DocsAiPanel
+        v-if="aiOpen"
+        :key="store.activePath"
+        :active-path="store.activePath"
+        :document="store.content"
+        @apply="handleAiApply"
+        @close="aiOpen = false"
+        @restore="handleAiRestore"
+      />
     </div>
 
     <!-- 未保存守卫 -->

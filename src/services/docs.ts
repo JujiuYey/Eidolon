@@ -40,3 +40,22 @@ export async function deleteDocsEntry(path: string): Promise<string> {
 export async function searchDocs(keyword: string): Promise<DocsSearchResult[]> {
   return invoke<DocsSearchResult[]>('search_docs', { keyword });
 }
+
+export interface DocsAiChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface DocsAiChatResult {
+  content: string;
+  model_label: string;
+}
+
+/** 文档 AI 助手一轮对话。会话历史由前端持有，后端无状态 */
+export async function chatDocsAi(
+  history: DocsAiChatMessage[],
+  document: string,
+  message: string,
+): Promise<DocsAiChatResult> {
+  return invoke<DocsAiChatResult>('chat_docs_ai', { history, document, message });
+}

@@ -21,11 +21,12 @@ import { EditorContent, useEditor } from '@tiptap/vue-3';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
+import { MermaidCodeBlock } from './mermaid-code-block';
 import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
-import { computed, onBeforeUnmount, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -57,7 +58,8 @@ let applyingExternal = false;
 const editor = useEditor({
   content: content.value,
   extensions: [
-    StarterKit,
+    StarterKit.configure({ codeBlock: false }),
+    MermaidCodeBlock,
     Placeholder.configure({ placeholder: props.placeholder }),
     Markdown.configure({
       html: false,
@@ -95,12 +97,27 @@ watch(content, value => {
   applyingExternal = false;
 });
 
+const canUndo = ref(false);
+const canRedo = ref(false);
+
+// useEditor 是一次性 shallowRef,撤销栈变化不会触发响应式,手动监听事务同步
+function syncHistoryState() {
+  canUndo.value = editor.value?.can().undo() ?? false;
+  canRedo.value = editor.value?.can().redo() ?? false;
+}
+
+onMounted(() => nextTick(() => {
+  const current = editor.value;
+  if (current) {
+    current.on('transaction', syncHistoryState);
+    syncHistoryState();
+  }
+}));
+
 onBeforeUnmount(() => {
+  editor.value?.off('transaction', syncHistoryState);
   editor.value?.destroy();
 });
-
-const canUndo = computed(() => editor.value?.can().undo() ?? false);
-const canRedo = computed(() => editor.value?.can().redo() ?? false);
 
 function chain() {
   return editor.value?.chain().focus();
@@ -165,8 +182,34 @@ const tableActions = [
 
 <template>
   <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-    <!-- 工具栏 -->
+    <!-- 工具栏:最左撤销重做 + 格式按钮,右侧 actions 插槽放各页面自己的操作(AI/保存等) -->
     <div class="flex shrink-0 flex-wrap items-center gap-0.5 border-b px-2 py-1.5">
+      <Button
+        aria-label="撤销"
+        :disabled="!canUndo"
+        class="h-8 w-8"
+        size="icon"
+        variant="ghost"
+        @click="chain()?.undo().run()"
+      >
+        <Undo2 class="h-4 w-4" />
+      </Button>
+      <Button
+        aria-label="重做"
+        :disabled="!canRedo"
+        class="h-8 w-8"
+        size="icon"
+        variant="ghost"
+        @click="chain()?.redo().run()"
+      >
+        <Redo2 class="h-4 w-4" />
+      </Button>
+
+      <Separator
+        orientation="vertical"
+        class="mx-1 !h-5"
+      />
+
       <Button
         v-for="heading of headings"
         :key="heading.key"
@@ -238,27 +281,8 @@ const tableActions = [
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <div class="ml-auto flex items-center gap-0.5">
-        <Button
-          aria-label="撤销"
-          :disabled="!canUndo"
-          class="h-8 w-8"
-          size="icon"
-          variant="ghost"
-          @click="chain()?.undo().run()"
-        >
-          <Undo2 class="h-4 w-4" />
-        </Button>
-        <Button
-          aria-label="重做"
-          :disabled="!canRedo"
-          class="h-8 w-8"
-          size="icon"
-          variant="ghost"
-          @click="chain()?.redo().run()"
-        >
-          <Redo2 class="h-4 w-4" />
-        </Button>
+      <div class="ml-auto flex items-center gap-1.5">
+        <slot name="actions" />
       </div>
     </div>
 
