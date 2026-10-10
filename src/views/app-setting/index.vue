@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import type { Component } from 'vue';
-import { Palette, HardDrive, Sparkles, Database, Server, Brain, Mail, ListTodo } from 'lucide-vue-next';
-import { Button } from '@/components/ui/button';
+import { Palette, HardDrive, Sparkles, Database, Server, Brain, Mail, ListTodo, Settings } from 'lucide-vue-next';
 import { Separator } from '@/components/ui/separator';
 
 import AppConfig from './_components/app-config/index.vue';
@@ -67,7 +66,6 @@ const menus: SettingMenu[] = [
 ];
 
 const activeKey = ref('provider-config');
-const activeMenu = computed(() => menus.find(menu => menu.key === activeKey.value));
 
 function handleClick(key: string) {
   activeKey.value = key;
@@ -75,49 +73,45 @@ function handleClick(key: string) {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden">
-    <!-- 侧边栏 -->
-    <aside class="flex w-56 flex-col border-r bg-sidebar py-4">
-      <div class="px-3 py-2">
-        <h2 class="mb-2 px-2 text-sm font-semibold text-sidebar-foreground/70">
-          设置
-        </h2>
-        <nav class="space-y-1">
+  <div class="flex h-full flex-col overflow-hidden">
+    <div class="flex min-h-0 flex-1 gap-4 px-6 py-4">
+      <!-- 设置导航：与文档页文档树卡片同款 -->
+      <aside class="flex w-60 shrink-0 flex-col overflow-hidden rounded-xl border bg-card">
+        <div class="flex items-center gap-2 px-4 py-3">
+          <Settings class="h-4 w-4 text-primary" />
+          <h2 class="text-sm font-semibold">
+            设置
+          </h2>
+        </div>
+        <nav class="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-2 pb-2">
           <template
             v-for="(item, index) of menus"
             :key="item.key"
           >
-            <Button
-              :variant="activeKey === item.key ? 'outline' : 'ghost'"
-              class="w-full justify-start gap-3"
+            <button
+              type="button"
+              class="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors"
+              :class="activeKey === item.key
+                ? 'bg-muted text-foreground'
+                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'"
               @click="handleClick(item.key)"
             >
-              <component :is="item.icon" class="h-4 w-4 shrink-0" />
-              <span>{{ item.title }}</span>
-            </Button>
+              <component
+                :is="item.icon"
+                class="h-4 w-4 shrink-0"
+              />
+              <span class="truncate">{{ item.title }}</span>
+            </button>
             <Separator
               v-if="item.dividerAfter && index < menus.length - 1"
               class="my-2"
             />
           </template>
         </nav>
-      </div>
-    </aside>
+      </aside>
 
-    <!-- 主内容区 -->
-    <main class="mx-auto flex max-w-7xl flex-1 flex-col overflow-hidden p-6">
-      <div
-        v-if="activeKey !== 'mcp-service'"
-        class="mb-6"
-      >
-        <div class="flex items-center gap-2">
-          <h1 class="text-2xl font-bold">
-            {{ activeMenu?.title }}
-          </h1>
-        </div>
-      </div>
-
-      <div class="min-h-0 flex-1">
+      <!-- 内容区：各分区自渲染一张等高卡片，与文档页编辑器卡片同款 -->
+      <main class="flex min-w-0 flex-1">
         <ProviderConfig v-if="activeKey === 'provider-config'" />
         <DefaultModel v-if="activeKey === 'default-model'" />
         <AppConfig v-if="activeKey === 'app-config'" />
@@ -126,7 +120,7 @@ function handleClick(key: string) {
         <SmtpConfig v-if="activeKey === 'smtp-config'" />
         <ZentaoConfig v-if="activeKey === 'zentao-config'" />
         <SkillsConfig v-if="activeKey === 'skills'" />
-      </div>
-    </main>
+      </main>
+    </div>
   </div>
 </template>

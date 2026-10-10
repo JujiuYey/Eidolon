@@ -12,8 +12,13 @@ const selectedProviderId = defineModel<string>('selectedProviderId', {
 </script>
 
 <template>
-  <aside class="flex h-full w-[248px] shrink-0 flex-col border-r bg-muted/10 p-3">
-    <nav class="space-y-1.5">
+  <aside class="flex h-full w-[248px] shrink-0 flex-col border-r bg-muted/10">
+    <div class="flex items-center gap-2 px-4 py-3">
+      <h2 class="text-sm font-semibold">
+        模型服务
+      </h2>
+    </div>
+    <nav class="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-3 pb-3">
       <button
         v-for="provider of providers"
         :key="provider.provider_id"

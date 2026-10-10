@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import type { Component } from 'vue';
 import {
   ArchiveRestore,
+  Database,
   FileOutput,
   FolderOpen,
   FolderUp,
@@ -10,7 +11,6 @@ import {
   Wifi,
 } from 'lucide-vue-next';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
@@ -131,144 +131,138 @@ function handleOpenDirectory(path: string) {
 </script>
 
 <template>
-  <ScrollArea class="h-full pr-3">
-    <div class="space-y-5 pb-6">
-      <Card class="gap-0 overflow-hidden border-border/70 py-0 shadow-sm">
-        <CardHeader class="px-5 pb-2 pt-5">
-          <CardTitle class="text-lg">
-            数据设置
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent class="px-5 pb-2 pt-0">
-          <div class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div class="space-y-1">
-              <h3 class="text-base font-medium">
-                数据备份与恢复
-              </h3>
-            </div>
-
-            <div class="flex flex-wrap justify-end gap-2">
-              <Button
-                v-for="action of backupActions"
-                :key="action.label"
-                :variant="action.variant"
-                size="sm"
-              >
-                <component :is="action.icon" class="size-4" />
-                <span>{{ action.label }}</span>
-              </Button>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-            <div class="space-y-1">
-              <h3 class="text-base font-medium">
-                精简备份
-              </h3>
-              <p class="max-w-3xl text-sm leading-6 text-muted-foreground">
-                备份时跳过备份图片、知识库等数据文件，仅备份聊天记录和设置，减少空间占用，加快备份速度
-              </p>
-            </div>
-
-            <Switch v-model="compactBackup" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card class="gap-0 overflow-hidden border-border/70 py-0 shadow-sm">
-        <CardHeader class="px-5 pb-2 pt-5">
-          <CardTitle class="text-lg">
-            导出至手机
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent class="px-5 pb-2 pt-0">
-          <template
-            v-for="(item, index) of exportActions"
-            :key="item.title"
-          >
-            <div class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <h3 class="text-base font-medium">
-                {{ item.title }}
-              </h3>
-
-              <Button
-                :variant="item.action.variant"
-                size="sm"
-              >
-                <component :is="item.action.icon" class="size-4" />
-                <span>{{ item.action.label }}</span>
-              </Button>
-            </div>
-
-            <Separator v-if="index < exportActions.length - 1" />
-          </template>
-        </CardContent>
-      </Card>
-
-      <Card class="gap-0 overflow-hidden border-border/70 py-0 shadow-sm">
-        <CardHeader class="px-5 pb-2 pt-5">
-          <CardTitle class="text-lg">
-            数据目录
-          </CardTitle>
-        </CardHeader>
-
-        <CardContent class="px-5 pb-2 pt-0">
-          <div v-if="isLoading" class="flex items-center justify-center py-8">
-            <Loader2 class="size-6 animate-spin text-muted-foreground" />
-          </div>
-          <template
-            v-for="(item, index) of directoryRows"
-            v-else
-            :key="item.title"
-          >
-            <div class="grid gap-3 py-4 sm:grid-cols-[minmax(0,180px)_1fr_auto] sm:items-center sm:gap-6">
-              <div class="min-w-0">
-                <div class="flex items-baseline gap-1.5">
-                  <h3 class="text-base font-medium">
-                    {{ item.title }}
-                  </h3>
-                  <span
-                    v-if="item.hint"
-                    class="text-sm text-muted-foreground"
-                  >
-                    {{ item.hint }}
-                  </span>
-                </div>
-              </div>
-
-              <div
-                v-if="item.value"
-                class="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
-              >
-                <span class="truncate">{{ item.value }}</span>
-                <component
-                  :is="item.valueIcon"
-                  v-if="item.valueIcon"
-                  class="size-3.5 shrink-0"
-                />
-              </div>
-              <div v-else class="hidden sm:block" />
-
-              <Button
-                :variant="item.action.variant"
-                :class="item.action.class"
-                size="sm"
-                class="justify-self-start sm:justify-self-end"
-                :disabled="!item.value"
-                @click="item.value ? handleOpenDirectory(item.value) : undefined"
-              >
-                {{ item.action.label }}
-              </Button>
-            </div>
-
-            <Separator v-if="index < directoryRows.length - 1" />
-          </template>
-        </CardContent>
-      </Card>
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+    <div class="flex items-center gap-2 px-4 py-3">
+      <Database class="h-4 w-4 text-primary" />
+      <h2 class="text-sm font-semibold">
+        数据设置
+      </h2>
     </div>
-  </ScrollArea>
+    <Separator />
+
+    <ScrollArea class="min-h-0 flex-1">
+      <div class="px-5 py-1">
+        <div class="flex flex-col gap-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <h3 class="text-base font-medium">
+            数据备份与恢复
+          </h3>
+
+          <div class="flex flex-wrap justify-end gap-2">
+            <Button
+              v-for="action of backupActions"
+              :key="action.label"
+              :variant="action.variant"
+              size="sm"
+            >
+              <component
+                :is="action.icon"
+                class="size-4"
+              />
+              <span>{{ action.label }}</span>
+            </Button>
+          </div>
+        </div>
+
+        <Separator />
+
+        <div class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div class="space-y-1">
+            <h3 class="text-base font-medium">
+              精简备份
+            </h3>
+            <p class="max-w-3xl text-sm leading-6 text-muted-foreground">
+              备份时跳过备份图片、知识库等数据文件，仅备份聊天记录和设置，减少空间占用，加快备份速度
+            </p>
+          </div>
+
+          <Switch v-model="compactBackup" />
+        </div>
+
+        <Separator />
+
+        <template
+          v-for="(item, index) of exportActions"
+          :key="item.title"
+        >
+          <div class="flex flex-col gap-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <h3 class="text-base font-medium">
+              {{ item.title }}
+            </h3>
+
+            <Button
+              :variant="item.action.variant"
+              size="sm"
+            >
+              <component
+                :is="item.action.icon"
+                class="size-4"
+              />
+              <span>{{ item.action.label }}</span>
+            </Button>
+          </div>
+
+          <Separator v-if="index < exportActions.length - 1" />
+        </template>
+
+        <Separator />
+
+        <div
+          v-if="isLoading"
+          class="flex items-center justify-center py-8"
+        >
+          <Loader2 class="size-6 animate-spin text-muted-foreground" />
+        </div>
+        <template
+          v-for="(item, index) of directoryRows"
+          v-else
+          :key="item.title"
+        >
+          <div class="grid gap-3 py-4 sm:grid-cols-[minmax(0,180px)_1fr_auto] sm:items-center sm:gap-6">
+            <div class="min-w-0">
+              <div class="flex items-baseline gap-1.5">
+                <h3 class="text-base font-medium">
+                  {{ item.title }}
+                </h3>
+                <span
+                  v-if="item.hint"
+                  class="text-sm text-muted-foreground"
+                >
+                  {{ item.hint }}
+                </span>
+              </div>
+            </div>
+
+            <div
+              v-if="item.value"
+              class="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground"
+            >
+              <span class="truncate">{{ item.value }}</span>
+              <component
+                :is="item.valueIcon"
+                v-if="item.valueIcon"
+                class="size-3.5 shrink-0"
+              />
+            </div>
+            <div
+              v-else
+              class="hidden sm:block"
+            />
+
+            <Button
+              :variant="item.action.variant"
+              :class="item.action.class"
+              size="sm"
+              class="justify-self-start sm:justify-self-end"
+              :disabled="!item.value"
+              @click="item.value ? handleOpenDirectory(item.value) : undefined"
+            >
+              {{ item.action.label }}
+            </Button>
+          </div>
+
+          <Separator v-if="index < directoryRows.length - 1" />
+        </template>
+      </div>
+    </ScrollArea>
+  </div>
 </template>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Plus } from 'lucide-vue-next';
+import { ListTodo, Plus } from 'lucide-vue-next';
 import { toast } from 'vue-sonner';
 import { Button } from '@/components/ui/button';
 import { listZentaoAccounts } from '@/services';
@@ -56,33 +56,33 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col">
-    <div class="flex min-h-0 flex-1 overflow-hidden rounded-xl border bg-card shadow-sm">
-      <div class="flex h-full w-[248px] shrink-0 flex-col border-r bg-muted/10">
-        <div class="p-3">
-          <Button
-            type="button"
-            variant="outline"
-            class="w-full justify-start gap-2"
-            :class="selectedAccountId === '' && 'border-primary bg-primary/20 shadow-xs'"
-            @click="handleCreate"
-          >
-            <Plus class="h-4 w-4" />
-            新建账户
-          </Button>
-        </div>
-        <ZentaoAccountList
-          v-model:selected-account-id="selectedAccountId"
-          :accounts="accounts"
-          @select="handleSelect"
-        />
+  <div class="flex min-h-0 flex-1 overflow-hidden rounded-xl border bg-card">
+    <div class="flex h-full w-[248px] shrink-0 flex-col border-r bg-muted/10">
+      <div class="flex items-center justify-between gap-2 px-4 py-3">
+        <h2 class="flex items-center gap-2 text-sm font-semibold">
+          <ListTodo class="h-4 w-4 text-primary" />
+          禅道账户
+        </h2>
+        <Button
+          size="sm"
+          variant="outline"
+          @click="handleCreate"
+        >
+          <Plus class="h-4 w-4" />
+          新建
+        </Button>
       </div>
-      <ZentaoAccountForm
-        :key="selectedAccountId"
-        :account="selectedAccount"
-        @saved="handleSaved"
-        @removed="handleRemoved"
+      <ZentaoAccountList
+        v-model:selected-account-id="selectedAccountId"
+        :accounts="accounts"
+        @select="handleSelect"
       />
     </div>
+    <ZentaoAccountForm
+      :key="selectedAccountId"
+      :account="selectedAccount"
+      @saved="handleSaved"
+      @removed="handleRemoved"
+    />
   </div>
 </template>

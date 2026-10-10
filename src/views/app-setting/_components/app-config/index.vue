@@ -1,23 +1,24 @@
 <script setup lang="ts">
+import { HardDrive } from 'lucide-vue-next';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import ThemeColorToggle from './theme-color-toggle.vue';
 import ThemeToggle from './theme-toggle.vue';
 </script>
 
 <template>
-  <Card>
-    <CardHeader>
-      <CardTitle class="text-lg">
-        应用设置
-      </CardTitle>
-      <CardDescription>
-        个性化应用体验
-      </CardDescription>
-    </CardHeader>
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+    <div class="flex items-center gap-2 px-4 py-3">
+      <HardDrive class="h-4 w-4 text-primary" />
+      <h2 class="text-sm font-semibold">
+        通用设置
+      </h2>
+    </div>
+    <Separator />
 
-    <ScrollArea class="flex-1 min-h-0">
-      <CardContent class="space-y-4 ">
+    <ScrollArea class="min-h-0 flex-1">
+      <div class="space-y-4 px-5 py-4">
         <div class="flex items-center justify-between">
           <div class="space-y-0.5">
             <Label>主题设置</Label>
@@ -37,7 +38,7 @@ import ThemeToggle from './theme-toggle.vue';
           </div>
           <ThemeColorToggle />
         </div>
-      </CardContent>
+      </div>
     </ScrollArea>
-  </Card>
+  </div>
 </template>

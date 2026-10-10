@@ -235,63 +235,107 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
 </script>
 
 <template>
-  <ScrollArea class="h-full pr-3">
-    <section class="space-y-5 pb-6">
-      <Button variant="ghost" size="icon" @click="emit('back')">
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+    <div class="flex flex-wrap items-center gap-2 px-4 py-3">
+      <Button
+        variant="ghost"
+        size="icon"
+        class="h-8 w-8 shrink-0"
+        aria-label="返回 MCP 服务列表"
+        @click="emit('back')"
+      >
         <ArrowLeft class="size-4" />
-        <span class="sr-only">返回 MCP 服务列表</span>
       </Button>
+      <h2 class="min-w-0 truncate text-sm font-semibold">
+        {{ formTitle }}
+      </h2>
+      <Badge
+        v-if="form.transportType === 'stdio'"
+        variant="outline"
+        class="border-primary/20 bg-primary/10 text-primary"
+      >
+        STDIO
+      </Badge>
+      <Badge
+        v-else
+        variant="outline"
+        class="border-primary/20 bg-primary/10 text-primary"
+      >
+        HTTP
+      </Badge>
+      <Badge
+        v-if="hasDiscovery"
+        variant="outline"
+        class="border-border bg-muted text-muted-foreground"
+      >
+        {{ toolItems.length }} 工具
+      </Badge>
 
-      <article class="rounded-xl border border-border/70 bg-card px-5 py-5 shadow-sm">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div class="min-w-0 space-y-2">
-            <div class="flex flex-wrap items-center gap-2">
-              <h1 class="text-[1.35rem] font-semibold tracking-tight">
-                {{ formTitle }}
-              </h1>
-              <Badge v-if="form.transportType === 'stdio'" variant="outline" class="border-primary/20 bg-primary/10 text-primary">
-                STDIO
-              </Badge>
-              <Badge v-else variant="outline" class="border-primary/20 bg-primary/10 text-primary">
-                HTTP
-              </Badge>
-              <Badge v-if="hasDiscovery" variant="outline" class="border-border bg-muted text-muted-foreground">
-                {{ toolItems.length }} 工具
-              </Badge>
-            </div>
+      <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
+        <span class="text-sm text-muted-foreground">启用</span>
+        <Switch v-model="form.enabled" />
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="!canTest"
+          @click="testConnection"
+        >
+          <Loader2
+            v-if="isTesting"
+            class="size-4 animate-spin"
+          />
+          <FlaskConical
+            v-else
+            class="size-4"
+          />
+          <span>测试连接</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          :disabled="!showDeleteAction"
+          @click="deleteConfirmOpen = true"
+        >
+          <Trash2 class="size-4" />
+          <span>删除</span>
+        </Button>
+        <Button
+          size="sm"
+          :disabled="!canSave || isSaving"
+          @click="saveConfig"
+        >
+          <Loader2
+            v-if="isSaving"
+            class="size-4 animate-spin"
+          />
+          <Save
+            v-else
+            class="size-4"
+          />
+          <span>保存</span>
+        </Button>
+      </div>
+    </div>
+    <Separator />
 
-            <p class="text-sm text-muted-foreground">
-              {{ hasDiscovery && form.discovery?.server_name
-                ? `${form.discovery.server_name}${form.discovery.server_version ? ` · ${form.discovery.server_version}` : ''}`
-                : '先保存配置，再测试连接并发现工具、提示和资源。' }}
-            </p>
-            <p v-if="lastTestedLabel" class="text-xs text-muted-foreground">
-              最近测试：{{ lastTestedLabel }}
-            </p>
-          </div>
+    <ScrollArea class="min-h-0 flex-1">
+      <div class="px-5 py-4">
+        <p class="mb-4 text-sm text-muted-foreground">
+          {{ hasDiscovery && form.discovery?.server_name
+            ? `${form.discovery.server_name}${form.discovery.server_version ? ` · ${form.discovery.server_version}` : ''}`
+            : '先保存配置，再测试连接并发现工具、提示和资源。' }}
+        </p>
+        <p
+          v-if="lastTestedLabel"
+          class="mb-4 text-xs text-muted-foreground"
+        >
+          最近测试：{{ lastTestedLabel }}
+        </p>
 
-          <div class="flex flex-wrap items-center justify-end gap-2 self-end sm:self-auto">
-            <Switch v-model="form.enabled" />
-            <Button variant="outline" size="sm" :disabled="!canTest" @click="testConnection">
-              <Loader2 v-if="isTesting" class="size-4 animate-spin" />
-              <FlaskConical v-else class="size-4" />
-              <span>测试连接</span>
-            </Button>
-            <Button variant="outline" size="sm" :disabled="!showDeleteAction" @click="deleteConfirmOpen = true">
-              <Trash2 class="size-4" />
-              <span>删除</span>
-            </Button>
-            <Button size="sm" :disabled="!canSave || isSaving" @click="saveConfig">
-              <Loader2 v-if="isSaving" class="size-4 animate-spin" />
-              <Save v-else class="size-4" />
-              <span>保存</span>
-            </Button>
-          </div>
-        </div>
-
-        <Separator class="my-5" />
-
-        <Tabs v-model="activeTab" class="space-y-6">
+        <Tabs
+          v-model="activeTab"
+          class="space-y-6"
+        >
           <TabsList class="grid w-full grid-cols-4">
             <TabsTrigger value="general">
               通用
@@ -595,9 +639,9 @@ function resourceSubtitle(item: McpDiscoveredResource | McpDiscoveredResourceTem
             </section>
           </TabsContent>
         </Tabs>
-      </article>
-    </section>
-  </ScrollArea>
+      </div>
+    </ScrollArea>
+  </div>
 
   <SagConfirm
     v-model:open="deleteConfirmOpen"

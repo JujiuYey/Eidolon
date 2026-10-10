@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Loader2, Plus, Search, Settings2, Trash2 } from 'lucide-vue-next';
+import { Loader2, Plus, Server, Settings2, Trash2 } from 'lucide-vue-next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import type { McpService } from '@/types/mcp-service';
 
@@ -83,106 +84,113 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
 </script>
 
 <template>
-  <ScrollArea class="h-full pr-3">
-    <section class="space-y-5 pb-6">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div class="flex items-center gap-2">
-          <h1 class="text-2xl font-bold">
-            MCP 服务
-          </h1>
-          <Button variant="ghost" size="icon-sm">
-            <Search class="size-4" />
-            <span class="sr-only">搜索 MCP 服务</span>
-          </Button>
-        </div>
-
-        <div class="flex flex-wrap items-center justify-end gap-2">
-          <Button size="sm" @click="emit('create')">
-            <Plus class="size-4" />
-            <span>新增服务</span>
-          </Button>
-        </div>
-      </div>
-
-      <div v-if="isLoading" class="flex items-center justify-center rounded-xl border border-dashed py-16">
-        <Loader2 class="size-6 animate-spin text-muted-foreground" />
-      </div>
-
-      <div
-        v-else-if="services.length === 0"
-        class="rounded-xl border border-dashed bg-muted/10 px-6 py-12 text-center"
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+    <div class="flex items-center justify-between gap-2 px-4 py-3">
+      <h2 class="flex items-center gap-2 text-sm font-semibold">
+        <Server class="h-4 w-4 text-primary" />
+        MCP服务
+      </h2>
+      <Button
+        size="sm"
+        variant="outline"
+        @click="emit('create')"
       >
-        <h2 class="text-lg font-semibold text-foreground">
-          还没有 MCP 服务
-        </h2>
-        <p class="mt-2 text-sm text-muted-foreground">
-          先添加一个服务，然后在详情页里测试连接并发现工具、提示和资源。
-        </p>
-        <Button class="mt-5" @click="emit('create')">
-          <Plus class="size-4" />
-          新增第一个服务
-        </Button>
-      </div>
+        <Plus class="h-4 w-4" />
+        新增服务
+      </Button>
+    </div>
+    <Separator />
 
-      <template v-else>
-        <article
-          v-for="service of services"
-          :key="service.id"
-          class="rounded-xl border border-border/70 bg-card px-5 py-5 shadow-sm transition-colors hover:border-primary/20"
+    <ScrollArea class="min-h-0 flex-1">
+      <div class="px-5 py-4">
+        <div
+          v-if="isLoading"
+          class="flex items-center justify-center rounded-xl border border-dashed py-16"
         >
-          <div class="flex min-h-[132px] flex-col justify-between gap-6">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div class="min-w-0 space-y-2">
-                <div class="flex flex-wrap items-center gap-2">
-                  <h2 class="truncate text-[1.2rem] font-semibold tracking-tight">
-                    {{ service.name }}
-                  </h2>
-                  <Badge v-if="!service.enabled" variant="outline" class="border-border bg-muted text-muted-foreground">
-                    已禁用
-                  </Badge>
+          <Loader2 class="size-6 animate-spin text-muted-foreground" />
+        </div>
+
+        <div
+          v-else-if="services.length === 0"
+          class="rounded-xl border border-dashed bg-muted/10 px-6 py-12 text-center"
+        >
+          <h2 class="text-lg font-semibold text-foreground">
+            还没有 MCP 服务
+          </h2>
+          <p class="mt-2 text-sm text-muted-foreground">
+            先添加一个服务，然后在详情页里测试连接并发现工具、提示和资源。
+          </p>
+          <Button
+            class="mt-5"
+            @click="emit('create')"
+          >
+            <Plus class="size-4" />
+            新增第一个服务
+          </Button>
+        </div>
+
+        <template v-else>
+          <div class="space-y-3">
+            <article
+              v-for="service of services"
+              :key="service.id"
+              class="rounded-xl border border-border/70 px-5 py-5 transition-colors hover:border-primary/20"
+            >
+              <div class="flex min-h-[132px] flex-col justify-between gap-6">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div class="min-w-0 space-y-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <h2 class="truncate text-[1.2rem] font-semibold tracking-tight">
+                        {{ service.name }}
+                      </h2>
+                      <Badge v-if="!service.enabled" variant="outline" class="border-border bg-muted text-muted-foreground">
+                        已禁用
+                      </Badge>
+                    </div>
+
+                    <p v-if="service.description" class="text-sm leading-6 text-muted-foreground">
+                      {{ service.description }}
+                    </p>
+                    <p v-else class="text-sm leading-6 text-muted-foreground">
+                      {{ discoverySummary(service) }}
+                    </p>
+
+                    <p v-if="service.discovery?.tested_at" class="text-xs text-muted-foreground">
+                      最近测试：{{ new Date(service.discovery.tested_at).toLocaleString('zh-CN') }}
+                    </p>
+                  </div>
+
+                  <div class="flex items-center gap-1.5 self-end sm:self-auto">
+                    <Switch
+                      :model-value="service.enabled"
+                      @update:model-value="updateEnabled(service.id, $event)"
+                    />
+                    <Button variant="ghost" size="icon-sm" @click="emit('requestDelete', service.id)">
+                      <Trash2 class="size-4" />
+                      <span class="sr-only">删除服务</span>
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" @click="emit('editService', service.id)">
+                      <Settings2 class="size-4" />
+                      <span class="sr-only">查看配置</span>
+                    </Button>
+                  </div>
                 </div>
 
-                <p v-if="service.description" class="text-sm leading-6 text-muted-foreground">
-                  {{ service.description }}
-                </p>
-                <p v-else class="text-sm leading-6 text-muted-foreground">
-                  {{ discoverySummary(service) }}
-                </p>
-
-                <p v-if="service.discovery?.tested_at" class="text-xs text-muted-foreground">
-                  最近测试：{{ new Date(service.discovery.tested_at).toLocaleString('zh-CN') }}
-                </p>
+                <div class="flex flex-wrap items-center gap-2">
+                  <Badge
+                    v-for="tag of buildTags(service)"
+                    :key="`${service.id}-${tag.label}`"
+                    variant="outline"
+                    :class="tag.class"
+                  >
+                    {{ tag.label }}
+                  </Badge>
+                </div>
               </div>
-
-              <div class="flex items-center gap-1.5 self-end sm:self-auto">
-                <Switch
-                  :model-value="service.enabled"
-                  @update:model-value="updateEnabled(service.id, $event)"
-                />
-                <Button variant="ghost" size="icon-sm" @click="emit('requestDelete', service.id)">
-                  <Trash2 class="size-4" />
-                  <span class="sr-only">删除服务</span>
-                </Button>
-                <Button variant="ghost" size="icon-sm" @click="emit('editService', service.id)">
-                  <Settings2 class="size-4" />
-                  <span class="sr-only">查看配置</span>
-                </Button>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2">
-              <Badge
-                v-for="tag of buildTags(service)"
-                :key="`${service.id}-${tag.label}`"
-                variant="outline"
-                :class="tag.class"
-              >
-                {{ tag.label }}
-              </Badge>
-            </div>
+            </article>
           </div>
-        </article>
-      </template>
-    </section>
-  </ScrollArea>
+        </template>
+      </div>
+    </ScrollArea>
+  </div>
 </template>

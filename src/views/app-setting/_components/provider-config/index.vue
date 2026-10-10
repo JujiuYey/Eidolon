@@ -69,21 +69,19 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex h-full min-h-0 flex-col">
-    <div class="flex min-h-0 flex-1 overflow-hidden rounded-xl border bg-card shadow-sm">
-      <ProviderList
-        v-model:selected-provider-id="selectedProviderId"
-        :providers="PROVIDER_REGISTRY"
-        :configured-provider-ids="configuredProviderIds"
-      />
-      <ProviderConfigPanel
-        v-if="selectedProvider"
-        :provider="selectedProvider"
-        :setting="selectedProviderSetting"
-        :models="selectedProviderModels"
-        @saved="handleSaved"
-        @removed="handleRemoved"
-      />
-    </div>
+  <div class="flex min-h-0 flex-1 overflow-hidden rounded-xl border bg-card">
+    <ProviderList
+      v-model:selected-provider-id="selectedProviderId"
+      :providers="PROVIDER_REGISTRY"
+      :configured-provider-ids="configuredProviderIds"
+    />
+    <ProviderConfigPanel
+      v-if="selectedProvider"
+      :provider="selectedProvider"
+      :setting="selectedProviderSetting"
+      :models="selectedProviderModels"
+      @saved="handleSaved"
+      @removed="handleRemoved"
+    />
   </div>
 </template>
