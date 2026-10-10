@@ -10,7 +10,7 @@ Eidolon is a **Tauri 2 + Vue 3 desktop client** (product name "Eidolon", bundle 
 
 - Frontend: Vue 3.5 SFC, Vite 7, TypeScript 5.8, Pinia 3 (with `pinia-plugin-persistedstate`), vue-router 4.
 - Backend: Rust crate `app_lib` exposing Tauri commands; SQLite (bundled) for persistence; HTTP via `reqwest` (rustls + http2 + stream + system-proxy); LLM/MCP via `rig-core` + `rmcp`.
-- UI primitives: reka-ui (Radix Vue) + shadcn-vue (`new-york` style, neutral base, lucide icons), Tailwind v4, vaul, sonner, motion-v, stream-markdown, shiki, mermaid, d2, katex.
+- UI primitives: reka-ui (Radix Vue) + shadcn-vue (`new-york` style, neutral base, lucide icons), Tailwind v4, vaul, sonner, motion-v, stream-markdown, shiki, mermaid, d2, katex; TipTap v2 powers `sag-rich-editor` (shared WYSIWYG, markdown string in/out via tiptap-markdown — used by docs + weekly report; `sag-markdown-editor` source+preview kept as fallback).
 - License: MIT (2025 Joesph Falkenberg).
 
 ---

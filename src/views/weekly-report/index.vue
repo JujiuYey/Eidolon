@@ -6,7 +6,7 @@ import { save } from '@tauri-apps/plugin-dialog';
 import { CalendarRange, ClipboardCopy, Download, MoreHorizontal, RefreshCw, Save, WandSparkles } from 'lucide-vue-next';
 import { computed, onMounted, shallowRef } from 'vue';
 import { toast } from 'vue-sonner';
-import SagMarkdownEditor from '@/components/sag/sag-markdown-editor/index.vue';
+import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -546,13 +546,10 @@ onMounted(() => {
               <template v-else>尚未生成</template>
             </span>
           </div>
-          <div class="min-h-0 flex-1 overflow-y-auto p-4">
-            <SagMarkdownEditor
-              v-model="reportContent"
-              editor-label="周报内容"
-              placeholder="点击「生成周报」，或直接在这里撰写周报内容。"
-            />
-          </div>
+          <SagRichEditor
+            v-model="reportContent"
+            placeholder="点击「生成周报」，或直接在这里撰写周报内容。"
+          />
         </div>
       </div>
     </div>

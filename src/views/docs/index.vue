@@ -5,8 +5,8 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
-import SagMarkdownEditor from '@/components/sag/sag-markdown-editor/index.vue';
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
+import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
@@ -272,7 +272,7 @@ onBeforeUnmount(() => {
             设置你的文档库
           </p>
           <p class="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
-            选一个存放 .md 文件的文件夹——Obsidian 的库或任何普通文件夹都能直接用。
+            选一个存放 .md 文件的文件夹，里面的文档会全部出现在这里。
             文档始终是磁盘上的普通文件，随时可以用其他工具打开。
           </p>
         </div>
@@ -329,23 +329,13 @@ onBeforeUnmount(() => {
           </Button>
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto p-4">
-          <p
-            v-if="store.fileError"
-            class="mb-3 text-sm text-destructive"
-          >
-            {{ store.fileError }}
-          </p>
-          <SagMarkdownEditor
-            v-model="store.content"
-            badge-label="文档编辑"
-            editor-height-class="h-[calc(100vh-27rem)] min-h-[16rem]"
-            editor-label="Markdown 源码"
-            :guide="null"
-            placeholder="开始写吧，支持 Markdown。⌘S / Ctrl+S 保存。"
-            title="用标题、列表和代码块组织结构，右侧实时预览排版。"
-          />
-        </div>
+        <p
+          v-if="store.fileError"
+          class="shrink-0 border-b px-4 py-2 text-sm text-destructive"
+        >
+          {{ store.fileError }}
+        </p>
+        <SagRichEditor v-model="store.content" />
       </div>
     </div>
 
