@@ -28,7 +28,7 @@ const emit = defineEmits<{
       </Button>
       <Network class="size-5 text-primary" />
       <h1 class="text-base font-semibold">
-        {{ projectName || '接口请求工具' }}
+        {{ projectName || 'API 管理' }}
       </h1>
     </div>
 

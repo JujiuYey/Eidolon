@@ -141,7 +141,7 @@ onBeforeUnmount(() => {
       <div>
         <h1 class="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
           <Network class="size-6 text-primary" />
-          接口请求
+          API 管理
         </h1>
         <p class="mt-2 text-sm text-muted-foreground">
           按项目管理 API 请求、环境变量与执行历史。点击项目卡片进入工作区。

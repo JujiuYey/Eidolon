@@ -3,52 +3,45 @@ import { Bot, FileText, Mail, NotebookPen, Network, ListTodo } from 'lucide-vue-
 import type { Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-interface Menu {
+interface MenuItem {
   title: string;
   key: string;
   icon: Component;
   path: string;
 }
 
+interface MenuGroup {
+  key: string;
+  label?: string;
+  items: MenuItem[];
+}
+
 const router = useRouter();
 const route = useRoute();
 
-const menus: Menu[] = [
+const menuGroups: MenuGroup[] = [
   {
-    title: '邮件',
-    key: 'mail',
-    icon: Mail,
-    path: '/mail',
+    key: 'tools',
+    label: '工具',
+    items: [
+      { title: '邮件', key: 'mail', icon: Mail, path: '/mail' },
+      { title: '周报', key: 'weekly-report', icon: NotebookPen, path: '/weekly-report' },
+      { title: '禅道', key: 'zentao', icon: ListTodo, path: '/zentao' },
+    ],
   },
   {
-    title: '周报',
-    key: 'weekly-report',
-    icon: NotebookPen,
-    path: '/weekly-report',
-  },
-  {
-    title: '禅道',
-    key: 'zentao',
-    icon: ListTodo,
-    path: '/zentao',
-  },
-  {
-    title: '接口请求',
     key: 'api-client',
-    icon: Network,
-    path: '/api-client',
+    items: [{ title: 'API 管理', key: 'api-client', icon: Network, path: '/api-client' }],
   },
   {
-    title: '文档',
-    key: 'docs',
-    icon: FileText,
-    path: '/docs',
+    key: 'knowledge',
+    label: '知识库',
+    items: [{ title: '文档', key: 'docs', icon: FileText, path: '/docs' }],
   },
   {
-    title: '产品经理',
-    key: 'pm',
-    icon: Bot,
-    path: '/pm',
+    key: 'agent',
+    label: '智能体',
+    items: [{ title: '产品经理', key: 'pm', icon: Bot, path: '/pm' }],
   },
 ];
 
@@ -56,7 +49,7 @@ const currentKey = computed(() => {
   return route.path.split('/')[1] || 'index';
 });
 
-function handleClick(menu: Menu) {
+function handleClick(menu: MenuItem) {
   router.push(menu.path);
 }
 const getMenuButtonClass = computed(() => (key: string) => ({
@@ -66,11 +59,11 @@ const getMenuButtonClass = computed(() => (key: string) => ({
 
 <template>
   <SidebarContent>
-    <SidebarGroup>
-      <SidebarGroupLabel>应用</SidebarGroupLabel>
+    <SidebarGroup v-for="group of menuGroups" :key="group.key">
+      <SidebarGroupLabel v-if="group.label">{{ group.label }}</SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>
-          <SidebarMenuItem v-for="item of menus" :key="item.key" @click="handleClick(item)">
+          <SidebarMenuItem v-for="item of group.items" :key="item.key" @click="handleClick(item)">
             <SidebarMenuButton as-child :class="getMenuButtonClass(item.key)">
               <span>
                 <component :is="item.icon" />
