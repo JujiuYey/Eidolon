@@ -50,7 +50,7 @@ fn export_env(framework: &str) -> Vec<(&'static str, &'static str)> {
 }
 
 pub fn supported_frameworks() -> Vec<&'static str> {
-    vec!["vef-go"]
+    vec!["vef-go", "vef-java"]
 }
 
 /// 在仓库目录执行框架导出命令，返回清单 JSON 文本。
@@ -62,17 +62,22 @@ pub async fn export(framework: &str, repo_path: &str, export_id: &str) -> Result
         return Err("导出任务 ID 不能为空".to_string());
     }
 
+    let repo = Path::new(repo_path);
+    if !repo.is_dir() {
+        return Err(format!("仓库路径不存在或不是目录: {repo_path}"));
+    }
+
+    // vef-java：静态扫描源码（只读、毫秒级），不经过子进程与取消注册表
+    if framework == "vef-java" {
+        return crate::services::code_scan_java::scan(repo);
+    }
+
     let (program, args) = export_command(framework).ok_or_else(|| {
         format!(
             "暂不支持的框架类型 {framework}，当前支持: {}",
             supported_frameworks().join(", ")
         )
     })?;
-
-    let repo = Path::new(repo_path);
-    if !repo.is_dir() {
-        return Err(format!("仓库路径不存在或不是目录: {repo_path}"));
-    }
 
     let mut command = Command::new(program);
     command

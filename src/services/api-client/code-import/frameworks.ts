@@ -1,10 +1,11 @@
 import type { CodeImportPayload, CodeImportPreview } from './types';
 import { buildVefImportPayload, parseVefManifest } from './vef-go';
+import { buildJavaImportPayload, parseJavaManifest } from './vef-java';
 
 /**
- * 代码导入框架注册表。新增框架（如病案质控、体检系统）时在
- * `CODE_IMPORT_FRAMEWORKS` 追加一项；导出命令模板在 Rust 端
- * `services/code_export.rs` 登记。
+ * 代码导入框架注册表。新增框架（如体检系统）时在
+ * `CODE_IMPORT_FRAMEWORKS` 追加一项；导出策略（跑命令或扫源码）
+ * 在 Rust 端 `services/code_export.rs` 分派。
  */
 export interface CodeImportFramework {
   id: string;
@@ -26,6 +27,14 @@ export const CODE_IMPORT_FRAMEWORKS: CodeImportFramework[] = [
     defaultBaseUrl: 'http://127.0.0.1:8100',
     parseManifest: parseVefManifest,
     buildImportPayload: buildVefImportPayload,
+  },
+  {
+    id: 'vef-java',
+    label: 'vef-java',
+    description: 'Java · Spring Boot + vef 框架（REST 接口，静态解析源码）',
+    defaultBaseUrl: 'http://127.0.0.1:8200',
+    parseManifest: parseJavaManifest,
+    buildImportPayload: buildJavaImportPayload,
   },
 ];
 

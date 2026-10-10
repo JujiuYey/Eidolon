@@ -53,7 +53,9 @@ const visibleModules = computed<VisibleModule[]>(() => {
           resource.fullName.toLowerCase().includes(kw) ||
           resource.operations.some(
             operation =>
-              operation.action.toLowerCase().includes(kw) || operation.externalKey.toLowerCase().includes(kw),
+              operation.label.toLowerCase().includes(kw) ||
+              operation.action.toLowerCase().includes(kw) ||
+              operation.externalKey.toLowerCase().includes(kw),
           ),
       }));
       const kept = kw && !moduleMatched ? resources.filter(item => item.matched) : resources;
@@ -219,7 +221,10 @@ watch(trimmedKeyword, keyword => {
               <div v-if="expandedResources.has(item.resource.key)" class="pb-1.5 pl-[4.25rem] pr-3">
                 <div v-for="operation of item.resource.operations" :key="operation.externalKey" class="py-0.5">
                   <div class="flex items-center gap-2">
-                    <span class="truncate font-mono text-xs text-muted-foreground">{{ operation.action }}</span>
+                    <span class="shrink-0 font-mono text-[10px] font-semibold text-muted-foreground/80">
+                      {{ operation.method }}
+                    </span>
+                    <span class="truncate font-mono text-xs text-muted-foreground">{{ operation.label }}</span>
                     <Badge
                       v-if="operation.auth !== 'bearer'"
                       variant="outline"
@@ -235,10 +240,21 @@ watch(trimmedKeyword, keyword => {
                       {{ operation.permission }}
                     </span>
                   </div>
-                  <div v-if="operation.paramsFields.length > 0" class="flex flex-wrap gap-x-3 gap-y-0.5 pb-0.5 pl-3">
+                  <div
+                    v-if="operation.paramsFields.length > 0 || operation.queryFields.length > 0"
+                    class="flex flex-wrap gap-x-3 gap-y-0.5 pb-0.5 pl-3"
+                  >
+                    <span
+                      v-for="field of operation.queryFields"
+                      :key="`q:${field.name}`"
+                      class="font-mono text-[11px] leading-4 text-muted-foreground/60"
+                      :title="`query ${field.name}${field.required ? '（必填）' : ''}`"
+                    >
+                      ?{{ field.name }}
+                    </span>
                     <span
                       v-for="field of operation.paramsFields"
-                      :key="field.name"
+                      :key="`b:${field.name}`"
                       class="font-mono text-[11px] leading-4 text-muted-foreground/70"
                       :title="`${field.name}：${field.type}${field.required ? '（必填）' : ''}`"
                     >

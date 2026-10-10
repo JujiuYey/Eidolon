@@ -144,10 +144,16 @@ function toOperation(
   return {
     externalKey: `${resourceName}#${operation.action}`,
     action: operation.action,
+    label: operation.action,
+    method: 'POST',
+    subPath: null,
+    url: RPC_ENDPOINT,
     auth: operation.auth ?? 'bearer',
     permission: operation.permission ?? null,
     paramsType,
     paramsFields: resolveParamFields(paramsType, manifest),
+    queryFields: [],
+    bodyIsArray: false,
   };
 }
 
