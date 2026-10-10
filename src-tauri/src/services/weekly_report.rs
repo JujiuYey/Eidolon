@@ -3,6 +3,7 @@
 //! git 通过命令行调用（与项目"不引入 git2"的现状一致），每个仓库独立执行，
 //! 单仓库失败不影响其他仓库。所有错误以中文 `String` 返回。
 
+use std::collections::HashSet;
 use std::path::Path;
 use std::time::Duration;
 
@@ -12,15 +13,15 @@ use rig::completion::CompletionModel;
 use rig::providers::openai::Client;
 use tokio::time::timeout;
 
+use crate::db::api_client::ApiClientDatabase;
 use crate::db::local_store::LocalJsonStore;
 use crate::db::repositories::default_model::DefaultModelSettingRepository;
+use crate::db::repositories::git_account_repo::GitAccountRepository;
 use crate::db::repositories::model_config::ProviderSettingRepository;
 use crate::db::repositories::weekly_report_repo::WeeklyReportSourceRepository;
-use crate::db::api_client::ApiClientDatabase;
 use crate::models::weekly_report::{
     FetchCommitsRequest, PolishWeeklyReportInput, PolishWeeklyReportResult, RepoCommitLog,
-    WeeklyReportAuthorMode, WeeklyReportCommit, WeeklyReportRepo,
-    WEEKLY_REPORT_POLISH_MODEL_KEY,
+    WeeklyReportAuthorMode, WeeklyReportCommit, WEEKLY_REPORT_POLISH_MODEL_KEY,
 };
 
 /// 单个仓库 git log 的超时时间
@@ -64,22 +65,6 @@ pub async fn validate_git_repo(raw_path: &str) -> Result<std::path::PathBuf, Str
     Ok(path)
 }
 
-/// 读取仓库 `git config user.email`，未配置时返回 `None`
-async fn repo_author_email(path: &Path) -> Result<Option<String>, String> {
-    let output = tokio::process::Command::new("git")
-        .args(["config", "user.email"])
-        .current_dir(path)
-        .output()
-        .await
-        .map_err(|error| format!("启动 git 失败: {error}"))?;
-
-    let email = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if email.is_empty() {
-        return Ok(None);
-    }
-    Ok(Some(email))
-}
-
 /// 按请求拉取各仓库在区间内的提交。`repo_ids` 为空时取全部仓库
 pub async fn fetch_commits(
     database: &ApiClientDatabase,
@@ -102,32 +87,23 @@ pub async fn fetch_commits(
         return Err("请先添加要统计的代码仓库".to_string());
     }
 
+    let filter = resolve_author_filter(database, request)?;
     let since = ms_to_rfc3339(request.since_ms)?;
     let until = ms_to_rfc3339(request.until_ms)?;
     let since = since.as_str();
     let until = until.as_str();
+    // 借用即可：各任务共享同一份过滤配置（&AuthorFilter 是 Copy，可被多个协程捕获）
+    let filter = &filter;
 
     let tasks = repos.iter().map(|repo| async move {
-        let author = resolve_author(repo, request).await;
-        match author {
-            Ok(author) => {
-                let outcome = run_git_log(Path::new(&repo.path), &since, &until, author.as_deref())
-                    .await;
-                match outcome {
-                    Ok(commits) => RepoCommitLog {
-                        repo_id: repo.id.clone(),
-                        repo_name: repo.name.clone(),
-                        commits,
-                        error: None,
-                    },
-                    Err(error) => RepoCommitLog {
-                        repo_id: repo.id.clone(),
-                        repo_name: repo.name.clone(),
-                        commits: Vec::new(),
-                        error: Some(error),
-                    },
-                }
-            }
+        let outcome = run_git_log(Path::new(&repo.path), since, until, filter).await;
+        match outcome {
+            Ok(commits) => RepoCommitLog {
+                repo_id: repo.id.clone(),
+                repo_name: repo.name.clone(),
+                commits,
+                error: None,
+            },
             Err(error) => RepoCommitLog {
                 repo_id: repo.id.clone(),
                 repo_name: repo.name.clone(),
@@ -140,37 +116,63 @@ pub async fn fetch_commits(
     Ok(join_all(tasks).await)
 }
 
-/// 解析该仓库实际生效的 `--author` 值；`Ok(None)` 表示不过滤
-async fn resolve_author(
-    repo: &WeeklyReportRepo,
+/// 作者过滤方式：`git log --author` 在 git 侧过滤，Git 账号邮箱在解析后精确匹配
+enum AuthorFilter {
+    /// 不过滤
+    Any,
+    /// git 侧 `--author` 正则匹配（自定义作者）
+    GitPattern(String),
+    /// 解析后按「设置 → Git 账号」启用账号的邮箱集合过滤（只看自己）
+    AccountEmails(HashSet<String>),
+}
+
+/// 解析请求实际生效的作者过滤方式
+fn resolve_author_filter(
+    database: &ApiClientDatabase,
     request: &FetchCommitsRequest,
-) -> Result<Option<String>, String> {
+) -> Result<AuthorFilter, String> {
     match request.author_mode {
-        WeeklyReportAuthorMode::All => Ok(None),
+        WeeklyReportAuthorMode::All => Ok(AuthorFilter::Any),
         WeeklyReportAuthorMode::Custom => {
             let author = request.author.trim();
             if author.is_empty() {
                 return Err("作者过滤方式为自定义，但未填写作者".to_string());
             }
-            Ok(Some(author.to_string()))
+            Ok(AuthorFilter::GitPattern(author.to_string()))
         }
-        WeeklyReportAuthorMode::Auto => {
-            let email = repo_author_email(Path::new(&repo.path)).await?;
-            email.map(Some).ok_or_else(|| {
-                format!(
-                    "仓库 {} 未配置 user.email，无法按作者过滤；请在仓库中执行 git config 后重试，或改用其他过滤方式",
-                    repo.name
-                )
-            })
-        }
+        WeeklyReportAuthorMode::Mine => Ok(AuthorFilter::AccountEmails(load_account_emails(
+            database,
+        )?)),
     }
+}
+
+/// 读取启用 Git 账号的邮箱集合（小写化，用于忽略大小写匹配）
+fn load_account_emails(database: &ApiClientDatabase) -> Result<HashSet<String>, String> {
+    let accounts = GitAccountRepository::new(database).list()?;
+    let emails: HashSet<String> = accounts
+        .iter()
+        .filter(|account| account.enabled)
+        .map(|account| account.email.trim().to_lowercase())
+        .filter(|email| !email.is_empty())
+        .collect();
+
+    if emails.is_empty() {
+        return Err("请先在「设置 → Git 账号」中添加并启用至少一个账号".to_string());
+    }
+
+    Ok(emails)
+}
+
+/// 提交作者邮箱是否命中任一 Git 账号邮箱（忽略大小写）
+fn matches_account_emails(author_email: &str, account_emails: &HashSet<String>) -> bool {
+    account_emails.contains(&author_email.trim().to_lowercase())
 }
 
 async fn run_git_log(
     path: &Path,
     since: &str,
     until: &str,
-    author: Option<&str>,
+    filter: &AuthorFilter,
 ) -> Result<Vec<WeeklyReportCommit>, String> {
     let mut command = tokio::process::Command::new("git");
     command
@@ -182,10 +184,10 @@ async fn run_git_log(
             &format!("--since={since}"),
             &format!("--until={until}"),
             &format!(
-                "--pretty=format:%H{FIELD_SEPARATOR}%h{FIELD_SEPARATOR}%s{FIELD_SEPARATOR}%an{FIELD_SEPARATOR}%aI"
+                "--pretty=format:%H{FIELD_SEPARATOR}%h{FIELD_SEPARATOR}%s{FIELD_SEPARATOR}%an{FIELD_SEPARATOR}%ae{FIELD_SEPARATOR}%aI"
             ),
         ]);
-    if let Some(author) = author {
+    if let AuthorFilter::GitPattern(author) = filter {
         command.arg(format!("--author={author}"));
     }
 
@@ -199,10 +201,17 @@ async fn run_git_log(
         return Err(format!("git log 失败: {}", stderr.trim()));
     }
 
-    Ok(parse_log_output(&String::from_utf8_lossy(&output.stdout)))
+    let commits = parse_log_output(&String::from_utf8_lossy(&output.stdout));
+    Ok(match filter {
+        AuthorFilter::AccountEmails(account_emails) => commits
+            .into_iter()
+            .filter(|commit| matches_account_emails(&commit.author_email, account_emails))
+            .collect(),
+        _ => commits,
+    })
 }
 
-/// 解析 `git log --pretty=format:%H%x1f%h%x1f%s%x1f%an%x1f%aI` 的输出
+/// 解析 `git log --pretty=format:%H%x1f%h%x1f%s%x1f%an%x1f%ae%x1f%aI` 的输出
 fn parse_log_output(raw: &str) -> Vec<WeeklyReportCommit> {
     raw.lines()
         .filter(|line| !line.trim().is_empty())
@@ -212,6 +221,7 @@ fn parse_log_output(raw: &str) -> Vec<WeeklyReportCommit> {
             let short_hash = fields.next()?.trim().to_string();
             let subject = fields.next()?.trim().to_string();
             let author_name = fields.next()?.trim().to_string();
+            let author_email = fields.next()?.trim().to_string();
             let author_date = fields.next()?.trim();
 
             let timestamp = chrono::DateTime::parse_from_rfc3339(author_date)
@@ -223,6 +233,7 @@ fn parse_log_output(raw: &str) -> Vec<WeeklyReportCommit> {
                 short_hash,
                 subject,
                 author_name,
+                author_email,
                 timestamp,
             })
         })
@@ -331,11 +342,12 @@ fn strip_code_fence(raw: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::git::GitAccount;
 
     #[test]
     fn parse_log_output_reads_all_fields_and_skips_blank_lines() {
-        let raw = "abc123abc123abc123abc123abc123abc123\x1fabc12ef\x1ffeat(mail): 支持模板\x1f张三\x1f2026-09-30T10:00:00+08:00\n\n\
-                   def456def456def456def456def456def456\x1fdef456\x1ffix(api): 修复空指针\x1f李四\x1f2026-10-01T09:30:00Z\n";
+        let raw = "abc123abc123abc123abc123abc123abc123\x1fabc12ef\x1ffeat(mail): 支持模板\x1f张三\x1fzhang@company.com\x1f2026-09-30T10:00:00+08:00\n\n\
+                   def456def456def456def456def456def456\x1fdef456\x1ffix(api): 修复空指针\x1f李四\x1fli@personal.com\x1f2026-10-01T09:30:00Z\n";
 
         let commits = parse_log_output(raw);
         assert_eq!(commits.len(), 2);
@@ -344,9 +356,11 @@ mod tests {
         assert_eq!(commits[0].short_hash, "abc12ef");
         assert_eq!(commits[0].subject, "feat(mail): 支持模板");
         assert_eq!(commits[0].author_name, "张三");
+        assert_eq!(commits[0].author_email, "zhang@company.com");
         assert_eq!(commits[0].timestamp, 1_790_733_600_000);
 
         assert_eq!(commits[1].subject, "fix(api): 修复空指针");
+        assert_eq!(commits[1].author_email, "li@personal.com");
         assert_eq!(commits[1].timestamp, 1_790_847_000_000);
     }
 
@@ -354,6 +368,43 @@ mod tests {
     fn parse_log_output_returns_empty_for_empty_input() {
         assert!(parse_log_output("").is_empty());
         assert!(parse_log_output("\n").is_empty());
+    }
+
+    #[test]
+    fn matches_account_emails_ignores_case_and_whitespace() {
+        let accounts: HashSet<String> = ["me@company.com".to_string()].into_iter().collect();
+
+        assert!(matches_account_emails("Me@Company.Com", &accounts));
+        assert!(matches_account_emails("  me@company.com  ", &accounts));
+        assert!(!matches_account_emails("other@company.com", &accounts));
+        assert!(!matches_account_emails("", &accounts));
+    }
+
+    #[test]
+    fn load_account_emails_requires_enabled_accounts() {
+        let database = ApiClientDatabase::open_in_memory().expect("in-memory database");
+
+        let error = load_account_emails(&database).expect_err("no accounts yet");
+        assert!(error.contains("Git 账号"), "got {error}");
+
+        let repo = GitAccountRepository::new(&database);
+        repo.upsert(&GitAccount {
+            name: "公司电脑".to_string(),
+            email: "Me@Company.com".to_string(),
+            enabled: true,
+            ..Default::default()
+        })
+        .expect("account created");
+        repo.upsert(&GitAccount {
+            name: "旧电脑".to_string(),
+            email: "old@company.com".to_string(),
+            enabled: false,
+            ..Default::default()
+        })
+        .expect("disabled account created");
+
+        let emails = load_account_emails(&database).expect("emails");
+        assert_eq!(emails, ["me@company.com".to_string()].into_iter().collect());
     }
 
     #[test]

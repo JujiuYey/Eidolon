@@ -7,9 +7,9 @@ pub const WEEKLY_REPORT_POLISH_MODEL_KEY: &str = "weekly_report_polish";
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum WeeklyReportAuthorMode {
-    /// 按各仓库 `git config user.email` 过滤（只看自己）
+    /// 按「设置 → Git 账号」中启用账号的邮箱过滤（只看自己）
     #[default]
-    Auto,
+    Mine,
     /// 按请求中指定的作者过滤
     Custom,
     /// 不过滤，包含全部作者
@@ -19,7 +19,7 @@ pub enum WeeklyReportAuthorMode {
 impl WeeklyReportAuthorMode {
     pub fn as_str(self) -> &'static str {
         match self {
-            WeeklyReportAuthorMode::Auto => "auto",
+            WeeklyReportAuthorMode::Mine => "mine",
             WeeklyReportAuthorMode::Custom => "custom",
             WeeklyReportAuthorMode::All => "all",
         }
@@ -27,7 +27,7 @@ impl WeeklyReportAuthorMode {
 
     pub fn parse(value: &str) -> Result<Self, String> {
         match value {
-            "auto" => Ok(WeeklyReportAuthorMode::Auto),
+            "mine" => Ok(WeeklyReportAuthorMode::Mine),
             "custom" => Ok(WeeklyReportAuthorMode::Custom),
             "all" => Ok(WeeklyReportAuthorMode::All),
             other => Err(format!("不支持的作者过滤方式: {other}")),
@@ -75,6 +75,10 @@ pub struct WeeklyReportCommit {
 
     #[serde(default)]
     pub author_name: String,
+
+    /// 作者邮箱，周报按此与 Git 账号邮箱匹配
+    #[serde(default)]
+    pub author_email: String,
 
     /// 作者时间，Unix 毫秒
     #[serde(default)]
@@ -174,7 +178,7 @@ mod tests {
     #[test]
     fn author_mode_round_trips_through_string() {
         for mode in [
-            WeeklyReportAuthorMode::Auto,
+            WeeklyReportAuthorMode::Mine,
             WeeklyReportAuthorMode::Custom,
             WeeklyReportAuthorMode::All,
         ] {
@@ -183,11 +187,11 @@ mod tests {
                 mode
             );
         }
-        assert!(WeeklyReportAuthorMode::parse("mine").is_err());
+        assert!(WeeklyReportAuthorMode::parse("auto").is_err());
     }
 
     #[test]
-    fn author_mode_defaults_to_auto() {
-        assert_eq!(WeeklyReportAuthorMode::default(), WeeklyReportAuthorMode::Auto);
+    fn author_mode_defaults_to_mine() {
+        assert_eq!(WeeklyReportAuthorMode::default(), WeeklyReportAuthorMode::Mine);
     }
 }

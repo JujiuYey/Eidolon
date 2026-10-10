@@ -12,6 +12,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (2, include_str!("migrations/0002_email.sql")),
     (3, include_str!("migrations/0003_weekly_report.sql")),
     (4, include_str!("migrations/0004_zentao.sql")),
+    (5, include_str!("migrations/0005_git_account.sql")),
 ];
 
 /// API Client 专用数据库，与 `LocalJsonStore` 相互独立
@@ -189,6 +190,7 @@ mod tests {
                     "api_projects",
                     "api_request_histories",
                     "api_requests",
+                    "git_accounts",
                     "mail_templates",
                     "schema_migrations",
                     "sent_emails",
@@ -231,7 +233,7 @@ mod tests {
         second
             .with_connection(|connection| {
                 let versions = applied_versions(connection)?;
-                assert_eq!(versions, vec![1, 2, 3, 4]);
+                assert_eq!(versions, vec![1, 2, 3, 4, 5]);
 
                 let count: i64 = connection
                     .query_row("SELECT COUNT(*) FROM api_projects", [], |row| row.get(0))

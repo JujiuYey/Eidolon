@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { Palette, HardDrive, Sparkles, Database, Server, Brain, Mail, ListTodo, Settings } from 'lucide-vue-next';
+import {
+  Palette,
+  HardDrive,
+  Sparkles,
+  Database,
+  Server,
+  Brain,
+  Mail,
+  ListTodo,
+  GitBranch,
+  Settings,
+} from 'lucide-vue-next';
 import { ref } from 'vue';
 import type { Component } from 'vue';
 
@@ -8,6 +19,7 @@ import { Separator } from '@/components/ui/separator';
 import AppConfig from './_components/app-config/index.vue';
 import DataConfig from './_components/data-config/index.vue';
 import DefaultModel from './_components/default-model/index.vue';
+import GitConfig from './_components/git-config/index.vue';
 import McpService from './_components/mcp-service/index.vue';
 import ProviderConfig from './_components/provider-config/index.vue';
 import SkillsConfig from './_components/skills-config/index.vue';
@@ -50,6 +62,12 @@ const menus: SettingMenu[] = [
     icon: Server,
   },
   {
+    title: 'Skills',
+    key: 'skills',
+    icon: Brain,
+    dividerAfter: true,
+  },
+  {
     title: '邮件账户',
     key: 'smtp-config',
     icon: Mail,
@@ -60,9 +78,9 @@ const menus: SettingMenu[] = [
     icon: ListTodo,
   },
   {
-    title: 'Skills',
-    key: 'skills',
-    icon: Brain,
+    title: 'Git 账号',
+    key: 'git-config',
+    icon: GitBranch,
   },
 ];
 
@@ -111,6 +129,7 @@ function handleClick(key: string) {
         <McpService v-if="activeKey === 'mcp-service'" />
         <SmtpConfig v-if="activeKey === 'smtp-config'" />
         <ZentaoConfig v-if="activeKey === 'zentao-config'" />
+        <GitConfig v-if="activeKey === 'git-config'" />
         <SkillsConfig v-if="activeKey === 'skills'" />
       </main>
     </div>

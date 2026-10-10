@@ -2,6 +2,8 @@ export * from './api-client';
 
 export { listDefaultModelSettings, upsertDefaultModelSetting } from './default_model';
 
+export { deleteGitAccount, listGitAccounts, upsertGitAccount } from './git';
+
 export {
   createDocsDirectory,
   createDocsFile,

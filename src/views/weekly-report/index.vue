@@ -73,7 +73,7 @@ const presetOptions: Array<{ key: RangePreset; label: string }> = [
 ];
 
 const authorModeOptions: Array<{ key: WeeklyReportAuthorMode; label: string }> = [
-  { key: 'auto', label: '只看我的提交' },
+  { key: 'mine', label: '只看我的提交' },
   { key: 'custom', label: '自定义作者' },
   { key: 'all', label: '全部作者' },
 ];

@@ -111,6 +111,10 @@ pub fn run() {
             commands::email::delete_sent_email,
             commands::email::clear_sent_emails,
             commands::api_generate::generate_api_request_body,
+            // Git account commands
+            commands::git::list_git_accounts,
+            commands::git::upsert_git_account,
+            commands::git::delete_git_account,
             // Weekly report commands
             commands::weekly_report::list_weekly_report_repos,
             commands::weekly_report::add_weekly_report_repo,

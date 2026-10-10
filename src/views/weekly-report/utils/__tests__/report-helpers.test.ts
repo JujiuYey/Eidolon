@@ -32,6 +32,7 @@ function log(
       short_hash: commit.hash.slice(0, 7),
       subject: commit.subject,
       author_name: '我',
+      author_email: 'me@company.com',
       timestamp: commit.timestamp ?? 1_790_700_000_000 + index,
     })),
   };

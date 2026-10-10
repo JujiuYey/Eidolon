@@ -6,7 +6,7 @@
  */
 
 /** 作者过滤方式 */
-export type WeeklyReportAuthorMode = 'auto' | 'custom' | 'all';
+export type WeeklyReportAuthorMode = 'mine' | 'custom' | 'all';
 
 /** 参与周报统计的本地 git 仓库 */
 export interface WeeklyReportRepo {
@@ -28,6 +28,8 @@ export interface WeeklyReportCommit {
   /** 提交主题（首行） */
   subject: string;
   author_name: string;
+  /** 作者邮箱，周报按此与「设置 → Git 账号」的邮箱匹配 */
+  author_email: string;
   /** 作者时间，Unix 毫秒 */
   timestamp: number;
 }
