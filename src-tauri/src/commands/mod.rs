@@ -11,6 +11,7 @@ pub mod docs;
 pub mod docs_ai;
 pub mod email;
 pub mod git;
+pub mod mcp_server;
 pub mod mcp_service;
 pub mod model_config;
 pub mod pm;

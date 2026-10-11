@@ -5,6 +5,7 @@ pub mod default_model;
 pub mod docs;
 pub mod email;
 pub mod git;
+pub mod mcp_server;
 pub mod mcp_service;
 pub mod model_config;
 pub mod pm;

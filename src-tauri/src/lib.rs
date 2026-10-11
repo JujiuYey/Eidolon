@@ -33,6 +33,9 @@ pub fn run() {
             commands::default_model::list_default_model_settings,
             commands::default_model::upsert_default_model_setting,
             // MCP service commands
+            commands::mcp_server::get_mcp_server_info,
+            commands::mcp_server::update_mcp_server_settings,
+            commands::mcp_server::regenerate_mcp_server_token,
             commands::mcp_service::list_mcp_services,
             commands::mcp_service::upsert_mcp_service,
             commands::mcp_service::delete_mcp_service,
@@ -177,6 +180,31 @@ pub fn run() {
             let zentao_client = services::zentao::ZentaoClient::new()
                 .map_err(|error| std::io::Error::other(error))?;
             app.manage(zentao_client);
+
+            // 对外 MCP 服务（设置页可开关；启用时随应用启动）
+            let mcp_handle = services::mcp_server::McpServerHandle::default();
+            app.manage(mcp_handle);
+            {
+                let mcp_store = std::sync::Arc::new(
+                    LocalJsonStore::new(app_data_dir.clone())
+                        .map_err(|error| std::io::Error::other(error))?,
+                );
+                match services::mcp_server::load_or_init(&mcp_store) {
+                    Ok(settings) if settings.enabled => {
+                        let app_handle = app.handle().clone();
+                        tauri::async_runtime::spawn(async move {
+                            let handle =
+                                app_handle.state::<services::mcp_server::McpServerHandle>();
+                            match handle.start(&settings, mcp_store).await {
+                                Ok(port) => log::info!("MCP 服务随应用启动: {port}"),
+                                Err(error) => log::error!("MCP 服务启动失败: {error}"),
+                            }
+                        });
+                    }
+                    Ok(_) => {}
+                    Err(error) => log::error!("读取 MCP 服务设置失败: {error}"),
+                }
+            }
 
             Ok(())
         })

@@ -9,6 +9,7 @@ import {
   Mail,
   ListTodo,
   GitBranch,
+  PlugZap,
   Settings,
 } from 'lucide-vue-next';
 import { ref } from 'vue';
@@ -20,6 +21,7 @@ import AppConfig from './_components/app-config/index.vue';
 import DataConfig from './_components/data-config/index.vue';
 import DefaultModel from './_components/default-model/index.vue';
 import GitConfig from './_components/git-config/index.vue';
+import McpServer from './_components/mcp-server/index.vue';
 import McpService from './_components/mcp-service/index.vue';
 import ProviderConfig from './_components/provider-config/index.vue';
 import SkillsConfig from './_components/skills-config/index.vue';
@@ -62,10 +64,15 @@ const menus: SettingMenu[] = [
     icon: Server,
   },
   {
+    title: '对外MCP服务',
+    key: 'mcp-server',
+    icon: PlugZap,
+    dividerAfter: true,
+  },
+  {
     title: 'Skills',
     key: 'skills',
     icon: Brain,
-    dividerAfter: true,
   },
   {
     title: '邮件账户',
@@ -127,6 +134,7 @@ function handleClick(key: string) {
         <AppConfig v-if="activeKey === 'app-config'" />
         <DataConfig v-if="activeKey === 'data'" />
         <McpService v-if="activeKey === 'mcp-service'" />
+        <McpServer v-if="activeKey === 'mcp-server'" />
         <SmtpConfig v-if="activeKey === 'smtp-config'" />
         <ZentaoConfig v-if="activeKey === 'zentao-config'" />
         <GitConfig v-if="activeKey === 'git-config'" />

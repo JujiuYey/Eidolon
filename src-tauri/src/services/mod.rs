@@ -5,6 +5,7 @@ pub mod code_scan_java;
 pub mod docs;
 pub mod docs_ai;
 pub mod email;
+pub mod mcp_server;
 pub mod mcp_service;
 pub mod pm_chat;
 pub mod pm_skills;
