@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ClipboardCopy, Loader2, Sparkles } from 'lucide-vue-next';
+import { ClipboardCopy, FileUp, Loader2, Sparkles } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import type { ParsePreviewState } from '@/stores/schema-dict';
 import type { SchemaDatabase, SchemaDbType, SchemaSourceKind } from '@/types/schema-dict';
+import { getErrorMessage } from '@/utils/helpers';
 
 import { schemaSummary } from '../utils/display';
 import { SCHEMA_DB_TYPE_LABELS, SCHEMA_QUERY_TEMPLATES } from '../utils/query-templates';
@@ -47,6 +48,8 @@ const sourceKind = ref<SchemaSourceKind>('ddl');
 const ddlText = ref('');
 const queryText = ref('');
 const templateOpen = ref(false);
+const sqlFileInput = ref<HTMLInputElement | null>(null);
+const sqlFileName = ref('');
 
 const activeDatabase = computed(() => props.databases.find(item => item.id === databaseId.value) ?? null);
 const templateText = computed(() =>
@@ -71,6 +74,10 @@ watch(
     sourceKind.value = 'ddl';
     ddlText.value = '';
     queryText.value = '';
+    sqlFileName.value = '';
+    if (sqlFileInput.value) {
+      sqlFileInput.value.value = '';
+    }
     templateOpen.value = false;
   },
   { immediate: true },
@@ -80,6 +87,21 @@ function defaultLabel(): string {
   const now = new Date();
   const pad = (value: number) => String(value).padStart(2, '0');
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+async function handleSqlFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) {
+    return;
+  }
+  try {
+    ddlText.value = await file.text();
+    sqlFileName.value = file.name;
+    toast.success(`已读取 ${file.name}`);
+  } catch (error) {
+    toast.error(getErrorMessage(error, '读取 SQL 文件失败'));
+  }
 }
 
 function requestPreview() {
@@ -156,13 +178,27 @@ async function copyTemplate() {
           </TabsList>
 
           <TabsContent value="ddl" class="space-y-1.5">
-            <Label for="schema-import-ddl">建表 DDL（CREATE TABLE 语句）</Label>
+            <div class="flex items-center justify-between gap-2">
+              <Label for="schema-import-ddl">建表 DDL（CREATE TABLE 语句）</Label>
+              <Button type="button" variant="outline" size="sm" @click="sqlFileInput?.click()">
+                <FileUp class="size-3.5" />
+                读取 SQL 文件
+              </Button>
+            </div>
+            <p v-if="sqlFileName" class="text-xs text-muted-foreground">已载入文件：{{ sqlFileName }}</p>
             <Textarea
               id="schema-import-ddl"
               v-model="ddlText"
               rows="10"
               class="font-mono text-xs"
-              placeholder="粘贴建表语句，支持 mysqldump / pg_dump / Oracle 导出；SET、LOCK 等无关语句会被自动跳过"
+              placeholder="粘贴建表语句，或点右上角读取 .sql 文件；支持 mysqldump / pg_dump / Oracle 导出，SET、LOCK 等无关语句会被自动跳过"
+            />
+            <input
+              ref="sqlFileInput"
+              type="file"
+              accept=".sql,.ddl,.txt"
+              class="hidden"
+              @change="handleSqlFileChange"
             />
           </TabsContent>
 
