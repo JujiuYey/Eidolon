@@ -1,12 +1,15 @@
 use crate::db::api_client::ApiClientDatabase;
 use crate::db::local_store::LocalJsonStore;
+use crate::db::repositories::mcp_service::McpServiceRepository;
 use crate::db::repositories::schema_dict_repo::{SchemaDatabaseRepository, SchemaSnapshotRepository};
+use crate::models::mcp_service::McpService;
 use crate::models::schema_dict::{
     diff_schemas, normalize_db_type, normalize_source_kind, ParsedSchema, SchemaChange,
     SchemaDatabase, SchemaSnapshot, TimelineEntry,
 };
-use crate::services::schema_import;
+use crate::services::mcp_client;
 use crate::services::schema_ai;
+use crate::services::schema_import;
 
 // ===== 库条目 =====
 
@@ -50,7 +53,7 @@ pub struct ImportSchemaSnapshotRequest {
 /// 干跑解析：只解析并返回预览，不落库
 #[tauri::command]
 pub fn parse_schema_input(
-    database: tauri::State<'_, ApiClientDatabase>,
+    _database: tauri::State<'_, ApiClientDatabase>,
     db_type: String,
     source_kind: String,
     source_text: String,
@@ -191,6 +194,28 @@ fn parse_input(db_type: &str, source_kind: &str, source_text: &str) -> Result<Pa
         _ => schema_import::parse_ddl(source_text, db_type)
             .map(|outcome| (outcome.schema, outcome.skipped_statements)),
     }
+}
+
+// ===== MCP 数据源采集 =====
+
+/// 通用 MCP 工具调用（如手动调 dbx_list_connections 探测连接）
+#[tauri::command]
+pub async fn call_mcp_tool(
+    store: tauri::State<'_, LocalJsonStore>,
+    mcp_service_id: String,
+    tool_name: String,
+    arguments: serde_json::Value,
+) -> Result<String, String> {
+    let service = find_mcp_service(&store, &mcp_service_id)?;
+    mcp_client::call_tool_once(&service, &tool_name, arguments).await
+}
+
+fn find_mcp_service(store: &LocalJsonStore, service_id: &str) -> Result<McpService, String> {
+    McpServiceRepository::new(store)
+        .list()?
+        .into_iter()
+        .find(|service| service.id == service_id)
+        .ok_or_else(|| format!("未找到 id 为 {service_id} 的 MCP 服务"))
 }
 
 fn build_timeline(snapshots: &[SchemaSnapshot]) -> Vec<TimelineEntry> {

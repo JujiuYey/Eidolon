@@ -243,7 +243,7 @@ fn validate_service_for_discovery(service: &McpService) -> Result<(), String> {
     Ok(())
 }
 
-fn parse_args(raw: &str) -> Vec<String> {
+pub(crate) fn parse_args(raw: &str) -> Vec<String> {
     raw.lines()
         .map(str::trim)
         .filter(|line| !line.is_empty())
@@ -251,7 +251,7 @@ fn parse_args(raw: &str) -> Vec<String> {
         .collect()
 }
 
-fn parse_env(raw: &str) -> Result<HashMap<String, String>, String> {
+pub(crate) fn parse_env(raw: &str) -> Result<HashMap<String, String>, String> {
     let mut env = HashMap::new();
 
     for (index, line) in raw.lines().enumerate() {
@@ -278,7 +278,10 @@ fn parse_env(raw: &str) -> Result<HashMap<String, String>, String> {
     Ok(env)
 }
 
-async fn append_stderr(error: String, stderr: Option<tokio::process::ChildStderr>) -> String {
+pub(crate) async fn append_stderr(
+    error: String,
+    stderr: Option<tokio::process::ChildStderr>,
+) -> String {
     if let Some(mut stderr) = stderr {
         let mut output = String::new();
         use tokio::io::AsyncReadExt;

@@ -45,6 +45,17 @@ export async function getSchemaTimeline(databaseId: string): Promise<TimelineEnt
   return invoke<TimelineEntry[]>('get_schema_timeline', { databaseId });
 }
 
+// ===== MCP 通用调用 =====
+
+/** 通用 MCP 工具调用能力（连接 MCP 的方式保留在服务层） */
+export async function callMcpTool(
+  mcpServiceId: string,
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<string> {
+  return invoke<string>('call_mcp_tool', { mcpServiceId, toolName, arguments: args });
+}
+
 // ===== AI =====
 
 /** AI 解读两个快照间的变更 */

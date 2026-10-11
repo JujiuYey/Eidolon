@@ -155,6 +155,7 @@ pub fn run() {
             commands::schema_dict::get_schema_timeline,
             commands::schema_dict::interpret_schema_changes,
             commands::schema_dict::ask_schema_dict,
+            commands::schema_dict::call_mcp_tool,
         ])
         .setup(|app| {
             // 窗口启动时自动最大化
