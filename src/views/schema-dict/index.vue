@@ -4,6 +4,8 @@ import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
+import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
+import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,6 +15,7 @@ import { useConfirm } from '@/composables/use-confirm';
 import { useSchemaDictStore } from '@/stores/schema-dict';
 import type { SchemaDatabase } from '@/types/schema-dict';
 import { getErrorMessage } from '@/utils/helpers';
+import { formatShortDate } from '@/utils/stats';
 
 import SchemaAiPanel from './_components/schema-ai-panel.vue';
 import SchemaDatabaseDialog from './_components/schema-database-dialog.vue';
@@ -20,6 +23,7 @@ import SchemaImportDialog from './_components/schema-import-dialog.vue';
 import SchemaTableDetail from './_components/schema-table-detail.vue';
 import SchemaTableList from './_components/schema-table-list.vue';
 import SchemaTimelinePanel from './_components/schema-timeline-panel.vue';
+import { computeSchemaStats } from './utils/display';
 
 type PageTab = 'tables' | 'timeline' | 'ai';
 
@@ -38,6 +42,17 @@ const hasSnapshots = computed(() => store.snapshots.length > 0);
 const showDatabaseSkeleton = computed(() => store.databasesLoading && !store.databases.length);
 
 const activeTable = computed(() => store.activeTables.find(table => table.name === activeTableName.value) ?? null);
+
+const schemaStats = computed(() => computeSchemaStats(store.databases, store.snapshots, store.activeTables.length));
+const statTiles = computed<StatTile[]>(() => [
+  { label: '库', value: schemaStats.value.databaseCount },
+  { label: '快照（当前库）', value: schemaStats.value.snapshotCount },
+  { label: '表（当前库）', value: schemaStats.value.tableCount },
+  {
+    label: '最近快照',
+    value: schemaStats.value.lastSnapshotAt ? formatShortDate(schemaStats.value.lastSnapshotAt) : '—',
+  },
+]);
 
 onMounted(() => {
   void store.loadDatabases();
@@ -194,6 +209,8 @@ function setSnapshotFilter(value: unknown) {
       </div>
 
       <template v-else>
+        <SagStatsStrip v-if="hasDatabases" class="shrink-0" :tiles="statTiles" />
+
         <!-- 选择器行 -->
         <div class="flex flex-wrap items-center gap-2">
           <Select v-if="hasDatabases" :model-value="store.activeDatabaseId" @update:model-value="setDbTypeFilter">

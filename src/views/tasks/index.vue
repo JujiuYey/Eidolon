@@ -4,6 +4,8 @@ import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
+import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
+import type { StatTile, StatTrend } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,7 +19,7 @@ import TaskList from './_components/task-list.vue';
 import TaskPlanPanel from './_components/task-plan-panel.vue';
 import TaskQuickAdd from './_components/task-quick-add.vue';
 import type { TaskFilter } from './utils/display';
-import { filterCounts, filterTasks, sortTasks } from './utils/display';
+import { computeTaskStats, filterCounts, filterTasks, sortTasks } from './utils/display';
 
 const store = useTasksStore();
 const confirm = useConfirm();
@@ -31,6 +33,23 @@ const counts = computed(() => filterCounts(store.tasks));
 const visibleTasks = computed(() => sortTasks(filterTasks(store.tasks, filter.value)));
 const hasAnyTask = computed(() => store.tasks.length > 0);
 const showLoadingSkeleton = computed(() => store.tasksLoading && !store.tasksLoaded);
+
+const taskStats = computed(() => computeTaskStats(store.tasks));
+const statTiles = computed<StatTile[]>(() => [
+  {
+    label: '逾期',
+    value: taskStats.value.overdueCount,
+    tone: taskStats.value.overdueCount > 0 ? 'danger' : 'default',
+  },
+  { label: '本周完成', value: taskStats.value.weekCompletedCount },
+  { label: '30 天完成', value: taskStats.value.monthCompletedCount },
+  { label: '累计完成', value: taskStats.value.totalCompletedCount },
+]);
+const statTrend = computed<StatTrend>(() => ({
+  label: '近 30 天完成',
+  values: taskStats.value.dailyCompleted,
+  tooltips: taskStats.value.dailyTooltips,
+}));
 
 onMounted(() => {
   void store.loadTasks();
@@ -156,6 +175,8 @@ function retryLoad() {
       </div>
 
       <template v-else>
+        <SagStatsStrip v-if="hasAnyTask" class="shrink-0" :tiles="statTiles" :trend="statTrend" />
+
         <TaskQuickAdd
           :draft="store.aiDraft"
           @submit="handleQuickSubmit"

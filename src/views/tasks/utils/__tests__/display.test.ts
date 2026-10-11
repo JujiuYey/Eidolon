@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Task } from '@/types/tasks';
 
 import {
+  computeTaskStats,
   filterCounts,
   filterTasks,
   isDueToday,
@@ -13,6 +14,9 @@ import {
   taskStatusLabel,
   todayDateString,
 } from '../display';
+
+const NOW = new Date(2026, 9, 14, 15).getTime(); // 周三下午
+const DAY = 24 * 60 * 60 * 1000;
 
 function makeTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -87,5 +91,27 @@ describe('task display helpers', () => {
     expect(filterCounts(tasks)).toEqual({ all: 3, todo: 1, doing: 1, done: 1 });
     expect(filterTasks(tasks, 'doing').map(task => task.id)).toEqual(['b']);
     expect(filterTasks(tasks, 'all')).toHaveLength(3);
+  });
+
+  it('computes task stats: overdue, completion counts and daily trend', () => {
+    const tasks = [
+      makeTask({ id: 'overdue', due_date: '2026-10-10' }), // 未完成且逾期
+      makeTask({ id: 'due-today', due_date: '2026-10-14' }),
+      makeTask({ id: 'done-today', status: 'done', completed_at: NOW }),
+      makeTask({ id: 'done-yesterday', status: 'done', completed_at: NOW - 1 * DAY }),
+      makeTask({ id: 'done-old', status: 'done', completed_at: NOW - 40 * DAY }),
+      makeTask({ id: 'done-no-timestamp', status: 'done', completed_at: null }),
+    ];
+
+    const stats = computeTaskStats(tasks, NOW);
+
+    expect(stats.overdueCount).toBe(1); // 今天到期的不算逾期
+    expect(stats.weekCompletedCount).toBe(2); // 本周完成：今天 + 昨天
+    expect(stats.monthCompletedCount).toBe(2);
+    expect(stats.totalCompletedCount).toBe(3); // 无完成时间戳的不计
+    expect(stats.dailyCompleted).toHaveLength(30);
+    expect(stats.dailyCompleted[29]).toBe(1);
+    expect(stats.dailyCompleted[0]).toBe(0); // 40 天前在窗口外
+    expect(stats.dailyTooltips[29]).toContain('1 个完成');
   });
 });

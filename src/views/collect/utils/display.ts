@@ -6,6 +6,15 @@
  */
 
 import type { CollectItem, CollectKind } from '@/types/collect';
+import {
+  consecutiveDays,
+  countSince,
+  dailyCounts,
+  dailyTooltips,
+  DAY_MS,
+  startOfDay,
+  weekStartMs,
+} from '@/utils/stats';
 
 /** http(s) 开头的非空白文本按链接处理，其余按记事 */
 export function isLinkText(text: string): boolean {
@@ -69,4 +78,56 @@ export function formatCreatedAt(timestamp: number): string {
   const date = new Date(timestamp);
   const pad = (value: number) => String(value).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/** 统计用的域名提取：只认 http(s) 的合法 URL，其余（含 hostOf 的原样兜底）不计数 */
+function hostForStats(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.host : '';
+  } catch {
+    return '';
+  }
+}
+
+/** 收藏夹统计瓦片 + 趋势 + 常收藏站点 */
+export interface CollectStats {
+  weekCount: number;
+  monthCount: number;
+  streakDays: number;
+  archivedCount: number;
+  dailyCounts: number[];
+  dailyTooltips: string[];
+  topHosts: Array<{ host: string; count: number }>;
+}
+
+/** 从全量条目（含归档）计算统计：数量、连续天数、30 天分布、Top 域名 */
+export function computeCollectStats(items: CollectItem[], now = Date.now()): CollectStats {
+  const timestamps = items.map(item => item.created_at);
+  const daily = dailyCounts(timestamps, 30, now);
+
+  const hostCounts = new Map<string, number>();
+  for (const item of items) {
+    if (item.kind !== 'link' || !item.url) {
+      continue;
+    }
+    const host = hostForStats(item.url);
+    if (!host) {
+      continue;
+    }
+    hostCounts.set(host, (hostCounts.get(host) ?? 0) + 1);
+  }
+
+  return {
+    weekCount: countSince(timestamps, weekStartMs(now)),
+    monthCount: countSince(timestamps, startOfDay(now) - 29 * DAY_MS),
+    streakDays: consecutiveDays(timestamps, now),
+    archivedCount: items.filter(item => item.archived).length,
+    dailyCounts: daily,
+    dailyTooltips: dailyTooltips(daily, '条收藏', now),
+    topHosts: [...hostCounts.entries()]
+      .map(([host, count]) => ({ host, count }))
+      .sort((a, b) => b.count - a.count || a.host.localeCompare(b.host))
+      .slice(0, 5),
+  };
 }

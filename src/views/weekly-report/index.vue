@@ -8,6 +8,8 @@ import { toast } from 'vue-sonner';
 
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
+import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
+import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -44,6 +46,7 @@ import {
   getPresetRange,
 } from './utils/report-helpers';
 import type { DateRange, RangePreset, ReportGroupBy } from './utils/report-helpers';
+import { computeWeeklyReportStats, lastReportHint } from './utils/report-stats';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -55,6 +58,18 @@ const repos = ref<WeeklyReportRepo[]>([]);
 const isLoadingRepos = ref(false);
 const reports = ref<WeeklyReportEntry[]>([]);
 const isLoadingReports = ref(false);
+
+const weeklyStats = computed(() => computeWeeklyReportStats(reports.value, repos.value));
+const statTiles = computed<StatTile[]>(() => [
+  { label: '仓库', value: weeklyStats.value.repoCount },
+  {
+    label: '累计周报',
+    value: weeklyStats.value.reportCount,
+    hint: lastReportHint(weeklyStats.value.lastReportAt),
+  },
+  { label: '累计提交', value: weeklyStats.value.totalCommitCount },
+  { label: '本月新增', value: weeklyStats.value.monthReportCount },
+]);
 
 // ===== 统计区间与选项 =====
 
@@ -368,6 +383,8 @@ onMounted(() => {
     </SagPageHeader>
 
     <Separator class="mt-4 shrink-0" />
+
+    <SagStatsStrip v-if="reports.length > 0 || repos.length > 0" class="mx-6 mt-4 shrink-0" :tiles="statTiles" />
 
     <div class="flex min-h-0 flex-1 gap-4 px-6 py-4">
       <!-- 左栏：仓库 + 历史 -->

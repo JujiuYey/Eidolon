@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ParsedTable, SchemaChange } from '@/types/schema-dict';
+import type { ParsedTable, SchemaChange, SchemaDatabase, SchemaSnapshot } from '@/types/schema-dict';
 
 import {
   changeKindLabel,
   changeTone,
+  computeSchemaStats,
   describeChange,
   filterTables,
   formatDataType,
@@ -118,5 +119,49 @@ describe('schema dict display helpers', () => {
     );
     expect(describeChange(makeChange({ kind: 'default_changed', from: '', to: '0' }))).toBe('t_a.c1 默认值 （无） → 0');
     expect(describeChange(makeChange({ kind: 'comment_changed', column: null }))).toBe('t_a 表注释更新');
+  });
+
+  it('computes schema stats from databases and current-database snapshots', () => {
+    const databases = [
+      { id: 'db_1', name: '病案', db_type: 'mysql', note: '', sort: 0, created_at: 1, updated_at: 1 },
+      { id: 'db_2', name: '体检', db_type: 'mysql', note: '', sort: 0, created_at: 1, updated_at: 1 },
+    ] as SchemaDatabase[];
+    const snapshots = [
+      {
+        id: 's1',
+        database_id: 'db_1',
+        label: 'v1',
+        source_kind: 'ddl',
+        source_text: '',
+        tables_json: '',
+        note: '',
+        created_at: 100,
+        updated_at: 100,
+      },
+      {
+        id: 's2',
+        database_id: 'db_1',
+        label: 'v2',
+        source_kind: 'ddl',
+        source_text: '',
+        tables_json: '',
+        note: '',
+        created_at: 300,
+        updated_at: 300,
+      },
+    ] as SchemaSnapshot[];
+
+    const stats = computeSchemaStats(databases, snapshots, 42);
+
+    expect(stats).toEqual({ databaseCount: 2, snapshotCount: 2, tableCount: 42, lastSnapshotAt: 300 });
+  });
+
+  it('schema stats tolerate empty state', () => {
+    expect(computeSchemaStats([], [], 0)).toEqual({
+      databaseCount: 0,
+      snapshotCount: 0,
+      tableCount: 0,
+      lastSnapshotAt: 0,
+    });
   });
 });

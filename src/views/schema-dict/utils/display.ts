@@ -4,7 +4,14 @@
  * 变更类型的文案/样式、排序、表搜索过滤、表名排序。
  */
 
-import type { ParsedSchema, ParsedTable, SchemaChange, SchemaChangeKind } from '@/types/schema-dict';
+import type {
+  ParsedSchema,
+  ParsedTable,
+  SchemaChange,
+  SchemaChangeKind,
+  SchemaDatabase,
+  SchemaSnapshot,
+} from '@/types/schema-dict';
 
 /** 变更类型 → 文案 */
 export const CHANGE_KIND_LABELS: Record<SchemaChangeKind, string> = {
@@ -126,4 +133,29 @@ export function describeChange(change: SchemaChange): string {
     default:
       return where;
   }
+}
+
+/** 数据字典统计瓦片 */
+export interface SchemaStats {
+  databaseCount: number;
+  /** 当前库的快照数（快照按库加载） */
+  snapshotCount: number;
+  /** 当前库最新快照覆盖的表数 */
+  tableCount: number;
+  /** 当前库最近一次快照时间，无快照为 0 */
+  lastSnapshotAt: number;
+}
+
+/** 库列表 + 当前库快照 → 统计瓦片数据 */
+export function computeSchemaStats(
+  databases: SchemaDatabase[],
+  snapshots: SchemaSnapshot[],
+  tableCount: number,
+): SchemaStats {
+  return {
+    databaseCount: databases.length,
+    snapshotCount: snapshots.length,
+    tableCount,
+    lastSnapshotAt: snapshots.reduce((latest, snapshot) => Math.max(latest, snapshot.created_at), 0),
+  };
 }

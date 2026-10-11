@@ -5,6 +5,8 @@ import { toast } from 'vue-sonner';
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
+import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
+import type { StatTile, StatTrend } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,7 +21,7 @@ import CollectItemEditorDialog from './_components/collect-item-editor-dialog.vu
 import CollectItemList from './_components/collect-item-list.vue';
 import CollectQuickAdd from './_components/collect-quick-add.vue';
 import type { CollectFilter } from './utils/display';
-import { filterCounts, filterItems } from './utils/display';
+import { computeCollectStats, filterCounts, filterItems } from './utils/display';
 
 const store = useCollectStore();
 const confirm = useConfirm();
@@ -36,6 +38,19 @@ const visibleItems = computed(() => filterItems(store.items, filter.value, query
 const hasAnyItem = computed(() => store.items.length > 0);
 const showLoadingSkeleton = computed(() => store.itemsLoading && !store.itemsLoaded);
 
+const collectStats = computed(() => computeCollectStats(store.items));
+const statTiles = computed<StatTile[]>(() => [
+  { label: '本周新增', value: collectStats.value.weekCount },
+  { label: '30 天新增', value: collectStats.value.monthCount },
+  { label: '连续收集', value: collectStats.value.streakDays, hint: '天' },
+  { label: '已归档', value: collectStats.value.archivedCount },
+]);
+const statTrend = computed<StatTrend>(() => ({
+  label: '近 30 天收藏',
+  values: collectStats.value.dailyCounts,
+  tooltips: collectStats.value.dailyTooltips,
+}));
+
 onMounted(() => {
   void store.loadItems();
 });
@@ -47,6 +62,11 @@ async function handleQuickSubmit(text: string) {
   } catch (error) {
     toast.error(getErrorMessage(error, '收藏失败'));
   }
+}
+
+function handleHostClick(host: string) {
+  query.value = host;
+  filter.value = 'all';
 }
 
 function openEdit(item: CollectItem) {
@@ -160,6 +180,24 @@ function retryLoad() {
       </div>
 
       <template v-else>
+        <SagStatsStrip v-if="hasAnyItem" class="shrink-0" :tiles="statTiles" :trend="statTrend">
+          <template v-if="collectStats.topHosts.length > 0" #extra>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-xs text-muted-foreground">常收藏</span>
+              <button
+                v-for="entry of collectStats.topHosts"
+                :key="entry.host"
+                type="button"
+                class="rounded-full border bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground"
+                :title="`搜索 ${entry.host} 的收藏`"
+                @click="handleHostClick(entry.host)"
+              >
+                {{ entry.host }} <span class="tabular-nums">{{ entry.count }}</span>
+              </button>
+            </div>
+          </template>
+        </SagStatsStrip>
+
         <CollectQuickAdd @submit="handleQuickSubmit" />
 
         <CollectAiPanel

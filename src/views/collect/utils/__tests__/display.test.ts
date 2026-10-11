@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 
 import type { CollectItem } from '@/types/collect';
 
-import { filterCounts, filterItems, formatCreatedAt, hostOf, isLinkText } from '../display';
+import { computeCollectStats, filterCounts, filterItems, formatCreatedAt, hostOf, isLinkText } from '../display';
+
+const NOW = new Date(2026, 9, 14, 15).getTime(); // 周三下午
+const DAY = 24 * 60 * 60 * 1000;
 
 function makeItem(overrides: Partial<CollectItem> = {}): CollectItem {
   return {
@@ -73,5 +76,45 @@ describe('collect display helpers', () => {
   it('formats timestamps as local ISO date and blanks zero', () => {
     expect(formatCreatedAt(0)).toBe('');
     expect(formatCreatedAt(new Date(2026, 9, 12, 8, 30).getTime())).toBe('2026-10-12');
+  });
+
+  it('computes collect stats: week/month counts, streak, archive, trend and top hosts', () => {
+    const items = [
+      makeItem({ id: 'a', kind: 'link', url: 'https://rust-lang.org/a', created_at: NOW }),
+      makeItem({ id: 'b', kind: 'link', url: 'https://rust-lang.org/b', created_at: NOW - 1 * DAY }),
+      makeItem({ id: 'c', kind: 'link', url: 'https://example.com/c', created_at: NOW - 2 * DAY }),
+      makeItem({ id: 'd', kind: 'note', content: '记事', created_at: NOW - 3 * DAY }),
+      makeItem({ id: 'e', kind: 'link', url: 'https://old.com/e', created_at: NOW - 40 * DAY, archived: true }),
+    ];
+
+    const stats = computeCollectStats(items, NOW);
+
+    expect(stats.weekCount).toBe(3); // 周一以后：今天、昨天、前天（周一起）
+    expect(stats.monthCount).toBe(4); // 30 天窗口内的 4 条（40 天前那条在外）
+    expect(stats.streakDays).toBe(4); // 今天到 3 天前连续
+    expect(stats.archivedCount).toBe(1);
+    expect(stats.dailyCounts).toHaveLength(30);
+    expect(stats.dailyCounts[29]).toBe(1);
+    expect(stats.dailyTooltips[29]).toContain('1 条收藏');
+    // 归档条目也参与域名统计（收藏过就算）
+    expect(stats.topHosts).toEqual([
+      { host: 'rust-lang.org', count: 2 },
+      { host: 'example.com', count: 1 },
+      { host: 'old.com', count: 1 },
+    ]);
+  });
+
+  it('computeCollectStats breaks streak when a day is missing and tolerates bad urls', () => {
+    const items = [
+      makeItem({ id: 'a', created_at: NOW }),
+      makeItem({ id: 'b', created_at: NOW - 3 * DAY }),
+      makeItem({ id: 'c', kind: 'link', url: 'not-a-url', created_at: NOW }),
+      makeItem({ id: 'd', kind: 'link', url: 'ftp://files.com/x', created_at: NOW }),
+    ];
+
+    const stats = computeCollectStats(items, NOW);
+
+    expect(stats.streakDays).toBe(1); // 昨天、前天空缺
+    expect(stats.topHosts).toEqual([]); // 非法/非 http(s) URL 不参与域名统计
   });
 });

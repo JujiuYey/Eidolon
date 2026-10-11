@@ -4,6 +4,8 @@ import { Search } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
+import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
+import type { StatTile, StatTrend } from '@/components/sag/sag-stats-strip/index.vue';
 import { Input } from '@/components/ui/input';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -12,6 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMailStore } from '@/stores/mail';
 import type { SentEmail } from '@/types/mail';
 
+import { computeMailStats, lastSentHint } from '../utils/mail-stats';
 import ComposePanel from './ComposePanel.vue';
 import SentDisplay from './SentDisplay.vue';
 import SentList from './SentList.vue';
@@ -39,6 +42,23 @@ const filteredSentList = computed(() => {
       email.body.toLowerCase().includes(keyword),
   );
 });
+
+const mailStats = computed(() => computeMailStats(store.templates, store.sentEmails));
+const statTiles = computed<StatTile[]>(() => [
+  { label: '模板', value: mailStats.value.templateCount },
+  { label: '已发送', value: mailStats.value.sentCount, hint: lastSentHint(mailStats.value.lastSentAt) },
+  { label: '本周发送', value: mailStats.value.weekSentCount },
+  {
+    label: '发送失败',
+    value: mailStats.value.failedCount,
+    tone: mailStats.value.failedCount > 0 ? 'danger' : 'default',
+  },
+]);
+const statTrend = computed<StatTrend>(() => ({
+  label: '近 30 天发送',
+  values: mailStats.value.dailySent,
+  tooltips: mailStats.value.dailyTooltips,
+}));
 
 function handleAccountChange(value: unknown) {
   if (typeof value === 'string') {
@@ -109,6 +129,13 @@ function handleResend() {
     </header>
 
     <Separator class="mx-6 mt-4 shrink-0" />
+
+    <SagStatsStrip
+      v-if="store.templates.length > 0 || store.sentEmails.length > 0"
+      class="mx-6 mt-4 shrink-0"
+      :tiles="statTiles"
+      :trend="statTrend"
+    />
 
     <ResizablePanelGroup id="mail-panel-group" direction="horizontal" class="min-h-0 flex-1">
       <!-- 左栏：写信时选模板，已发送时列历史 -->
