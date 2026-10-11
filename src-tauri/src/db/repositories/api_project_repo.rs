@@ -12,7 +12,7 @@ use crate::db::api_client::ApiClientDatabase;
 use crate::db::repositories::api_client_repo_common::{
     begin, next_sort, require_name, require_project, sql_error, DeletionSummary,
 };
-use crate::models::api_client::ApiProject;
+use crate::models::api_client::{ApiClientOverviewStats, ApiProject};
 
 /// 创建项目时自动生成的默认分组名称
 pub const DEFAULT_GROUP_NAME: &str = "默认分组";
@@ -178,6 +178,49 @@ impl<'a> ApiProjectRepository<'a> {
             let summary = project_deletion_summary(&transaction, project_id)?;
             transaction.rollback().map_err(sql_error)?;
             Ok(summary)
+        })
+    }
+
+    /// API 管理页统计概览：各表行数、最近更新时间与窗口内新增请求时间戳。
+    /// 只读聚合，`since_ms` 由命令层按「近 30 天」传入。
+    pub fn overview_stats(&self, since_ms: i64) -> Result<ApiClientOverviewStats, String> {
+        self.database.with_connection(|connection| {
+            let count = |sql: &str| -> Result<i64, String> {
+                connection
+                    .query_row(sql, [], |row| row.get(0))
+                    .map_err(sql_error)
+            };
+
+            let latest_updated_at: i64 = connection
+                .query_row(
+                    "SELECT COALESCE(MAX(updated_at), 0) FROM (
+                        SELECT updated_at FROM api_projects
+                        UNION ALL SELECT updated_at FROM api_groups
+                        UNION ALL SELECT updated_at FROM api_requests
+                        UNION ALL SELECT updated_at FROM api_environments
+                    )",
+                    [],
+                    |row| row.get(0),
+                )
+                .map_err(sql_error)?;
+
+            let mut statement = connection
+                .prepare("SELECT created_at FROM api_requests WHERE created_at >= ?1")
+                .map_err(sql_error)?;
+            let recent_request_timestamps = statement
+                .query_map(params![since_ms], |row| row.get(0))
+                .map_err(sql_error)?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(sql_error)?;
+
+            Ok(ApiClientOverviewStats {
+                project_count: count("SELECT COUNT(*) FROM api_projects")?,
+                group_count: count("SELECT COUNT(*) FROM api_groups")?,
+                request_count: count("SELECT COUNT(*) FROM api_requests")?,
+                environment_count: count("SELECT COUNT(*) FROM api_environments")?,
+                latest_updated_at,
+                recent_request_timestamps,
+            })
         })
     }
 }
@@ -389,5 +432,52 @@ mod tests {
             .expect("delete should succeed");
         assert_eq!(summary.deleted_requests, 2);
         assert!(project_repo.list().expect("list").is_empty());
+    }
+
+    #[test]
+    fn overview_stats_counts_rows_and_buckets_recent_requests() {
+        let database = in_memory();
+        let project_repo = ApiProjectRepository::new(&database);
+        let project = project_repo.create("订单系统", "").expect("project");
+        let groups = ApiGroupRepository::new(&database)
+            .list(&project.id)
+            .expect("groups");
+        let request_repo = ApiRequestRepository::new(&database);
+        request_repo
+            .create(&groups[0].id, "新增订单")
+            .expect("request one");
+        request_repo
+            .create(&groups[0].id, "订单详情")
+            .expect("request two");
+
+        // 环境表直接插一行，避免引入环境仓库的构造细节
+        database
+            .with_connection(|connection| {
+                connection
+                    .execute(
+                        "INSERT INTO api_environments
+                            (id, project_id, name, base_url, variables_json, created_at, updated_at)
+                         VALUES ('env_1', ?1, '测试环境', '', '[]', 1, 1)",
+                        params![project.id],
+                    )
+                    .map_err(|error| error.to_string())?;
+                Ok(())
+            })
+            .expect("seed environment");
+
+        let all = project_repo.overview_stats(0).expect("stats");
+        assert_eq!(all.project_count, 1);
+        assert_eq!(all.group_count, 1);
+        assert_eq!(all.request_count, 2);
+        assert_eq!(all.environment_count, 1);
+        assert!(all.latest_updated_at > 0);
+        assert_eq!(all.recent_request_timestamps.len(), 2);
+
+        // 窗口推到未来：新增请求为空，行数不受影响
+        let future = project_repo
+            .overview_stats(i64::MAX / 2)
+            .expect("stats with future window");
+        assert!(future.recent_request_timestamps.is_empty());
+        assert_eq!(future.request_count, 2);
     }
 }

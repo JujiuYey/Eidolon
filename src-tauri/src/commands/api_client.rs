@@ -6,7 +6,7 @@ use crate::db::repositories::api_history::ApiHistoryRepository;
 use crate::db::repositories::api_project_repo::ApiProjectRepository;
 use crate::db::repositories::api_request_repo::ApiRequestRepository;
 use crate::models::api_client::{
-    ApiEnvironment, ApiGroup, ApiProject, ApiRequest, ApiRequestHistory,
+    ApiClientOverviewStats, ApiEnvironment, ApiGroup, ApiProject, ApiRequest, ApiRequestHistory,
 };
 
 #[tauri::command]
@@ -14,6 +14,16 @@ pub fn list_api_projects(
     database: tauri::State<'_, ApiClientDatabase>,
 ) -> Result<Vec<ApiProject>, String> {
     ApiProjectRepository::new(&database).list()
+}
+
+/// API 管理页统计概览（只读聚合）；近 30 天新增请求的时间戳由前端按天分桶
+#[tauri::command]
+pub fn get_api_client_stats(
+    database: tauri::State<'_, ApiClientDatabase>,
+) -> Result<ApiClientOverviewStats, String> {
+    const THIRTY_DAYS_MS: i64 = 30 * 24 * 3600 * 1000;
+    let since = chrono::Utc::now().timestamp_millis() - THIRTY_DAYS_MS;
+    ApiProjectRepository::new(&database).overview_stats(since)
 }
 
 #[tauri::command]

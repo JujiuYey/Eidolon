@@ -5,13 +5,18 @@ import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
+import type { StatTile, StatTrend } from '@/components/sag/sag-stats-strip/index.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirm } from '@/composables/use-confirm';
+import { getApiClientStats } from '@/services';
 import { useApiClientStore } from '@/stores/api-client';
+import type { ApiClientOverviewStats } from '@/types/api-client';
+import { dailyCounts, dailyTooltips } from '@/utils/stats';
 
 import CodeImportDialog from './components/CodeImportDialog.vue';
 import ProjectFormDialog from './components/ProjectFormDialog.vue';
@@ -27,6 +32,30 @@ const backendError = ref<string | null>(null);
 const importDialogProjectId = ref<string | null>(null);
 
 const sortedProjects = computed(() => store.sortedProjects);
+
+const stats = ref<ApiClientOverviewStats | null>(null);
+const statTiles = computed<StatTile[]>(() => [
+  { label: '项目', value: stats.value?.projectCount ?? sortedProjects.value.length },
+  { label: '请求', value: stats.value?.requestCount ?? 0 },
+  { label: '分组', value: stats.value?.groupCount ?? 0 },
+  { label: '环境', value: stats.value?.environmentCount ?? 0 },
+]);
+const statTrend = computed<StatTrend | null>(() => {
+  if (!stats.value) {
+    return null;
+  }
+  const values = dailyCounts(stats.value.recentRequestTimestamps, 30);
+  return { label: '近 30 天新增请求', values, tooltips: dailyTooltips(values, '个新增') };
+});
+
+/** 统计失败不影响主功能：静默置空，页面已有错误提示通道 */
+async function loadStats(): Promise<void> {
+  try {
+    stats.value = await getApiClientStats();
+  } catch {
+    stats.value = null;
+  }
+}
 
 const importDialogProject = computed(() => {
   if (!importDialogProjectId.value) {
@@ -47,6 +76,7 @@ async function bootstrap(): Promise<void> {
     console.error(error);
     backendError.value = error instanceof Error ? error.message : '加载项目失败';
   }
+  void loadStats();
 }
 
 async function handleCreateProjectSubmit(payload: { name: string; description: string }): Promise<void> {
@@ -83,6 +113,7 @@ async function handleEditProjectSubmit(payload: { name: string; description: str
     await store.updateProject(id, payload.name, payload.description);
     editDialogOpen.value = false;
     toast.success('项目已更新');
+    void loadStats();
   } catch (error) {
     const message = error instanceof Error ? error.message : '更新项目失败';
     toast.error(message);
@@ -110,6 +141,7 @@ async function handleDeleteProject(projectId: string): Promise<void> {
   try {
     await store.deleteProject(projectId);
     toast.success('项目已删除');
+    void loadStats();
   } catch (error) {
     const message = error instanceof Error ? error.message : '删除项目失败';
     toast.error(message);
@@ -171,6 +203,13 @@ onBeforeUnmount(() => {
       <AlertTitle>无法连接到接口请求后端</AlertTitle>
       <AlertDescription> {{ backendError }}。请确认 Rust 端 API Client commands 已注册后重启应用。 </AlertDescription>
     </Alert>
+
+    <SagStatsStrip
+      v-if="stats && !store.isLoadingProjects && sortedProjects.length > 0"
+      class="mb-4 shrink-0"
+      :tiles="statTiles"
+      :trend="statTrend"
+    />
 
     <div v-if="store.isLoadingProjects" class="flex flex-1 items-center justify-center">
       <div class="flex items-center gap-2 text-sm text-muted-foreground">

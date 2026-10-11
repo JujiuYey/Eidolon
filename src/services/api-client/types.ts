@@ -113,6 +113,15 @@ export interface TauriDeletionSummary {
   deleted_histories: number;
 }
 
+export interface TauriApiClientOverviewStats {
+  project_count: number;
+  group_count: number;
+  request_count: number;
+  environment_count: number;
+  latest_updated_at: number;
+  recent_request_timestamps: number[];
+}
+
 export interface TauriAiGenerateInput {
   prompt: string;
   reference: string;

@@ -252,6 +252,31 @@ pub struct ApiImportSource {
     pub updated_at: i64,
 }
 
+/// API 管理页统计概览：各表行数 + 最近更新时间 + 近 30 天新增请求时间戳。
+/// 时间戳由前端按本地自然日分桶（与收藏/任务等页面共用同一套口径）。
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ApiClientOverviewStats {
+    #[serde(default)]
+    pub project_count: i64,
+
+    #[serde(default)]
+    pub group_count: i64,
+
+    #[serde(default)]
+    pub request_count: i64,
+
+    #[serde(default)]
+    pub environment_count: i64,
+
+    /// 四张表里最大的 updated_at，无数据为 0
+    #[serde(default)]
+    pub latest_updated_at: i64,
+
+    /// created_at 晚于查询窗口的请求时间戳（毫秒）
+    #[serde(default)]
+    pub recent_request_timestamps: Vec<i64>,
+}
+
 /// 代码导入的分组定义。`key` 由导入方（前端适配器）生成，
 /// 用于在导入事务中建立父子关系并让请求挂到分组上。
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

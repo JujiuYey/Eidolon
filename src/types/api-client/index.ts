@@ -30,6 +30,16 @@ export interface ApiClientProject {
   updatedAt: number;
 }
 
+/** API 管理页统计概览 */
+export interface ApiClientOverviewStats {
+  projectCount: number;
+  groupCount: number;
+  requestCount: number;
+  environmentCount: number;
+  latestUpdatedAt: number;
+  recentRequestTimestamps: number[];
+}
+
 export interface ApiClientGroup {
   id: string;
   projectId: string;

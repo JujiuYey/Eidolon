@@ -13,6 +13,7 @@ export { clearApiRequestHistories, getApiRequestHistory, listApiRequestHistories
 export {
   createApiProject,
   deleteApiProject,
+  getApiClientStats,
   getApiProject,
   getApiProjectDeletionImpact,
   listApiProjects,

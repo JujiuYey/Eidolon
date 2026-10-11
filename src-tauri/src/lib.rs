@@ -75,6 +75,7 @@ pub fn run() {
             // API client commands
             commands::api_client::list_api_projects,
             commands::api_client::get_api_project,
+            commands::api_client::get_api_client_stats,
             commands::api_client::create_api_project,
             commands::api_client::update_api_project,
             commands::api_client::get_api_project_deletion_impact,

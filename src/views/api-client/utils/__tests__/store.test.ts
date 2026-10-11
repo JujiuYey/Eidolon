@@ -163,6 +163,14 @@ function buildService(): ServiceState {
       calls.push({ method: 'listApiProjects', args: [] });
       return [makeProject()];
     },
+    getApiClientStats: async () => ({
+      projectCount: 1,
+      groupCount: 1,
+      requestCount: 0,
+      environmentCount: 0,
+      latestUpdatedAt: 0,
+      recentRequestTimestamps: [],
+    }),
     createApiProject: async (name: string, description: string) => {
       calls.push({ method: 'createApiProject', args: [name, description] });
       return makeProject({ name, description });
