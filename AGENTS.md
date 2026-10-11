@@ -73,6 +73,9 @@ Routing (frontend):
 | `/index`                   | redirect → `/mail` (legacy mail demo path)                         |
 | `/weekly-report`           | `views/weekly-report/index.vue`                                    |
 | `/zentao`                  | `views/zentao/index.vue`                                           |
+| `/tasks`                   | `views/tasks/index.vue` (个人任务管理器)                           |
+| `/schema-dict`             | `views/schema-dict/index.vue` (数据字典)                           |
+| `/collect`                 | `views/collect/index.vue` (收藏夹：链接+记事收集盒)                |
 | `/api-client`              | `views/api-project/index.vue`                                      |
 | `/api-client/projects/:id` | `views/api-client-workspace/index.vue` (name `api-client-project`) |
 | `/docs`                    | `views/docs/manage.vue` (管理文档库，多根目录)                     |
@@ -228,6 +231,10 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 - `src/views/pm/utils/__tests__/format.test.ts`
 - `src/stores/__tests__/docs.test.ts`
 - `src/views/docs/utils/__tests__/tree.test.ts`
+- `src/stores/__tests__/tasks.test.ts`
+- `src/views/tasks/utils/__tests__/display.test.ts`
+- `src/stores/__tests__/collect.test.ts`
+- `src/views/collect/utils/__tests__/display.test.ts`
 
 **Rules** (project-wide):
 

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import {
+  Bookmark,
   Bot,
   Database,
   FolderClosed,
@@ -49,6 +50,7 @@ const toolsGroup: MenuGroup = {
     { title: '禅道', key: 'zentao', icon: ListTodo, path: '/zentao' },
     { title: '任务', key: 'tasks', icon: SquareCheckBig, path: '/tasks' },
     { title: '数据字典', key: 'schema-dict', icon: Database, path: '/schema-dict' },
+    { title: '收藏夹', key: 'collect', icon: Bookmark, path: '/collect' },
   ],
 };
 const agentGroup: MenuGroup = {

@@ -7,7 +7,8 @@ export type DefaultModelKey =
   | 'pm_chat'
   | 'docs_chat'
   | 'task_assistant'
-  | 'schema_assistant';
+  | 'schema_assistant'
+  | 'collect_assistant';
 
 export interface DefaultModelSetting {
   key: DefaultModelKey;

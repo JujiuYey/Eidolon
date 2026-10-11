@@ -7,6 +7,7 @@ pub mod api_history;
 pub mod api_import_repo;
 pub mod api_project_repo;
 pub mod api_request_repo;
+pub mod collect_repo;
 pub mod git_account_repo;
 pub mod default_model;
 pub mod mail_template_repo;

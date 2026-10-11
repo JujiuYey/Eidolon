@@ -156,6 +156,13 @@ pub fn run() {
             commands::schema_dict::interpret_schema_changes,
             commands::schema_dict::ask_schema_dict,
             commands::schema_dict::call_mcp_tool,
+            // Collect (收藏夹) commands
+            commands::collect::list_collect_items,
+            commands::collect::upsert_collect_item,
+            commands::collect::delete_collect_item,
+            commands::collect::fetch_link_metadata,
+            commands::collect::summarize_collect_link,
+            commands::collect::ask_collect_items,
         ])
         .setup(|app| {
             // 窗口启动时自动最大化

@@ -2,6 +2,8 @@ pub mod api_http;
 pub mod api_request;
 pub mod code_export;
 pub mod code_scan_java;
+pub mod collect_ai;
+pub mod collect_fetch;
 pub mod docs;
 pub mod docs_ai;
 pub mod email;

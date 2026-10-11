@@ -36,6 +36,10 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/schema-dict/index.vue'),
       },
       {
+        path: '/collect',
+        component: () => import('@/views/collect/index.vue'),
+      },
+      {
         path: '/api-client',
         component: () => import('@/views/api-project/index.vue'),
       },

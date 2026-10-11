@@ -1,6 +1,7 @@
 pub mod agent_conversation;
 pub mod agent_profile;
 pub mod api_client;
+pub mod collect;
 pub mod default_model;
 pub mod docs;
 pub mod email;
