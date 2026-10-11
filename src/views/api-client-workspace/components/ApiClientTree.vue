@@ -28,8 +28,9 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
 import type { ApiClientGroup, ApiClientRequest } from '@/types/api-client';
+import { apiMethodTextClass } from '@/views/api-client/utils/request-helpers';
 
-import { buildGroupTree, flattenGroupTree } from './build-group-tree';
+import { buildGroupTree, collectRenderedNodes, flattenGroupTree } from './build-group-tree';
 import type { GroupTreeNode } from './build-group-tree';
 
 interface Props {
@@ -95,6 +96,19 @@ const filteredRequestsByGroup = computed(() => {
 
 const treeRoots = computed<GroupTreeNode[]>(() => buildGroupTree(props.groups));
 const treeNodes = computed<GroupTreeNode[]>(() => flattenGroupTree(treeRoots.value));
+
+const isSearching = computed(() => trimmedKeyword.value.length > 0);
+
+// Rows are rendered from the pruned list: collapsing a group hides its whole
+// subtree, not just its direct requests. While searching, every node is passed
+// through (per-row visibility comes from isGroupVisible) and subtrees are
+// forced open so matches under collapsed groups stay reachable.
+const renderedNodes = computed<GroupTreeNode[]>(() => {
+  if (isSearching.value) {
+    return treeNodes.value;
+  }
+  return collectRenderedNodes(treeRoots.value, groupId => expandedGroups.value.has(groupId));
+});
 
 // Excludes the request's current group so users can't "move" to where it already
 // lives. Renders the project as a flat, depth-aware list inside the sub-menu.
@@ -259,7 +273,7 @@ function indentStyle(depth: number): { paddingLeft: string } {
 
     <ScrollArea v-else class="min-h-0 flex-1">
       <ul class="flex flex-col gap-1 pr-2">
-        <template v-for="node of treeNodes" :key="node.group.id">
+        <template v-for="node of renderedNodes" :key="node.group.id">
           <li v-show="isGroupVisible(node.group.id)" class="flex flex-col gap-1">
             <div
               class="group flex items-center gap-1 rounded-md py-1 pr-2 hover:bg-accent"
@@ -273,7 +287,8 @@ function indentStyle(depth: number): { paddingLeft: string } {
               >
                 <ChevronDown v-if="expandedGroups.has(node.group.id)" class="size-4 shrink-0 text-muted-foreground" />
                 <ChevronRight v-else class="size-4 shrink-0 text-muted-foreground" />
-                <Folder class="size-4 shrink-0 text-muted-foreground" />
+                <FolderOpen v-if="expandedGroups.has(node.group.id)" class="size-4 shrink-0 text-muted-foreground" />
+                <Folder v-else class="size-4 shrink-0 text-muted-foreground" />
                 <span class="truncate">{{ node.group.name }}</span>
               </button>
               <DropdownMenu>
@@ -316,7 +331,10 @@ function indentStyle(depth: number): { paddingLeft: string } {
               </DropdownMenu>
             </div>
 
-            <ul v-if="expandedGroups.has(node.group.id) && isGroupVisible(node.group.id)" class="flex flex-col gap-1">
+            <ul
+              v-if="(isSearching || expandedGroups.has(node.group.id)) && isGroupVisible(node.group.id)"
+              class="flex flex-col gap-1"
+            >
               <li v-if="isLoadingRequests" class="flex items-center gap-1 px-2 py-1 text-xs text-muted-foreground">
                 <Spinner /> 加载请求…
               </li>
@@ -334,7 +352,9 @@ function indentStyle(depth: number): { paddingLeft: string } {
                   class="flex flex-1 items-center gap-2 text-left text-xs"
                   @click="handleRequestClick(request, node.group.id)"
                 >
-                  <span class="font-mono text-[10px] font-semibold text-primary">{{ request.method }}</span>
+                  <span class="font-mono text-[10px] font-semibold" :class="apiMethodTextClass(request.method)">
+                    {{ request.method }}
+                  </span>
                   <span class="truncate">{{ request.name }}</span>
                 </button>
                 <DropdownMenu>
@@ -383,7 +403,11 @@ function indentStyle(depth: number): { paddingLeft: string } {
               </li>
 
               <li
-                v-if="(filteredRequestsByGroup.get(node.group.id) ?? []).length === 0 && !isLoadingRequests"
+                v-if="
+                  (filteredRequestsByGroup.get(node.group.id) ?? []).length === 0 &&
+                  node.children.length === 0 &&
+                  !isLoadingRequests
+                "
                 class="pr-2 py-1 text-[11px] text-muted-foreground"
                 :style="{ paddingLeft: `${node.depth * 16 + 8}px` }"
               >

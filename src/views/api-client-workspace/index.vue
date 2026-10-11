@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirm } from '@/composables/use-confirm';
@@ -434,14 +435,20 @@ const activeProject = computed(() => store.activeProject);
       <AlertDescription> 请返回项目列表后重新进入。 </AlertDescription>
     </Alert>
 
-    <div
+    <ResizablePanelGroup
       v-else
-      class="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)] overflow-hidden"
-      :class="
-        showHistoryPanel || showAiPanel ? 'grid-cols-[280px_minmax(0,1fr)_360px]' : 'grid-cols-[280px_minmax(0,1fr)]'
-      "
+      id="api-workspace-group"
+      direction="horizontal"
+      auto-save-id="api-workspace-layout"
+      class="min-h-0 flex-1"
     >
-      <div class="min-h-0 overflow-hidden bg-card">
+      <ResizablePanel
+        id="api-workspace-tree-panel"
+        class="min-h-0 overflow-hidden bg-card"
+        :default-size="24"
+        :min-size="15"
+        :max-size="40"
+      >
         <ApiClientTree
           :project-name="store.activeProject?.name ?? ''"
           :groups="store.groups"
@@ -453,6 +460,7 @@ const activeProject = computed(() => store.activeProject);
           :is-loading-requests="store.isLoadingRequests"
           :deleting-group-id="store.isDeletingGroup"
           :deleting-request-id="store.isDeletingRequest"
+          @update:search-keyword="store.setSearchKeyword"
           @select-group="handleSelectGroup"
           @select-request="handleSelectRequest"
           @create-group="handleTreeCreateGroup"
@@ -462,99 +470,108 @@ const activeProject = computed(() => store.activeProject);
           @delete-request="handleDeleteRequest"
           @move-request="handleMoveRequest"
         />
-      </div>
+      </ResizablePanel>
 
-      <ScrollArea class="h-full">
-        <div class="flex flex-col gap-4 p-4">
-          <ApiRequestEditor
-            v-if="draft"
-            :is-sending="isSending"
-            :is-saving="store.isSavingRequest"
-            :is-dirty="store.isDirty"
-            :draft-name="draft.name"
-            :draft-method="draft.method"
-            :draft-url="draft.url"
-            :draft-timeout-ms="draft.timeoutMs"
-            :draft-query="draft.query"
-            :draft-headers="draft.headers"
-            :draft-body="draft.body"
-            :environments="store.environments"
-            :active-environment-id="activeEnvironmentId"
-            @update:draft-name="store.updateDraftName"
-            @update:draft-method="store.updateDraftMethod"
-            @update:draft-url="store.updateDraftUrl"
-            @update:draft-timeout-ms="store.updateDraftTimeoutMs"
-            @update:draft-query="store.updateDraftQuery"
-            @update:draft-headers="store.updateDraftHeaders"
-            @update:draft-body="store.updateDraftBody"
-            @save="handleSaveDraft"
-            @send="handleSend"
-            @cancel="handleCancelExecution"
-            @paste-url="handlePasteUrl"
-            @open-ai="handleOpenAi"
-            @select-environment="handleSelectEnvironment"
-          />
+      <ResizableHandle id="api-workspace-tree-handle" with-handle />
 
-          <div
-            v-else
-            class="flex flex-col items-center justify-center rounded-md border border-dashed bg-muted/10 px-6 py-12 text-center text-sm text-muted-foreground"
+      <ResizablePanel id="api-workspace-main-panel" class="min-h-0">
+        <div class="flex h-full min-h-0">
+          <ScrollArea class="h-full min-w-0 flex-1">
+            <div class="flex flex-col gap-4 p-4">
+              <ApiRequestEditor
+                v-if="draft"
+                :is-sending="isSending"
+                :is-saving="store.isSavingRequest"
+                :is-dirty="store.isDirty"
+                :draft-name="draft.name"
+                :draft-method="draft.method"
+                :draft-url="draft.url"
+                :draft-timeout-ms="draft.timeoutMs"
+                :draft-query="draft.query"
+                :draft-headers="draft.headers"
+                :draft-body="draft.body"
+                :environments="store.environments"
+                :active-environment-id="activeEnvironmentId"
+                @update:draft-name="store.updateDraftName"
+                @update:draft-method="store.updateDraftMethod"
+                @update:draft-url="store.updateDraftUrl"
+                @update:draft-timeout-ms="store.updateDraftTimeoutMs"
+                @update:draft-query="store.updateDraftQuery"
+                @update:draft-headers="store.updateDraftHeaders"
+                @update:draft-body="store.updateDraftBody"
+                @save="handleSaveDraft"
+                @send="handleSend"
+                @cancel="handleCancelExecution"
+                @paste-url="handlePasteUrl"
+                @open-ai="handleOpenAi"
+                @select-environment="handleSelectEnvironment"
+              />
+
+              <div
+                v-else
+                class="flex flex-col items-center justify-center rounded-md border border-dashed bg-muted/10 px-6 py-12 text-center text-sm text-muted-foreground"
+              >
+                <Network class="mb-2 size-6 text-muted-foreground" />
+                请在左侧选择或新建一个请求
+              </div>
+
+              <ApiResponsePanel v-if="draft" :response="responseView" :is-loading="isResponseLoading" />
+            </div>
+          </ScrollArea>
+
+          <aside
+            v-if="showHistoryPanel || showAiPanel"
+            class="flex w-[360px] shrink-0 flex-col overflow-hidden border-l bg-card"
           >
-            <Network class="mb-2 size-6 text-muted-foreground" />
-            请在左侧选择或新建一个请求
-          </div>
+            <div v-if="showHistoryPanel && !showAiPanel" class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
+              <RequestHistoryPanel
+                v-if="draft"
+                class="min-h-0 flex-1"
+                :histories="store.history"
+                :is-loading="store.isLoadingHistory"
+                :is-clearing="store.isClearingHistory"
+                @restore="handleRestoreHistory"
+                @clear="handleClearHistory"
+              />
+              <Card v-else>
+                <CardHeader>
+                  <CardTitle>历史</CardTitle>
+                  <CardDescription>选择请求后查看最近 100 次执行快照。</CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
 
-          <ApiResponsePanel v-if="draft" :response="responseView" :is-loading="isResponseLoading" />
+            <div v-else-if="showAiPanel" class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
+              <AiBodyGeneratorPanel
+                v-if="draft"
+                class="min-h-0 flex-1"
+                :candidate="aiCandidate"
+                :is-generating="store.isGeneratingAi"
+                :current-body="draft.body"
+                :prompt="draft.aiPrompt"
+                :reference="draft.aiReference"
+                :include-current-body="includeCurrentBody"
+                :current-model-label="aiCurrentModelLabel"
+                @update:prompt="updateAiPrompt"
+                @update:reference="updateAiReference"
+                @update:include-current-body="includeCurrentBody = $event"
+                @generate="handleGenerateAi"
+                @cancel="handleCancelAi"
+                @apply="handleApplyAi"
+                @edit="store.editAiCandidateContent($event)"
+              />
+
+              <Card v-else>
+                <CardHeader>
+                  <CardTitle>AI 生成</CardTitle>
+                  <CardDescription>选择请求后启用 AI 请求体生成。</CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
+          </aside>
         </div>
-      </ScrollArea>
-
-      <div v-if="showHistoryPanel || showAiPanel" class="flex min-h-0 flex-1 flex-col overflow-hidden bg-card">
-        <div v-if="showHistoryPanel && !showAiPanel" class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
-          <RequestHistoryPanel
-            v-if="draft"
-            class="min-h-0 flex-1"
-            :histories="store.history"
-            :is-loading="store.isLoadingHistory"
-            :is-clearing="store.isClearingHistory"
-            @restore="handleRestoreHistory"
-            @clear="handleClearHistory"
-          />
-          <Card v-else>
-            <CardHeader>
-              <CardTitle>历史</CardTitle>
-              <CardDescription>选择请求后查看最近 100 次执行快照。</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-
-        <div v-else-if="showAiPanel" class="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
-          <AiBodyGeneratorPanel
-            v-if="draft"
-            class="min-h-0 flex-1"
-            :candidate="aiCandidate"
-            :is-generating="store.isGeneratingAi"
-            :current-body="draft.body"
-            :prompt="draft.aiPrompt"
-            :reference="draft.aiReference"
-            :include-current-body="includeCurrentBody"
-            :current-model-label="aiCurrentModelLabel"
-            @update:prompt="updateAiPrompt"
-            @update:reference="updateAiReference"
-            @update:include-current-body="includeCurrentBody = $event"
-            @generate="handleGenerateAi"
-            @cancel="handleCancelAi"
-            @apply="handleApplyAi"
-            @edit="store.editAiCandidateContent($event)"
-          />
-
-          <Card v-else>
-            <CardHeader>
-              <CardTitle>AI 生成</CardTitle>
-              <CardDescription>选择请求后启用 AI 请求体生成。</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-      </div>
-    </div>
+      </ResizablePanel>
+    </ResizablePanelGroup>
 
     <Spinner v-if="store.isLoadingGroups || store.isLoadingRequests" class="pointer-events-none fixed right-6 top-6" />
 

@@ -5,6 +5,7 @@ import { describe, it } from 'vitest';
 import type { ApiClientEnvironment, ApiClientKeyValueRow, ApiClientRequestBody } from '@/types/api-client';
 import {
   appendParamsToUrl,
+  apiMethodTextClass,
   buildEnvironmentLookup,
   buildRequestSnapshot,
   cloneBody,
@@ -605,5 +606,27 @@ describe('prepareExecution', () => {
     assert.equal(result.snapshot.query[1]?.enabled, false);
     assert.equal(result.snapshot.headers.length, 1);
     assert.equal(result.snapshot.timeoutMs, 1000);
+  });
+});
+
+describe('apiMethodTextClass', () => {
+  it('maps each method to a distinct semantic color', () => {
+    const classes = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'].map(apiMethodTextClass);
+
+    assert.equal(new Set(classes).size, classes.length, 'each method should get a distinct class');
+    for (const className of classes) {
+      assert.match(className, /dark:text-/);
+    }
+  });
+
+  it('normalizes case and surrounding whitespace', () => {
+    assert.equal(apiMethodTextClass('get'), apiMethodTextClass('GET'));
+    assert.equal(apiMethodTextClass(' delete '), apiMethodTextClass('DELETE'));
+  });
+
+  it('falls back to muted foreground for unrecognized methods', () => {
+    assert.equal(apiMethodTextClass('OPTIONS'), 'text-muted-foreground');
+    assert.equal(apiMethodTextClass(''), 'text-muted-foreground');
+    assert.equal(apiMethodTextClass('TRACE'), 'text-muted-foreground');
   });
 });

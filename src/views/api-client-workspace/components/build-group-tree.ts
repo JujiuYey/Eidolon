@@ -63,6 +63,28 @@ export function buildGroupTree(groups: ApiClientGroup[]): GroupTreeNode[] {
 }
 
 /**
+ * Collects the nodes that should render given an expansion state: a node is
+ * included only when every one of its ancestors is expanded (its own state
+ * only gates its children). Output keeps DFS pre-order.
+ */
+export function collectRenderedNodes(
+  roots: GroupTreeNode[],
+  isExpanded: (groupId: string) => boolean,
+): GroupTreeNode[] {
+  const out: GroupTreeNode[] = [];
+  function walk(nodes: GroupTreeNode[], ancestorsExpanded: boolean): void {
+    for (const node of nodes) {
+      if (ancestorsExpanded) {
+        out.push(node);
+      }
+      walk(node.children, ancestorsExpanded && isExpanded(node.group.id));
+    }
+  }
+  walk(roots, true);
+  return out;
+}
+
+/**
  * Flattens a tree built by `buildGroupTree` into DFS pre-order so the UI can
  * render it with a single `v-for`. Each entry carries its depth for indentation.
  */

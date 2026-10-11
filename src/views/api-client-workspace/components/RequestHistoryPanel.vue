@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ApiClientRequestHistory } from '@/types/api-client';
+import { apiMethodTextClass } from '@/views/api-client/utils/request-helpers';
 
 interface Props {
   histories: ApiClientRequestHistory[];
@@ -107,7 +108,12 @@ function handleClear(): void {
                 <Badge :variant="statusVariants[entry.status]">
                   {{ statusLabels[entry.status] }}
                 </Badge>
-                <span class="font-mono">{{ entry.requestSnapshot.method }} {{ entry.statusCode ?? '-' }}</span>
+                <span class="font-mono">
+                  <span :class="apiMethodTextClass(entry.requestSnapshot.method)">{{
+                    entry.requestSnapshot.method
+                  }}</span>
+                  {{ entry.statusCode ?? '-' }}
+                </span>
                 <span class="text-muted-foreground">{{ entry.durationMs }} ms</span>
               </div>
               <Button

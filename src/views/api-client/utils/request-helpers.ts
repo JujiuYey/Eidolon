@@ -11,6 +11,22 @@ export function createId(prefix = 'id'): string {
   return `${prefix}_${Date.now().toString(36)}_${random}`;
 }
 
+// HTTP 方法语义色（沿用 Postman 等客户端惯例）：GET 绿、POST 琥珀、PUT 蓝、
+// PATCH 青、DELETE 红、HEAD 紫；暗色模式降一档亮度保证对比度。
+const METHOD_TEXT_CLASSES: Record<string, string> = {
+  GET: 'text-emerald-600 dark:text-emerald-400',
+  POST: 'text-amber-600 dark:text-amber-400',
+  PUT: 'text-sky-600 dark:text-sky-400',
+  PATCH: 'text-teal-600 dark:text-teal-400',
+  DELETE: 'text-red-600 dark:text-red-400',
+  HEAD: 'text-violet-600 dark:text-violet-400',
+};
+
+/** 方法对应的文字色 class，未识别的方法（含 OPTIONS）退回中性色。 */
+export function apiMethodTextClass(method: string): string {
+  return METHOD_TEXT_CLASSES[method.trim().toUpperCase()] ?? 'text-muted-foreground';
+}
+
 export function createEmptyRow(): ApiClientKeyValueRow {
   return {
     id: createId('row'),

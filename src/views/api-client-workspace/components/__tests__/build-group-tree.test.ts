@@ -4,7 +4,8 @@ import { describe, it } from 'vitest';
 
 import type { ApiClientGroup } from '@/types/api-client';
 
-import { buildGroupTree, flattenGroupTree } from '../build-group-tree';
+import { buildGroupTree, collectRenderedNodes, flattenGroupTree } from '../build-group-tree';
+import type { GroupTreeNode } from '../build-group-tree';
 
 function makeGroup(overrides: Partial<ApiClientGroup>): ApiClientGroup {
   return {
@@ -83,6 +84,60 @@ describe('buildGroupTree', () => {
     assert.deepEqual(
       tree.map(node => node.group.id),
       ['root', 'orphan'],
+    );
+  });
+});
+
+describe('collectRenderedNodes', () => {
+  function makeTree(): GroupTreeNode[] {
+    return buildGroupTree([
+      makeGroup({ id: 'root', sort: 0 }),
+      makeGroup({ id: 'child', parentGroupId: 'root', sort: 0 }),
+      makeGroup({ id: 'grandchild', parentGroupId: 'child', sort: 0 }),
+      makeGroup({ id: 'root-2', sort: 1 }),
+    ]);
+  }
+
+  it('includes everything when all groups are expanded', () => {
+    const expanded = new Set(['root', 'child', 'root-2']);
+
+    assert.deepEqual(
+      collectRenderedNodes(makeTree(), id => expanded.has(id)).map(node => node.group.id),
+      ['root', 'child', 'grandchild', 'root-2'],
+    );
+  });
+
+  it('hides the whole subtree of a collapsed group, including the collapsed node itself staying visible', () => {
+    const expanded = new Set(['root-2']);
+
+    assert.deepEqual(
+      collectRenderedNodes(makeTree(), id => expanded.has(id)).map(node => node.group.id),
+      ['root', 'root-2'],
+    );
+  });
+
+  it('a collapsed mid-level group hides its descendants but keeps its siblings reachable', () => {
+    const expanded = new Set(['root']);
+
+    assert.deepEqual(
+      collectRenderedNodes(makeTree(), id => expanded.has(id)).map(node => node.group.id),
+      ['root', 'child', 'root-2'],
+    );
+  });
+
+  it('keeps DFS pre-order with depths regardless of pruning', () => {
+    const expanded = new Set(['root', 'child']);
+
+    const rendered = collectRenderedNodes(makeTree(), id => expanded.has(id));
+
+    assert.deepEqual(
+      rendered.map(node => [node.group.id, node.depth]),
+      [
+        ['root', 1],
+        ['child', 2],
+        ['grandchild', 3],
+        ['root-2', 1],
+      ],
     );
   });
 });
