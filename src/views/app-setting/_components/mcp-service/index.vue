@@ -7,6 +7,7 @@ import { deleteMcpService, listMcpServices, upsertMcpService } from '@/services'
 import type { McpService } from '@/types/mcp-service';
 import { getErrorMessage } from '@/utils/helpers';
 
+import McpJsonImportDialog from './mcp-json-import-dialog.vue';
 import McpServiceForm from './mcp-service-form.vue';
 import McpServiceList from './mcp-service-list.vue';
 import type { McpServiceFormMode } from './types';
@@ -18,6 +19,7 @@ const services = ref<McpService[]>([]);
 const isLoading = ref(false);
 const deleteConfirmOpen = ref(false);
 const pendingDeleteService = ref<McpService | null>(null);
+const jsonImportOpen = ref(false);
 
 const activeService = computed(() => {
   const currentView = viewState.value;
@@ -46,6 +48,10 @@ function openCreateForm() {
     type: 'form',
     mode: 'create',
   };
+}
+
+async function handleJsonImported() {
+  await loadServices();
 }
 
 function openEditForm(serviceId: string) {
@@ -127,6 +133,7 @@ onMounted(() => {
     :is-loading="isLoading"
     :services="services"
     @create="openCreateForm"
+    @import-json="jsonImportOpen = true"
     @edit-service="openEditForm"
     @request-delete="requestDelete"
     @update-enabled="updateServiceEnabled"
@@ -139,6 +146,8 @@ onMounted(() => {
     @saved="handleSaved"
     @back="backToList"
   />
+
+  <McpJsonImportDialog v-model:open="jsonImportOpen" :services="services" @imported="handleJsonImported" />
 
   <SagConfirm
     v-model:open="deleteConfirmOpen"

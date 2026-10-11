@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Loader2, Plus, Server, Settings2, Trash2 } from 'lucide-vue-next';
+import { FileJson, Loader2, Plus, Server, Settings2, Trash2 } from 'lucide-vue-next';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'create'): void;
+  (e: 'importJson'): void;
   (e: 'editService', serviceId: string): void;
   (e: 'requestDelete', serviceId: string): void;
   (e: 'updateEnabled', payload: { serviceId: string; enabled: boolean }): void;
@@ -22,7 +23,6 @@ const emit = defineEmits<{
 
 const primarySolidTagClass = 'border-transparent bg-primary text-primary-foreground hover:bg-primary';
 const primaryOutlineTagClass = 'border-primary/20 bg-primary/10 text-primary hover:bg-primary/10';
-const secondaryTagClass = 'border-transparent bg-secondary text-secondary-foreground hover:bg-secondary';
 const mutedTagClass = 'border-border bg-muted text-muted-foreground hover:bg-muted';
 
 function buildTags(service: McpService) {
@@ -40,20 +40,6 @@ function buildTags(service: McpService) {
         class: primarySolidTagClass,
       });
     }
-
-    if (service.discovery.prompts.length > 0) {
-      tags.push({
-        label: `${service.discovery.prompts.length} 提示`,
-        class: secondaryTagClass,
-      });
-    }
-
-    if (service.discovery.resources.length + service.discovery.resource_templates.length > 0) {
-      tags.push({
-        label: `${service.discovery.resources.length + service.discovery.resource_templates.length} 资源`,
-        class: secondaryTagClass,
-      });
-    }
   } else {
     tags.push({
       label: '未测试',
@@ -66,7 +52,7 @@ function buildTags(service: McpService) {
 
 function discoverySummary(service: McpService) {
   if (!service.discovery) {
-    return '保存后可测试连接，并发现工具、提示与资源。';
+    return '保存后可测试连接，并发现工具。';
   }
 
   if (service.discovery.server_name) {
@@ -91,10 +77,16 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
         <Server class="h-4 w-4 text-primary" />
         MCP服务
       </h2>
-      <Button size="sm" variant="outline" @click="emit('create')">
-        <Plus class="h-4 w-4" />
-        新增服务
-      </Button>
+      <div class="flex items-center gap-2">
+        <Button size="sm" variant="outline" @click="emit('importJson')">
+          <FileJson class="h-4 w-4" />
+          从 JSON 导入
+        </Button>
+        <Button size="sm" @click="emit('create')">
+          <Plus class="h-4 w-4" />
+          新增服务
+        </Button>
+      </div>
     </div>
     <Separator />
 
@@ -109,9 +101,7 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
           class="rounded-xl border border-dashed bg-muted/10 px-6 py-12 text-center"
         >
           <h2 class="text-lg font-semibold text-foreground">还没有 MCP 服务</h2>
-          <p class="mt-2 text-sm text-muted-foreground">
-            先添加一个服务，然后在详情页里测试连接并发现工具、提示和资源。
-          </p>
+          <p class="mt-2 text-sm text-muted-foreground">先添加一个服务，然后在详情页里测试连接并发现工具。</p>
           <Button class="mt-5" @click="emit('create')">
             <Plus class="size-4" />
             新增第一个服务
