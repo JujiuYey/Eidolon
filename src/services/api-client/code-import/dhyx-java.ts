@@ -92,10 +92,7 @@ export function buildDhyxImportPayload(
   const groups: TauriImportGroupSpec[] = [];
   const requests: TauriImportRequestSpec[] = [];
 
-  // 登录请求无条件补充：取 token 是调用其他接口的前提
-  groups.push({ key: 'm:auth', parent_key: null, name: 'auth' });
-  groups.push({ key: 'r:/auth/oauth', parent_key: 'm:auth', name: '认证' });
-  requests.push(loginRequestSpec());
+  let hasLoginEndpoint = false;
 
   for (const module of preview.modules) {
     const selected = module.resources.filter(resource => selectedResourceKeys.has(resource.key));
@@ -107,9 +104,24 @@ export function buildDhyxImportPayload(
     for (const resource of selected) {
       groups.push({ key: resource.key, parent_key: module.key, name: resource.name });
       for (const operation of resource.operations) {
+        if (operation.externalKey === LOGIN_EXTERNAL_KEY) {
+          hasLoginEndpoint = true;
+        }
         requests.push(toRequestSpec(resource, operation, resource.key));
       }
     }
+  }
+
+  // 登录请求补充：清单里已有真实登录端点（如 AuthController 声明的
+  // POST /auth/oauth/token）时直接用；否则合成分组，键与清单撞车前先查重
+  if (!hasLoginEndpoint) {
+    if (!groups.some(group => group.key === 'm:auth')) {
+      groups.push({ key: 'm:auth', parent_key: null, name: 'auth' });
+    }
+    if (!groups.some(group => group.key === 'r:/auth/oauth')) {
+      groups.push({ key: 'r:/auth/oauth', parent_key: 'm:auth', name: '认证' });
+    }
+    requests.push(loginRequestSpec());
   }
 
   return { groups, requests };

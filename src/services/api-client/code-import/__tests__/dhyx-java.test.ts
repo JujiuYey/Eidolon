@@ -88,6 +88,55 @@ describe('parseDhyxManifest', () => {
     expect(() => parseDhyxManifest('not json')).toThrow('清单不是合法 JSON');
     expect(() => parseDhyxManifest('{"framework":"x"}')).toThrow('controllers 数组');
   });
+
+  it('reuses scanned auth controller instead of synthesizing duplicate groups', () => {
+    const withAuth: JavaManifest = {
+      framework: 'java-scan',
+      controllers: [
+        {
+          name: 'AuthController',
+          module: 'auth',
+          base_path: '/auth/oauth',
+          label: '认证控制器',
+          framework_kind: 'dhyx',
+          update_form: null,
+          search_form: null,
+          endpoints: [
+            {
+              name: 'token',
+              method: 'POST',
+              path: '/token',
+              source: 'declared',
+              body_form: null,
+              query_params: [
+                { name: 'username', required: true },
+                { name: 'password', required: true },
+              ],
+            },
+          ],
+        },
+      ],
+      forms: {},
+    };
+    const preview = parseDhyxManifest(JSON.stringify(withAuth));
+    const payload = buildDhyxImportPayload(preview, new Set(['r:/auth/oauth']));
+
+    // 真实登录端点直接使用，不再合成请求；分组键无重复
+    expect(payload.requests.filter(request => request.external_key === '/auth/oauth/token#POST')).toHaveLength(1);
+    const keys = payload.groups.map(group => group.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(payload.groups.map(group => group.key)).toEqual(['m:auth', 'r:/auth/oauth']);
+  });
+
+  it('still synthesizes login when auth module exists but login endpoint is not selected', () => {
+    // auth 模块存在但用户没勾选：合成分组不与已选分组撞键
+    const preview = parseDhyxManifest(MANIFEST_JSON);
+    const payload = buildDhyxImportPayload(preview, new Set(['r:/system/org']));
+
+    const keys = payload.groups.map(group => group.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(payload.requests.find(request => request.external_key === '/auth/oauth/token#POST')).toBeDefined();
+  });
 });
 
 describe('buildDhyxImportPayload', () => {
@@ -146,7 +195,13 @@ describe('buildDhyxImportPayload', () => {
 
     const all = new Set(preview.modules.flatMap(module => module.resources.map(resource => resource.key)));
     const payload = buildDhyxImportPayload(preview, all);
-    expect(payload.requests).toHaveLength(preview.totalRequests + 1);
+    // peis 的 AuthController 自带真实登录端点，不再合成，总数即 totalRequests
+    const hasLogin = preview.modules
+      .flatMap(module => module.resources)
+      .flatMap(resource => resource.operations)
+      .some(operation => operation.externalKey === '/auth/oauth/token#POST');
+    expect(hasLogin).toBe(true);
+    expect(payload.requests).toHaveLength(preview.totalRequests);
     for (const request of payload.requests) {
       expect(request.url.startsWith('/')).toBe(true);
       expect(request.url).not.toContain('undefined');

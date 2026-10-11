@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import type { JavaManifest } from '../types';
 import { buildJavaImportPayload, parseJavaManifest } from '../vef-java';
 import { JAVA_MANIFEST_FIXTURE } from './java-manifest.fixture';
 
@@ -55,6 +56,34 @@ describe('buildJavaImportPayload', () => {
     expect(payload.groups.map(group => group.key)).toEqual(['m:auth', 'r:/auth']);
   });
 
+  it('reuses scanned login endpoint instead of synthesizing duplicate groups', () => {
+    const withAuth = JSON.parse(MANIFEST_JSON) as JavaManifest;
+    withAuth.controllers.push({
+      name: 'AuthController',
+      module: 'auth',
+      base_path: '/auth',
+      framework_kind: 'none',
+      update_form: null,
+      search_form: null,
+      endpoints: [
+        {
+          name: 'login',
+          method: 'POST',
+          path: '/login',
+          source: 'declared',
+          body_form: null,
+          query_params: [],
+        },
+      ],
+    });
+    const preview = parseJavaManifest(JSON.stringify(withAuth));
+    const payload = buildJavaImportPayload(preview, new Set(['r:/auth']));
+
+    expect(payload.requests.filter(request => request.external_key === '/auth/login#POST')).toHaveLength(1);
+    const keys = payload.groups.map(group => group.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
   it('emits paginated query with 0-based page and search fields', () => {
     const preview = parseJavaManifest(MANIFEST_JSON);
     const payload = buildJavaImportPayload(preview, new Set(['r:/system/department']));
@@ -104,6 +133,7 @@ describe('buildJavaImportPayload', () => {
 
     const sync = payload.requests.find(request => request.external_key === '/external-api/business-data#POST');
     expect(JSON.parse(sync?.body.text ?? '{}')).toEqual({ data: [] });
-    expect(payload.groups.map(group => group.key)).toEqual(['m:auth', 'r:/auth', 'm:api', 'r:/external-api']);
+    // 合成登录分组追加在已选模块之后
+    expect(payload.groups.map(group => group.key)).toEqual(['m:api', 'r:/external-api', 'm:auth', 'r:/auth']);
   });
 });
