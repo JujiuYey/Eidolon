@@ -15,5 +15,6 @@ pub mod model_config;
 pub mod pm_conversation;
 pub mod sent_email_repo;
 pub mod smtp_account_repo;
+pub mod task_repo;
 pub mod weekly_report_repo;
 pub mod zentao_account_repo;

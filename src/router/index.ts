@@ -28,6 +28,10 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/zentao/index.vue'),
       },
       {
+        path: '/tasks',
+        component: () => import('@/views/tasks/index.vue'),
+      },
+      {
         path: '/api-client',
         component: () => import('@/views/api-project/index.vue'),
       },

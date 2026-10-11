@@ -1,5 +1,15 @@
 <script lang="ts" setup>
-import { Bot, FolderClosed, Mail, NotebookPen, Network, ListTodo, Server, Settings2 } from 'lucide-vue-next';
+import {
+  Bot,
+  FolderClosed,
+  Mail,
+  NotebookPen,
+  Network,
+  ListTodo,
+  Server,
+  Settings2,
+  SquareCheckBig,
+} from 'lucide-vue-next';
 import type { Component } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
@@ -36,6 +46,7 @@ const toolsGroup: MenuGroup = {
     { title: '邮件', key: 'mail', icon: Mail, path: '/mail' },
     { title: '周报', key: 'weekly-report', icon: NotebookPen, path: '/weekly-report' },
     { title: '禅道', key: 'zentao', icon: ListTodo, path: '/zentao' },
+    { title: '任务', key: 'tasks', icon: SquareCheckBig, path: '/tasks' },
   ],
 };
 const agentGroup: MenuGroup = {

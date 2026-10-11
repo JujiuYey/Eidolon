@@ -138,6 +138,12 @@ pub fn run() {
             commands::zentao::delete_zentao_account,
             commands::zentao::test_zentao_connection,
             commands::zentao::fetch_zentao_my_work,
+            // Task manager commands
+            commands::task::list_tasks,
+            commands::task::upsert_task,
+            commands::task::delete_task,
+            commands::task::parse_task_text,
+            commands::task::suggest_task_plan,
         ])
         .setup(|app| {
             // 窗口启动时自动最大化

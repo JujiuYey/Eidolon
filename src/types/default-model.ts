@@ -5,7 +5,8 @@ export type DefaultModelKey =
   | 'embedding'
   | 'weekly_report_polish'
   | 'pm_chat'
-  | 'docs_chat';
+  | 'docs_chat'
+  | 'task_assistant';
 
 export interface DefaultModelSetting {
   key: DefaultModelKey;

@@ -235,7 +235,7 @@ fn build_candidate(content: &str, model_label: &str) -> GeneratedBodyCandidate {
 }
 
 /// 模型有时会包裹 Markdown 代码块，这里只剥掉围栏，不改内容
-fn strip_code_fence(raw: &str) -> String {
+pub(crate) fn strip_code_fence(raw: &str) -> String {
     let trimmed = raw.trim();
 
     if !trimmed.starts_with("```") {
