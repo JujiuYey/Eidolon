@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import {
   Bot,
+  Database,
   FolderClosed,
   Mail,
   NotebookPen,
@@ -47,6 +48,7 @@ const toolsGroup: MenuGroup = {
     { title: '周报', key: 'weekly-report', icon: NotebookPen, path: '/weekly-report' },
     { title: '禅道', key: 'zentao', icon: ListTodo, path: '/zentao' },
     { title: '任务', key: 'tasks', icon: SquareCheckBig, path: '/tasks' },
+    { title: '数据字典', key: 'schema-dict', icon: Database, path: '/schema-dict' },
   ],
 };
 const agentGroup: MenuGroup = {

@@ -43,6 +43,7 @@ lettre = { version = "0.11", default-features = false, features = ["builder", "s
 reqwest = { version = "0.13.2", default-features = false, features = ["json", "rustls", "charset", "http2", "stream", "system-proxy"] }
 url = "2.5.8"
 futures-util = "0.3"
+sqlparser = "0.63.0"
 
 [dev-dependencies]
 tempfile = "3.14"

@@ -107,6 +107,11 @@ const cards: DefaultModelCard[] = [
     title: '任务助手模型',
     description: '任务页 AI 使用的模型，把一句话整理成结构化任务并给出今日建议',
   },
+  {
+    key: 'schema_assistant',
+    title: '数据字典助手模型',
+    description: '数据字典页 AI 使用的模型，解读表结构变更并回答表结构问题',
+  },
 ];
 
 const providerSettings = ref<ProviderSetting[]>([]);
@@ -125,6 +130,7 @@ const selectedModels = reactive<Record<DefaultModelCard['key'], string>>({
   pm_chat: '',
   docs_chat: '',
   task_assistant: '',
+  schema_assistant: '',
 });
 
 const parameterForms = reactive<Record<DefaultModelCard['key'], ModelParameterForm>>({
@@ -136,6 +142,7 @@ const parameterForms = reactive<Record<DefaultModelCard['key'], ModelParameterFo
   pm_chat: createDefaultParameterForm(),
   docs_chat: createDefaultParameterForm(),
   task_assistant: createDefaultParameterForm(),
+  schema_assistant: createDefaultParameterForm(),
 });
 
 const parameterDraft = ref<ModelParameterForm>(createDefaultParameterForm());

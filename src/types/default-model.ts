@@ -6,7 +6,8 @@ export type DefaultModelKey =
   | 'weekly_report_polish'
   | 'pm_chat'
   | 'docs_chat'
-  | 'task_assistant';
+  | 'task_assistant'
+  | 'schema_assistant';
 
 export interface DefaultModelSetting {
   key: DefaultModelKey;

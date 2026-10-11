@@ -9,6 +9,8 @@ pub mod mcp_server;
 pub mod mcp_service;
 pub mod pm_chat;
 pub mod pm_skills;
+pub mod schema_ai;
+pub mod schema_import;
 pub mod task_ai;
 pub mod weekly_report;
 pub mod work_directory;
