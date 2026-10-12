@@ -90,8 +90,7 @@ function hostForStats(url: string): string {
   }
 }
 
-/** 收藏夹统计瓦片 + 趋势 + 常收藏站点 */
-export interface CollectStats {
+/** 收藏夹统计瓦片 + 趋势 + 常收藏站点 */ export interface CollectStats {
   weekCount: number;
   monthCount: number;
   streakDays: number;
@@ -130,4 +129,16 @@ export function computeCollectStats(items: CollectItem[], now = Date.now()): Col
       .sort((a, b) => b.count - a.count || a.host.localeCompare(b.host))
       .slice(0, 5),
   };
+}
+
+/** 回收站保留期（天），与后端 RETENTION_MS 对齐 */
+export const TRASH_RETENTION_DAYS = 30;
+
+/** 回收站条目的剩余保留天数（按自然日粗算，最少 0） */
+export function remainingDays(deletedAt: number | null, now = Date.now()): number {
+  if (!deletedAt) {
+    return TRASH_RETENTION_DAYS;
+  }
+  const elapsedDays = Math.floor((now - deletedAt) / DAY_MS);
+  return Math.max(0, TRASH_RETENTION_DAYS - elapsedDays);
 }

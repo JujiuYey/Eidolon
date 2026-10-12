@@ -6,6 +6,26 @@ export async function listCollectItems(): Promise<CollectItem[]> {
   return invoke<CollectItem[]>('list_collect_items');
 }
 
+/** 回收站列表（已删除、保留期内的条目） */
+export async function listDeletedCollectItems(): Promise<CollectItem[]> {
+  return invoke<CollectItem[]>('list_deleted_collect_items');
+}
+
+/** 从回收站恢复 */
+export async function restoreCollectItem(itemId: string): Promise<CollectItem> {
+  return invoke<CollectItem>('restore_collect_item', { itemId });
+}
+
+/** 彻底删除单条回收站条目 */
+export async function purgeCollectItem(itemId: string): Promise<string> {
+  return invoke<string>('purge_collect_item', { itemId });
+}
+
+/** 清空回收站，返回清除条数 */
+export async function emptyCollectTrash(): Promise<number> {
+  return invoke<number>('empty_collect_trash');
+}
+
 export async function upsertCollectItem(item: CollectItem): Promise<CollectItem> {
   return invoke<CollectItem>('upsert_collect_item', { item });
 }

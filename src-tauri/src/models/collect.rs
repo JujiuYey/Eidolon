@@ -40,6 +40,9 @@ pub struct CollectItem {
     pub created_at: i64,
     #[serde(default)]
     pub updated_at: i64,
+    /// 软删除时间（Unix 毫秒）；NULL 表示未删除。保留 30 天后物理清除
+    #[serde(default)]
+    pub deleted_at: Option<i64>,
 }
 
 /// 链接元数据抓取结果（`fetch_link_metadata` 命令返回）

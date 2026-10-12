@@ -160,6 +160,10 @@ pub fn run() {
             commands::schema_dict::call_mcp_tool,
             // Collect (收藏夹) commands
             commands::collect::list_collect_items,
+            commands::collect::list_deleted_collect_items,
+            commands::collect::restore_collect_item,
+            commands::collect::purge_collect_item,
+            commands::collect::empty_collect_trash,
             commands::collect::upsert_collect_item,
             commands::collect::delete_collect_item,
             commands::collect::fetch_link_metadata,

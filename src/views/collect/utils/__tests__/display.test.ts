@@ -2,7 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import type { CollectItem } from '@/types/collect';
 
-import { computeCollectStats, filterCounts, filterItems, formatCreatedAt, hostOf, isLinkText } from '../display';
+import {
+  computeCollectStats,
+  filterCounts,
+  filterItems,
+  formatCreatedAt,
+  hostOf,
+  isLinkText,
+  remainingDays,
+  TRASH_RETENTION_DAYS,
+} from '../display';
 
 const NOW = new Date(2026, 9, 14, 15).getTime(); // 周三下午
 const DAY = 24 * 60 * 60 * 1000;
@@ -19,6 +28,7 @@ function makeItem(overrides: Partial<CollectItem> = {}): CollectItem {
     archived: false,
     created_at: 100,
     updated_at: 100,
+    deleted_at: null,
     ...overrides,
   };
 }
@@ -116,5 +126,20 @@ describe('collect display helpers', () => {
 
     expect(stats.streakDays).toBe(1); // 昨天、前天空缺
     expect(stats.topHosts).toEqual([]); // 非法/非 http(s) URL 不参与域名统计
+  });
+});
+
+describe('trash retention helpers', () => {
+  it('remainingDays counts down from 30 by elapsed days', () => {
+    const deletedAt = NOW;
+    expect(remainingDays(deletedAt, NOW)).toBe(30);
+    expect(remainingDays(deletedAt, NOW + 1 * DAY)).toBe(29);
+    expect(remainingDays(deletedAt, NOW + 29 * DAY + 3600_000)).toBe(1);
+    // 过期后钳到 0
+    expect(remainingDays(deletedAt, NOW + 40 * DAY)).toBe(0);
+  });
+
+  it('remainingDays treats missing deleted_at as full retention', () => {
+    expect(remainingDays(null, NOW)).toBe(TRASH_RETENTION_DAYS);
   });
 });

@@ -3,6 +3,9 @@
 //! 收藏夹条目的 CRUD：链接（kind=link，url 必填）与记事（kind=note，
 //! content 必填）统一 upsert；记事的 url/title/description/favicon 恒为 NULL，
 //! archived 跟随条目整体保存。
+//!
+//! 删除是软删除：打上 deleted_at 进入回收站，保留 [`RETENTION_MS`] 后
+//! 由 [`Self::purge_expired`] 物理清除（命令层在每次拉列表时惰性调用）。
 
 use chrono::Utc;
 use nanoid::nanoid;
@@ -12,12 +15,15 @@ use crate::db::api_client::ApiClientDatabase;
 use crate::db::repositories::api_client_repo_common::{begin, require_name, sql_error};
 use crate::models::collect::{normalize_kind, CollectItem, COLLECT_KIND_LINK};
 
+/// 回收站保留期：30 天
+pub const RETENTION_MS: i64 = 30 * 24 * 3600 * 1000;
+
 pub struct CollectItemRepository<'a> {
     database: &'a ApiClientDatabase,
 }
 
 const SELECT_COLUMNS: &str = "SELECT id, kind, url, title, description, content, favicon_url,
-        archived, created_at, updated_at
+        archived, created_at, updated_at, deleted_at
      FROM collect_items";
 
 impl<'a> CollectItemRepository<'a> {
@@ -25,11 +31,32 @@ impl<'a> CollectItemRepository<'a> {
         Self { database }
     }
 
-    /// 全量列表，新的在前（列表页自行按归档/类型/关键字过滤）
+    /// 未删除条目，新的在前（列表页自行按归档/类型/关键字过滤）
     pub fn list(&self) -> Result<Vec<CollectItem>, String> {
         self.database.with_connection(|connection| {
             let mut statement = connection
-                .prepare(&format!("{SELECT_COLUMNS} ORDER BY created_at DESC, id DESC"))
+                .prepare(&format!(
+                    "{SELECT_COLUMNS} WHERE deleted_at IS NULL ORDER BY created_at DESC, id DESC"
+                ))
+                .map_err(sql_error)?;
+
+            let rows = statement
+                .query_map([], map_item)
+                .map_err(sql_error)?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(sql_error)?;
+
+            Ok(rows)
+        })
+    }
+
+    /// 回收站：已软删除条目，删除时间新的在前
+    pub fn list_deleted(&self) -> Result<Vec<CollectItem>, String> {
+        self.database.with_connection(|connection| {
+            let mut statement = connection
+                .prepare(&format!(
+                    "{SELECT_COLUMNS} WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC, id DESC"
+                ))
                 .map_err(sql_error)?;
 
             let rows = statement
@@ -81,8 +108,8 @@ impl<'a> CollectItemRepository<'a> {
                 .execute(
                     "INSERT INTO collect_items
                         (id, kind, url, title, description, content, favicon_url,
-                         archived, created_at, updated_at)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
+                         archived, created_at, updated_at, deleted_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, NULL)
                      ON CONFLICT (id) DO UPDATE SET
                         kind = excluded.kind,
                         url = excluded.url,
@@ -91,7 +118,8 @@ impl<'a> CollectItemRepository<'a> {
                         content = excluded.content,
                         favicon_url = excluded.favicon_url,
                         archived = excluded.archived,
-                        updated_at = excluded.updated_at",
+                        updated_at = excluded.updated_at,
+                        deleted_at = NULL",
                     params![
                         id,
                         kind,
@@ -124,10 +152,15 @@ impl<'a> CollectItemRepository<'a> {
         })
     }
 
+    /// 软删除：打上 deleted_at，条目进入回收站
     pub fn delete(&self, item_id: &str) -> Result<String, String> {
         self.database.with_connection(|connection| {
+            let now = Utc::now().timestamp_millis();
             let affected = connection
-                .execute("DELETE FROM collect_items WHERE id = ?1", params![item_id])
+                .execute(
+                    "UPDATE collect_items SET deleted_at = ?2 WHERE id = ?1 AND deleted_at IS NULL",
+                    params![item_id, now],
+                )
                 .map_err(sql_error)?;
 
             if affected == 0 {
@@ -135,6 +168,73 @@ impl<'a> CollectItemRepository<'a> {
             }
 
             Ok(item_id.to_string())
+        })
+    }
+
+    /// 从回收站恢复（清除 deleted_at）
+    pub fn restore(&self, item_id: &str) -> Result<CollectItem, String> {
+        self.database.with_connection(|connection| {
+            let affected = connection
+                .execute(
+                    "UPDATE collect_items SET deleted_at = NULL WHERE id = ?1 AND deleted_at IS NOT NULL",
+                    params![item_id],
+                )
+                .map_err(sql_error)?;
+
+            if affected == 0 {
+                return Err(format!("回收站里没有 id 为 {item_id} 的收藏"));
+            }
+
+            connection
+                .query_row(
+                    &format!("{SELECT_COLUMNS} WHERE id = ?1"),
+                    params![item_id],
+                    map_item,
+                )
+                .map_err(sql_error)
+        })
+    }
+
+    /// 彻底删除单条（回收站内操作）
+    pub fn purge(&self, item_id: &str) -> Result<String, String> {
+        self.database.with_connection(|connection| {
+            let affected = connection
+                .execute(
+                    "DELETE FROM collect_items WHERE id = ?1 AND deleted_at IS NOT NULL",
+                    params![item_id],
+                )
+                .map_err(sql_error)?;
+
+            if affected == 0 {
+                return Err(format!("回收站里没有 id 为 {item_id} 的收藏"));
+            }
+
+            Ok(item_id.to_string())
+        })
+    }
+
+    /// 物理清除超过保留期的条目，返回清除数量
+    pub fn purge_expired(&self, now_ms: i64) -> Result<u64, String> {
+        self.database.with_connection(|connection| {
+            let affected = connection
+                .execute(
+                    "DELETE FROM collect_items WHERE deleted_at IS NOT NULL AND deleted_at < ?1",
+                    params![now_ms - RETENTION_MS],
+                )
+                .map_err(sql_error)?;
+
+            Ok(affected as u64)
+        })
+    }
+
+    /// 清空回收站（物理删除全部已软删除条目），返回清除数量
+    pub fn purge_all_deleted(&self) -> Result<u64, String> {
+        self.database.with_connection(|connection| {
+            let affected = connection
+                .execute("DELETE FROM collect_items WHERE deleted_at IS NOT NULL", [])
+                .map_err(sql_error)?;
+
+            Ok(affected as u64)
         })
     }
 }
@@ -160,6 +260,7 @@ fn map_item(row: &Row<'_>) -> rusqlite::Result<CollectItem> {
         archived: archived != 0,
         created_at: row.get(8)?,
         updated_at: row.get(9)?,
+        deleted_at: row.get(10)?,
     })
 }
 
@@ -305,5 +406,80 @@ mod tests {
             .delete("missing")
             .expect_err("unknown item must be rejected");
         assert!(error.contains("未找到"), "got {error}");
+    }
+
+    #[test]
+    fn delete_is_soft_and_restore_clears_it() {
+        let database = ApiClientDatabase::open_in_memory().expect("in-memory database");
+        let repo = CollectItemRepository::new(&database);
+
+        let created = repo
+            .upsert(&sample_link("https://example.com/a"))
+            .expect("create");
+        assert_eq!(created.deleted_at, None);
+
+        // 软删除：主列表看不到，回收站看得到且带删除时间
+        repo.delete(&created.id).expect("soft delete");
+        assert!(repo.list().expect("list").is_empty(), "deleted item must leave main list");
+
+        let trash = repo.list_deleted().expect("trash");
+        assert_eq!(trash.len(), 1);
+        assert!(trash[0].deleted_at.is_some());
+        assert_eq!(trash[0].id, created.id);
+
+        // 重复软删除已删除的条目应报未找到（不在主列表语义里）
+        assert!(repo.delete(&created.id).is_err());
+
+        // 恢复：回到主列表，deleted_at 清空
+        let restored = repo.restore(&created.id).expect("restore");
+        assert_eq!(restored.deleted_at, None);
+        assert_eq!(repo.list().expect("list").len(), 1);
+        assert!(repo.list_deleted().expect("trash").is_empty());
+
+        // 恢复不存在的回收站条目要报错
+        assert!(repo.restore(&created.id).is_err(), "restoring an active item must fail");
+    }
+
+    #[test]
+    fn purge_removes_only_trashed_items_and_purge_expired_honors_retention() {
+        let database = ApiClientDatabase::open_in_memory().expect("in-memory database");
+        let repo = CollectItemRepository::new(&database);
+
+        let recent = repo.upsert(&sample_link("https://example.com/new")).expect("recent");
+        let stale = repo.upsert(&sample_note("过期记事")).expect("stale");
+        let active = repo.upsert(&sample_note("正常记事")).expect("active");
+
+        repo.delete(&recent.id).expect("delete recent");
+        repo.delete(&stale.id).expect("delete stale");
+
+        // 把 stale 的删除时间拨到 31 天前，recent 保持刚删
+        let cutoff_shift = RETENTION_MS + 24 * 3600 * 1000;
+        database
+            .with_connection(|connection| {
+                connection
+                    .execute(
+                        "UPDATE collect_items SET deleted_at = ?2 WHERE id = ?1",
+                        rusqlite::params![stale.id, chrono::Utc::now().timestamp_millis() - cutoff_shift],
+                    )
+                    .map_err(|error| error.to_string())?;
+                Ok(())
+            })
+            .expect("backdate stale deletion");
+
+        let purged = repo
+            .purge_expired(chrono::Utc::now().timestamp_millis())
+            .expect("purge expired");
+        assert_eq!(purged, 1, "only the stale item expires");
+
+        let trash = repo.list_deleted().expect("trash");
+        assert_eq!(trash.len(), 1);
+        assert_eq!(trash[0].id, recent.id, "recently deleted item must survive");
+        assert_eq!(repo.list().expect("list").len(), 1, "active item must survive");
+
+        // 彻底删除单条：只对回收站内的条目生效
+        repo.purge(&recent.id).expect("purge trashed");
+        assert!(repo.list_deleted().expect("trash").is_empty());
+        assert!(repo.purge(&active.id).is_err(), "must not purge an active item");
+        assert_eq!(repo.list().expect("list").len(), 1);
     }
 }

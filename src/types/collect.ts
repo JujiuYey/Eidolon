@@ -16,6 +16,8 @@ export interface CollectItem {
   archived: boolean;
   created_at: number;
   updated_at: number;
+  /** 软删除时间（Unix 毫秒）；null 表示未删除，保留 30 天后物理清除 */
+  deleted_at: number | null;
 }
 
 /** 链接元数据抓取结果 */

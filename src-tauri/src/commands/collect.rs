@@ -8,7 +8,44 @@ use crate::services::{collect_ai, collect_fetch};
 pub fn list_collect_items(
     database: tauri::State<'_, ApiClientDatabase>,
 ) -> Result<Vec<CollectItem>, String> {
-    CollectItemRepository::new(&database).list()
+    let repo = CollectItemRepository::new(&database);
+    // 惰性清理：超过保留期（30 天）的回收站条目在拉取时物理清除
+    repo.purge_expired(chrono::Utc::now().timestamp_millis())?;
+    repo.list()
+}
+
+/// 回收站列表（已软删除、保留期内的条目）
+#[tauri::command]
+pub fn list_deleted_collect_items(
+    database: tauri::State<'_, ApiClientDatabase>,
+) -> Result<Vec<CollectItem>, String> {
+    let repo = CollectItemRepository::new(&database);
+    repo.purge_expired(chrono::Utc::now().timestamp_millis())?;
+    repo.list_deleted()
+}
+
+/// 从回收站恢复
+#[tauri::command]
+pub fn restore_collect_item(
+    database: tauri::State<'_, ApiClientDatabase>,
+    item_id: String,
+) -> Result<CollectItem, String> {
+    CollectItemRepository::new(&database).restore(&item_id)
+}
+
+/// 彻底删除单条回收站条目
+#[tauri::command]
+pub fn purge_collect_item(
+    database: tauri::State<'_, ApiClientDatabase>,
+    item_id: String,
+) -> Result<String, String> {
+    CollectItemRepository::new(&database).purge(&item_id)
+}
+
+/// 清空回收站，返回清除条数
+#[tauri::command]
+pub fn empty_collect_trash(database: tauri::State<'_, ApiClientDatabase>) -> Result<u64, String> {
+    CollectItemRepository::new(&database).purge_all_deleted()
 }
 
 #[tauri::command]

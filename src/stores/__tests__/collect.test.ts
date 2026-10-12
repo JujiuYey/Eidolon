@@ -17,6 +17,7 @@ function makeItem(overrides: Partial<CollectItem> = {}): CollectItem {
     archived: false,
     created_at: 100,
     updated_at: 100,
+    deleted_at: null,
     ...overrides,
   };
 }
@@ -38,6 +39,12 @@ function bindStore(service: CollectService) {
 function createService(overrides: Partial<CollectService> = {}): CollectService {
   return {
     listCollectItems: vi.fn().mockResolvedValue([]),
+    listDeletedCollectItems: vi.fn().mockResolvedValue([]),
+    restoreCollectItem: vi
+      .fn()
+      .mockImplementation(async (itemId: string) => makeItem({ id: itemId, deleted_at: null })),
+    purgeCollectItem: vi.fn().mockResolvedValue('collect_1'),
+    emptyCollectTrash: vi.fn().mockResolvedValue(0),
     upsertCollectItem: vi
       .fn()
       .mockImplementation(async (item: CollectItem) => ({ ...item, id: item.id || 'collect_new' })),
@@ -191,6 +198,38 @@ describe('collect store', () => {
     await store.removeItem('collect_1');
 
     expect(store.summaries['collect_1']).toBeUndefined();
+  });
+
+  it('trash flow: loads deleted items, restores back to main list, purges and empties', async () => {
+    const trashed = makeItem({ id: 'collect_trash', deleted_at: 12345 });
+    const service = createService({
+      listDeletedCollectItems: vi.fn().mockResolvedValue([trashed]),
+      restoreCollectItem: vi.fn().mockResolvedValue(makeItem({ id: 'collect_trash', deleted_at: null })),
+      emptyCollectTrash: vi.fn().mockResolvedValue(1),
+    });
+    const store = bindStore(service);
+
+    await store.loadTrash();
+    expect(store.trashItems).toHaveLength(1);
+    expect(store.trashItems[0]?.id).toBe('collect_trash');
+
+    // 恢复：移出回收站并回到主列表
+    await store.restoreItem(store.trashItems[0]!);
+    expect(service.restoreCollectItem).toHaveBeenCalledWith('collect_trash');
+    expect(store.trashItems).toHaveLength(0);
+    expect(store.items.map(item => item.id)).toContain('collect_trash');
+
+    // 彻底删除单条
+    await store.loadTrash();
+    await store.purgeItem('collect_trash');
+    expect(service.purgeCollectItem).toHaveBeenCalledWith('collect_trash');
+    expect(store.trashItems).toHaveLength(0);
+
+    // 清空回收站
+    await store.loadTrash();
+    const purged = await store.emptyTrash();
+    expect(purged).toBe(1);
+    expect(store.trashItems).toHaveLength(0);
   });
 
   it('summarizeLink loads then stores the summary', async () => {

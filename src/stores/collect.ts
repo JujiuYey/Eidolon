@@ -8,6 +8,10 @@ import { isLinkText } from '@/views/collect/utils/display';
 /** store 依赖的服务接口，测试时可注入 fake 实现 */
 export interface CollectService {
   listCollectItems: () => Promise<CollectItem[]>;
+  listDeletedCollectItems: () => Promise<CollectItem[]>;
+  restoreCollectItem: (itemId: string) => Promise<CollectItem>;
+  purgeCollectItem: (itemId: string) => Promise<string>;
+  emptyCollectTrash: () => Promise<number>;
   upsertCollectItem: (item: CollectItem) => Promise<CollectItem>;
   deleteCollectItem: (itemId: string) => Promise<string>;
   fetchLinkMetadata: (url: string) => Promise<LinkMetadata>;
@@ -49,6 +53,7 @@ function emptyItem(): CollectItem {
     archived: false,
     created_at: 0,
     updated_at: 0,
+    deleted_at: null,
   };
 }
 
@@ -65,6 +70,9 @@ export function createCollectStore(options: { service?: CollectService } = {}) {
   const itemsLoading = ref(false);
   const itemsLoaded = ref(false);
   const itemsError = ref('');
+
+  const trashItems = ref<CollectItem[]>([]);
+  const trashLoading = ref(false);
 
   const summaries = ref<Record<string, AiSummaryState>>({});
   const aiAnswer = ref<AiAnswerState>(emptyAnswer());
@@ -159,6 +167,38 @@ export function createCollectStore(options: { service?: CollectService } = {}) {
     dismissSummary(itemId);
   }
 
+  // ===== 回收站（软删除保留 30 天） =====
+
+  async function loadTrash() {
+    trashLoading.value = true;
+    try {
+      trashItems.value = await service.listDeletedCollectItems();
+    } finally {
+      trashLoading.value = false;
+    }
+  }
+
+  /** 从回收站恢复：回到主列表并移出回收站 */
+  async function restoreItem(item: CollectItem): Promise<CollectItem> {
+    const restored = await service.restoreCollectItem(item.id);
+    trashItems.value = trashItems.value.filter(trashItem => trashItem.id !== item.id);
+    upsertLocal(restored);
+    return restored;
+  }
+
+  /** 彻底删除单条回收站条目 */
+  async function purgeItem(itemId: string) {
+    await service.purgeCollectItem(itemId);
+    trashItems.value = trashItems.value.filter(trashItem => trashItem.id !== itemId);
+  }
+
+  /** 清空回收站，返回清除条数 */
+  async function emptyTrash(): Promise<number> {
+    const purged = await service.emptyCollectTrash();
+    trashItems.value = [];
+    return purged;
+  }
+
   // ===== AI：单条链接摘要（内存态，不落库） =====
 
   /** 生成链接摘要；同一链接生成中时忽略重复请求，已有结果再点是重新生成 */
@@ -215,10 +255,16 @@ export function createCollectStore(options: { service?: CollectService } = {}) {
     itemsLoading,
     itemsLoaded,
     itemsError,
+    trashItems,
+    trashLoading,
     summaries,
     aiAnswer,
     // 动作
     loadItems,
+    loadTrash,
+    restoreItem,
+    purgeItem,
+    emptyTrash,
     saveItem,
     createFromText,
     refreshLink,
