@@ -140,8 +140,8 @@ function retryLoad() {
 </script>
 
 <template>
-  <div class="flex h-full flex-col overflow-y-auto">
-    <SagPageHeader class="px-6 pt-6" title="任务">
+  <div class="flex h-full flex-col overflow-hidden">
+    <SagPageHeader class="shrink-0 px-6 pt-6" title="任务">
       <template #meta>
         <span class="text-sm text-muted-foreground"
           >{{ counts.all }} 个任务 · {{ counts.todo + counts.doing }} 个未完成</span
@@ -164,7 +164,7 @@ function retryLoad() {
       </template>
     </SagPageHeader>
 
-    <div class="flex flex-1 flex-col gap-4 px-6 pb-6 pt-4">
+    <div class="flex min-h-0 flex-1 flex-col gap-4 px-6 pb-6 pt-4">
       <!-- 加载失败 -->
       <div
         v-if="store.tasksError"
@@ -210,6 +210,7 @@ function retryLoad() {
         </div>
 
         <TaskQuickAdd
+          class="shrink-0"
           :draft="store.aiDraft"
           @submit="handleQuickSubmit"
           @parse="handleParse"
@@ -217,10 +218,16 @@ function retryLoad() {
           @discard="store.discardDraft()"
         />
 
-        <TaskPlanPanel v-if="store.aiPlan" :plan="store.aiPlan" @dismiss="store.dismissPlan()" @retry="handlePlan" />
+        <TaskPlanPanel
+          v-if="store.aiPlan"
+          class="shrink-0"
+          :plan="store.aiPlan"
+          @dismiss="store.dismissPlan()"
+          @retry="handlePlan"
+        />
 
         <!-- 过滤 -->
-        <Tabs :model-value="filter" @update:model-value="value => (filter = value as TaskFilter)">
+        <Tabs class="shrink-0" :model-value="filter" @update:model-value="value => (filter = value as TaskFilter)">
           <TabsList>
             <TabsTrigger value="all">全部 {{ counts.all }}</TabsTrigger>
             <TabsTrigger value="todo">待办 {{ counts.todo }}</TabsTrigger>
@@ -229,37 +236,40 @@ function retryLoad() {
           </TabsList>
         </Tabs>
 
-        <!-- 加载中 -->
-        <div v-if="showLoadingSkeleton" class="space-y-2" aria-busy="true">
-          <Skeleton v-for="index in 3" :key="index" class="h-14 w-full rounded-lg" />
-        </div>
-
-        <!-- 列表 -->
-        <TaskList
-          v-else-if="visibleTasks.length > 0"
-          :tasks="visibleTasks"
-          @toggle="handleToggle"
-          @edit="openEdit"
-          @remove="handleRemove"
-        />
-
-        <!-- 空状态 -->
-        <div v-else-if="!hasAnyTask" class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-          <div class="flex size-12 items-center justify-center rounded-full bg-primary/10">
-            <Sparkles class="size-6 text-primary" />
+        <!-- 列表区：唯一滚动区域 -->
+        <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <!-- 加载中 -->
+          <div v-if="showLoadingSkeleton" class="space-y-2" aria-busy="true">
+            <Skeleton v-for="index in 3" :key="index" class="h-14 w-full rounded-lg" />
           </div>
-          <div class="space-y-1">
-            <h2 class="text-base font-semibold">还没有任务</h2>
-            <p class="max-w-sm text-sm text-muted-foreground">
-              在上方输入一句话直接回车记下要做的事；也可以点 ✦ 让 AI 把它整理成带优先级和截止日期的任务。
-            </p>
+
+          <!-- 列表 -->
+          <TaskList
+            v-else-if="visibleTasks.length > 0"
+            :tasks="visibleTasks"
+            @toggle="handleToggle"
+            @edit="openEdit"
+            @remove="handleRemove"
+          />
+
+          <!-- 空状态 -->
+          <div v-else-if="!hasAnyTask" class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+            <div class="flex size-12 items-center justify-center rounded-full bg-primary/10">
+              <Sparkles class="size-6 text-primary" />
+            </div>
+            <div class="space-y-1">
+              <h2 class="text-base font-semibold">还没有任务</h2>
+              <p class="max-w-sm text-sm text-muted-foreground">
+                在上方输入一句话直接回车记下要做的事；也可以点 ✦ 让 AI 把它整理成带优先级和截止日期的任务。
+              </p>
+            </div>
+            <Button type="button" variant="outline" size="sm" @click="openCreate">
+              <Plus class="size-3.5" />
+              新建任务
+            </Button>
           </div>
-          <Button type="button" variant="outline" size="sm" @click="openCreate">
-            <Plus class="size-3.5" />
-            新建任务
-          </Button>
+          <p v-else class="py-10 text-center text-sm text-muted-foreground">该状态下没有任务</p>
         </div>
-        <p v-else class="py-10 text-center text-sm text-muted-foreground">该状态下没有任务</p>
       </template>
     </div>
 

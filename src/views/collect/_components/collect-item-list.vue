@@ -74,45 +74,36 @@ function cardTitle(item: CollectItem): string {
 </script>
 
 <template>
-  <ul class="space-y-2">
-    <li v-for="item of props.items" :key="item.id" class="space-y-2">
+  <ul class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+    <li v-for="item of props.items" :key="item.id" class="flex flex-col gap-2">
       <div
-        class="group flex cursor-pointer items-start gap-3 rounded-lg border bg-card px-4 py-3 transition-colors hover:border-ring/40 hover:bg-muted/30"
+        class="group flex flex-1 cursor-pointer flex-col rounded-lg border bg-card p-3 transition-colors hover:border-ring/40 hover:bg-muted/30"
         :title="cardTitle(item)"
         @click="handleCardClick(item)"
       >
-        <div class="mt-0.5 flex size-5 shrink-0 items-center justify-center">
-          <template v-if="item.kind === 'link'">
-            <img
-              v-if="item.favicon_url && !failedFavicons.has(item.favicon_url)"
-              :src="item.favicon_url"
-              class="size-4 rounded-sm"
-              alt=""
-              loading="lazy"
-              @error="onFaviconError(item.favicon_url!)"
-            />
-            <Link2 v-else class="size-4 text-muted-foreground" aria-hidden="true" />
-          </template>
-          <StickyNote v-else class="size-4 text-muted-foreground" aria-hidden="true" />
-        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex size-5 shrink-0 items-center justify-center">
+            <template v-if="item.kind === 'link'">
+              <img
+                v-if="item.favicon_url && !failedFavicons.has(item.favicon_url)"
+                :src="item.favicon_url"
+                class="size-4 rounded-sm"
+                alt=""
+                loading="lazy"
+                @error="onFaviconError(item.favicon_url!)"
+              />
+              <Link2 v-else class="size-4 text-muted-foreground" aria-hidden="true" />
+            </template>
+            <StickyNote v-else class="size-4 text-muted-foreground" aria-hidden="true" />
+          </div>
 
-        <div class="min-w-0 flex-1">
-          <template v-if="item.kind === 'link'">
-            <h3 class="truncate text-sm font-medium" :class="item.archived ? 'text-muted-foreground' : ''">
-              {{ item.title ?? hostOf(item.url) }}
-            </h3>
-            <p v-if="item.description" class="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-              {{ item.description }}
-            </p>
-            <p v-if="item.content" class="mt-0.5 line-clamp-1 text-xs text-foreground/80">{{ item.content }}</p>
-          </template>
-          <p v-else class="line-clamp-4 text-sm" :class="item.archived ? 'text-muted-foreground' : ''">
-            {{ item.content }}
-          </p>
-        </div>
-
-        <div class="flex shrink-0 items-center gap-2">
-          <span class="text-xs tabular-nums text-muted-foreground">{{ formatCreatedAt(item.created_at) }}</span>
+          <h3
+            class="min-w-0 flex-1 truncate text-sm font-medium"
+            :class="item.archived ? 'text-muted-foreground' : ''"
+            :title="item.kind === 'link' ? (item.title ?? hostOf(item.url)) : undefined"
+          >
+            {{ item.kind === 'link' ? (item.title ?? hostOf(item.url)) : '记事' }}
+          </h3>
 
           <DropdownMenu>
             <DropdownMenuTrigger as-child>
@@ -120,7 +111,7 @@ function cardTitle(item: CollectItem): string {
                 type="button"
                 variant="ghost"
                 size="icon"
-                class="size-7 text-muted-foreground"
+                class="size-7 shrink-0 text-muted-foreground"
                 aria-label="收藏操作"
                 @click.stop
               >
@@ -159,6 +150,27 @@ function cardTitle(item: CollectItem): string {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        <div class="mt-1.5 min-w-0 flex-1">
+          <template v-if="item.kind === 'link'">
+            <p v-if="item.description" class="line-clamp-2 text-xs leading-5 text-muted-foreground">
+              {{ item.description }}
+            </p>
+            <p v-if="item.content" class="mt-1 line-clamp-2 text-xs leading-5 text-foreground/80" :title="item.content">
+              {{ item.content }}
+            </p>
+          </template>
+          <p
+            v-else
+            class="line-clamp-8 whitespace-pre-wrap text-sm leading-6"
+            :class="item.archived ? 'text-muted-foreground' : ''"
+            :title="item.content"
+          >
+            {{ item.content }}
+          </p>
+        </div>
+
+        <p class="mt-2 text-xs tabular-nums text-muted-foreground">{{ formatCreatedAt(item.created_at) }}</p>
       </div>
 
       <CollectSummaryCard
