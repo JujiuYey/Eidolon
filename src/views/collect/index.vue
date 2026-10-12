@@ -231,8 +231,8 @@ function retryLoad() {
 </script>
 
 <template>
-  <div class="flex h-full flex-col overflow-y-auto">
-    <SagPageHeader class="px-6 pt-6" title="收藏夹">
+  <div class="flex h-full flex-col overflow-hidden">
+    <SagPageHeader class="shrink-0 px-6 pt-6" title="收藏夹">
       <template #meta>
         <span class="text-sm text-muted-foreground"
           >共 {{ counts.all }} 条<template v-if="counts.archived > 0"> · 归档 {{ counts.archived }}</template></span
@@ -257,10 +257,11 @@ function retryLoad() {
       </template>
     </SagPageHeader>
 
-    <div class="flex flex-1 flex-col gap-4 px-6 pb-6 pt-4">
+    <div class="flex min-h-0 flex-1 flex-col gap-4 px-6 pb-6 pt-4">
       <!-- 回收站视图 -->
       <template v-if="trashMode">
         <CollectTrashPanel
+          class="min-h-0 flex-1"
           :items="store.trashItems"
           :loading="store.trashLoading"
           @restore="handleRestore"
@@ -329,10 +330,11 @@ function retryLoad() {
             </div>
           </div>
 
-          <CollectQuickAdd @submit="handleQuickSubmit" />
+          <CollectQuickAdd class="shrink-0" @submit="handleQuickSubmit" />
 
           <CollectAiPanel
             v-if="aiPanelOpen"
+            class="shrink-0"
             :answer="store.aiAnswer"
             :disabled="!hasAnyItem"
             @ask="handleAsk"
@@ -341,7 +343,7 @@ function retryLoad() {
           />
 
           <!-- 过滤 + 搜索 -->
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="flex shrink-0 flex-wrap items-center gap-3">
             <Tabs :model-value="filter" @update:model-value="value => (filter = value as CollectFilter)">
               <TabsList>
                 <TabsTrigger value="all">全部 {{ counts.all }}</TabsTrigger>
@@ -358,42 +360,48 @@ function retryLoad() {
             </div>
           </div>
 
-          <!-- 加载中 -->
-          <div v-if="showLoadingSkeleton" class="space-y-2" aria-busy="true">
-            <Skeleton v-for="index in 3" :key="index" class="h-16 w-full rounded-lg" />
-          </div>
-
-          <!-- 列表 -->
-          <CollectItemList
-            v-else-if="visibleItems.length > 0"
-            :items="visibleItems"
-            :summaries="store.summaries"
-            @open="handleOpen"
-            @edit="openEdit"
-            @copy="handleCopy"
-            @refresh="handleRefresh"
-            @summarize="handleSummarize"
-            @dismiss-summary="handleSummarizeDismiss"
-            @archive="handleArchive"
-            @remove="handleRemove"
-          />
-
-          <!-- 空状态 -->
-          <div v-else-if="!hasAnyItem" class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-            <div class="flex size-12 items-center justify-center rounded-full bg-primary/10">
-              <Bookmark class="size-6 text-primary" />
+          <!-- 列表区：唯一滚动区域 -->
+          <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <!-- 加载中 -->
+            <div v-if="showLoadingSkeleton" class="space-y-2" aria-busy="true">
+              <Skeleton v-for="index in 3" :key="index" class="h-16 w-full rounded-lg" />
             </div>
-            <div class="space-y-1">
-              <h2 class="text-base font-semibold">收藏夹还是空的</h2>
-              <p class="max-w-sm text-sm text-muted-foreground">
-                在上方粘贴一个链接或随手记点什么，回车就能收进来；不用想分类，先存下来再说。
-              </p>
+
+            <!-- 列表 -->
+            <CollectItemList
+              v-else-if="visibleItems.length > 0"
+              :items="visibleItems"
+              :summaries="store.summaries"
+              @open="handleOpen"
+              @edit="openEdit"
+              @copy="handleCopy"
+              @refresh="handleRefresh"
+              @summarize="handleSummarize"
+              @dismiss-summary="handleSummarizeDismiss"
+              @archive="handleArchive"
+              @remove="handleRemove"
+            />
+
+            <!-- 空状态 -->
+            <div
+              v-else-if="!hasAnyItem"
+              class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center"
+            >
+              <div class="flex size-12 items-center justify-center rounded-full bg-primary/10">
+                <Bookmark class="size-6 text-primary" />
+              </div>
+              <div class="space-y-1">
+                <h2 class="text-base font-semibold">收藏夹还是空的</h2>
+                <p class="max-w-sm text-sm text-muted-foreground">
+                  在上方粘贴一个链接或随手记点什么，回车就能收进来；不用想分类，先存下来再说。
+                </p>
+              </div>
             </div>
-          </div>
-          <p v-else-if="query.trim()" class="py-10 text-center text-sm text-muted-foreground">没有匹配的收藏</p>
-          <div v-else class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-            <ArchiveX class="size-8 text-muted-foreground/50" />
-            <p class="text-sm text-muted-foreground">该状态下没有收藏</p>
+            <p v-else-if="query.trim()" class="py-10 text-center text-sm text-muted-foreground">没有匹配的收藏</p>
+            <div v-else class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+              <ArchiveX class="size-8 text-muted-foreground/50" />
+              <p class="text-sm text-muted-foreground">该状态下没有收藏</p>
+            </div>
           </div>
         </template>
       </template>
