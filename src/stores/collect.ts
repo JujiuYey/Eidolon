@@ -13,6 +13,7 @@ export interface CollectService {
   fetchLinkMetadata: (url: string) => Promise<LinkMetadata>;
   summarizeCollectLink: (url: string) => Promise<string>;
   askCollectItems: (question: string) => Promise<string>;
+  openInBrowser: (url: string) => Promise<void>;
 }
 
 const defaultService: CollectService = collectServiceApi;
@@ -142,6 +143,11 @@ export function createCollectStore(options: { service?: CollectService } = {}) {
     await enrichLink(item.id, item.url, { overwrite: true });
   }
 
+  /** 在系统默认浏览器中打开链接 */
+  async function openInBrowser(url: string) {
+    await service.openInBrowser(url);
+  }
+
   async function toggleArchived(item: CollectItem): Promise<CollectItem> {
     return saveItem({ ...item, archived: !item.archived });
   }
@@ -216,6 +222,7 @@ export function createCollectStore(options: { service?: CollectService } = {}) {
     saveItem,
     createFromText,
     refreshLink,
+    openInBrowser,
     toggleArchived,
     removeItem,
     summarizeLink,

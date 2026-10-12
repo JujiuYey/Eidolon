@@ -45,6 +45,7 @@ function createService(overrides: Partial<CollectService> = {}): CollectService 
     fetchLinkMetadata: vi.fn().mockResolvedValue(makeMetadata()),
     summarizeCollectLink: vi.fn().mockResolvedValue('- 要点一\n- 要点二'),
     askCollectItems: vi.fn().mockResolvedValue('依据：正文提取入门 https://example.com/post'),
+    openInBrowser: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

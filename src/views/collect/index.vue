@@ -84,6 +84,18 @@ function openEdit(item: CollectItem) {
   editorOpen.value = true;
 }
 
+/** 链接卡点击：在系统默认浏览器打开 */
+async function handleOpen(item: CollectItem) {
+  if (!item.url) {
+    return;
+  }
+  try {
+    await store.openInBrowser(item.url);
+  } catch (error) {
+    toast.error(getErrorMessage(error, '打开链接失败'));
+  }
+}
+
 async function handleSave(item: CollectItem) {
   try {
     await store.saveItem(item);
@@ -272,6 +284,7 @@ function retryLoad() {
           v-else-if="visibleItems.length > 0"
           :items="visibleItems"
           :summaries="store.summaries"
+          @open="handleOpen"
           @edit="openEdit"
           @copy="handleCopy"
           @refresh="handleRefresh"

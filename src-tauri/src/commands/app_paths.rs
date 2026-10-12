@@ -49,3 +49,40 @@ pub fn open_directory(path: String) -> Result<(), String> {
 
     Ok(())
 }
+
+/// 在系统默认浏览器中打开链接。只放行 http/https，
+/// 其余 scheme（file://、自定义协议等）一律拒绝。
+#[tauri::command]
+pub fn open_external_url(raw_url: String) -> Result<(), String> {
+    let parsed = url::Url::parse(raw_url.trim()).map_err(|error| format!("无效的链接地址: {error}"))?;
+    if parsed.scheme() != "http" && parsed.scheme() != "https" {
+        return Err("仅支持 http/https 链接".to_string());
+    }
+    let target = parsed.as_str().to_string();
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&target)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&target)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&target)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
+}

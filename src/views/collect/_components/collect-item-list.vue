@@ -34,6 +34,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
+  (e: 'open', item: CollectItem): void;
   (e: 'edit', item: CollectItem): void;
   (e: 'copy', item: CollectItem): void;
   (e: 'refresh', item: CollectItem): void;
@@ -57,6 +58,19 @@ function archiveLabel(item: CollectItem): string {
 function summaryFor(item: CollectItem): AiSummaryState | undefined {
   return props.summaries[item.id];
 }
+
+/** 链接卡的主操作是在浏览器打开，编辑走菜单；记事卡点击即编辑 */
+function handleCardClick(item: CollectItem) {
+  if (item.kind === 'link') {
+    emit('open', item);
+  } else {
+    emit('edit', item);
+  }
+}
+
+function cardTitle(item: CollectItem): string {
+  return item.kind === 'link' ? '在浏览器打开' : '点击编辑';
+}
 </script>
 
 <template>
@@ -64,7 +78,8 @@ function summaryFor(item: CollectItem): AiSummaryState | undefined {
     <li v-for="item of props.items" :key="item.id" class="space-y-2">
       <div
         class="group flex cursor-pointer items-start gap-3 rounded-lg border bg-card px-4 py-3 transition-colors hover:border-ring/40 hover:bg-muted/30"
-        @click="emit('edit', item)"
+        :title="cardTitle(item)"
+        @click="handleCardClick(item)"
       >
         <div class="mt-0.5 flex size-5 shrink-0 items-center justify-center">
           <template v-if="item.kind === 'link'">

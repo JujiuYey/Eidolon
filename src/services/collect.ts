@@ -28,3 +28,8 @@ export async function summarizeCollectLink(url: string): Promise<string> {
 export async function askCollectItems(question: string): Promise<string> {
   return invoke<string>('ask_collect_items', { question });
 }
+
+/** 在系统默认浏览器中打开链接（后端只放行 http/https） */
+export async function openInBrowser(url: string): Promise<void> {
+  return invoke<void>('open_external_url', { rawUrl: url });
+}

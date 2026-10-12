@@ -27,6 +27,7 @@ pub fn run() {
             // App paths commands
             commands::app_paths::get_app_paths,
             commands::app_paths::open_directory,
+            commands::app_paths::open_external_url,
             // Conversation commands
             commands::conversation::send_conversation_message,
             // Default model commands
