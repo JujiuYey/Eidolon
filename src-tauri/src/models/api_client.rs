@@ -275,6 +275,54 @@ pub struct ApiClientOverviewStats {
     /// created_at 晚于查询窗口的请求时间戳（毫秒）
     #[serde(default)]
     pub recent_request_timestamps: Vec<i64>,
+
+    /// 按方法聚合的请求数（降序）
+    #[serde(default)]
+    pub method_counts: Vec<MethodCount>,
+
+    /// 按项目聚合的请求数（降序，含 0 请求的项目）
+    #[serde(default)]
+    pub project_request_counts: Vec<ProjectRequestCount>,
+
+    /// 窗口内的执行历史统计（每请求只保留最近 100 条，反映近期使用情况）
+    #[serde(default)]
+    pub recent_executions: RecentExecutionStats,
+}
+
+/// 方法 → 请求数
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MethodCount {
+    #[serde(default)]
+    pub method: String,
+    #[serde(default)]
+    pub count: i64,
+}
+
+/// 项目 → 请求数
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProjectRequestCount {
+    #[serde(default)]
+    pub project_id: String,
+    #[serde(default)]
+    pub project_name: String,
+    #[serde(default)]
+    pub count: i64,
+}
+
+/// 近期执行统计
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RecentExecutionStats {
+    #[serde(default)]
+    pub total: i64,
+    /// status = success 的次数
+    #[serde(default)]
+    pub success: i64,
+    /// 平均耗时（毫秒，四舍五入）；无记录为 0
+    #[serde(default)]
+    pub avg_duration_ms: i64,
+    /// 窗口内的执行时间戳（毫秒），前端按天分桶
+    #[serde(default)]
+    pub executed_at_timestamps: Vec<i64>,
 }
 
 /// 代码导入的分组定义。`key` 由导入方（前端适配器）生成，

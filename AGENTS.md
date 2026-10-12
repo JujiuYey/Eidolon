@@ -236,6 +236,7 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 - `src/stores/__tests__/collect.test.ts`
 - `src/views/collect/utils/__tests__/display.test.ts`
 - `src/utils/__tests__/stats.test.ts`
+- `src/utils/__tests__/chart.test.ts`
 - `src/views/mail/utils/__tests__/mail-stats.test.ts`
 - `src/views/weekly-report/utils/__tests__/report-stats.test.ts`
 - `src/views/docs/utils/__tests__/docs-stats.test.ts`

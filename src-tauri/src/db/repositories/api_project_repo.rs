@@ -12,7 +12,9 @@ use crate::db::api_client::ApiClientDatabase;
 use crate::db::repositories::api_client_repo_common::{
     begin, next_sort, require_name, require_project, sql_error, DeletionSummary,
 };
-use crate::models::api_client::{ApiClientOverviewStats, ApiProject};
+use crate::models::api_client::{
+    ApiClientOverviewStats, ApiProject, MethodCount, ProjectRequestCount, RecentExecutionStats,
+};
 
 /// 创建项目时自动生成的默认分组名称
 pub const DEFAULT_GROUP_NAME: &str = "默认分组";
@@ -213,6 +215,70 @@ impl<'a> ApiProjectRepository<'a> {
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(sql_error)?;
 
+            // 方法分布（降序）
+            let mut statement = connection
+                .prepare(
+                    "SELECT method, COUNT(*) FROM api_requests GROUP BY method ORDER BY COUNT(*) DESC, method",
+                )
+                .map_err(sql_error)?;
+            let method_counts = statement
+                .query_map([], |row| {
+                    Ok(MethodCount {
+                        method: row.get(0)?,
+                        count: row.get(1)?,
+                    })
+                })
+                .map_err(sql_error)?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(sql_error)?;
+
+            // 项目请求分布：LEFT JOIN 保留 0 请求的项目，降序
+            let mut statement = connection
+                .prepare(
+                    "SELECT p.id, p.name, COUNT(r.id)
+                     FROM api_projects p
+                     LEFT JOIN api_groups g ON g.project_id = p.id
+                     LEFT JOIN api_requests r ON r.group_id = g.id
+                     GROUP BY p.id, p.name
+                     ORDER BY COUNT(r.id) DESC, p.sort, p.name",
+                )
+                .map_err(sql_error)?;
+            let project_request_counts = statement
+                .query_map([], |row| {
+                    Ok(ProjectRequestCount {
+                        project_id: row.get(0)?,
+                        project_name: row.get(1)?,
+                        count: row.get(2)?,
+                    })
+                })
+                .map_err(sql_error)?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(sql_error)?;
+
+            // 近期执行统计（每请求只保留最近 100 条历史，反映近期使用情况）
+            let (total, success, avg_duration): (i64, i64, Option<f64>) = connection
+                .query_row(
+                    "SELECT COUNT(*),
+                            COALESCE(SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END), 0),
+                            AVG(duration_ms)
+                     FROM api_request_histories WHERE executed_at >= ?1",
+                    params![since_ms],
+                    |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+                )
+                .map_err(sql_error)?;
+
+            let mut statement = connection
+                .prepare(
+                    "SELECT executed_at FROM api_request_histories WHERE executed_at >= ?1
+                     ORDER BY executed_at LIMIT 50000",
+                )
+                .map_err(sql_error)?;
+            let executed_at_timestamps = statement
+                .query_map(params![since_ms], |row| row.get(0))
+                .map_err(sql_error)?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(sql_error)?;
+
             Ok(ApiClientOverviewStats {
                 project_count: count("SELECT COUNT(*) FROM api_projects")?,
                 group_count: count("SELECT COUNT(*) FROM api_groups")?,
@@ -220,6 +286,14 @@ impl<'a> ApiProjectRepository<'a> {
                 environment_count: count("SELECT COUNT(*) FROM api_environments")?,
                 latest_updated_at,
                 recent_request_timestamps,
+                method_counts,
+                project_request_counts,
+                recent_executions: RecentExecutionStats {
+                    total,
+                    success,
+                    avg_duration_ms: avg_duration.map(|value| value.round() as i64).unwrap_or(0),
+                    executed_at_timestamps,
+                },
             })
         })
     }
@@ -479,5 +553,75 @@ mod tests {
             .expect("stats with future window");
         assert!(future.recent_request_timestamps.is_empty());
         assert_eq!(future.request_count, 2);
+    }
+
+    #[test]
+    fn overview_stats_reports_methods_projects_and_recent_executions() {
+        let database = in_memory();
+        let project_repo = ApiProjectRepository::new(&database);
+        let project = project_repo.create("订单系统", "").expect("project");
+        let other = project_repo.create("空项目", "").expect("empty project");
+        let groups = ApiGroupRepository::new(&database)
+            .list(&project.id)
+            .expect("groups");
+        let request_repo = ApiRequestRepository::new(&database);
+        let first = request_repo
+            .create(&groups[0].id, "新增订单")
+            .expect("request one");
+        let second = request_repo
+            .create(&groups[0].id, "订单详情")
+            .expect("request two");
+
+        // 把第二个请求改成 POST，制造方法分布
+        database
+            .with_connection(|connection| {
+                connection
+                    .execute("UPDATE api_requests SET method = 'POST' WHERE id = ?1", params![second.id])
+                    .map_err(|error| error.to_string())?;
+
+                // 两条近期执行：一成一败，平均耗时 (120 + 480) / 2 = 300
+                let insert_history = |id: &str, request_id: &str, status: &str, code: i64, duration: i64, at: i64| {
+                    connection
+                        .execute(
+                            "INSERT INTO api_request_histories
+                                (id, request_id, environment_name, request_snapshot_json, status, status_code,
+                                 response_headers_json, response_body_preview, response_body_truncated, duration_ms,
+                                 error_message, executed_at)
+                             VALUES (?1, ?2, '', '{}', ?3, ?4, '[]', '', 0, ?5, NULL, ?6)",
+                            params![id, request_id, status, code, duration, at],
+                        )
+                        .map_err(|error| error.to_string())
+                };
+                insert_history("h1", &first.id, "success", 200, 120, 1000)?;
+                insert_history("h2", &second.id, "failed", 500, 480, 2000)?;
+                Ok(())
+            })
+            .expect("seed method and histories");
+
+        let stats = project_repo.overview_stats(0).expect("stats");
+
+        assert_eq!(
+            stats.method_counts,
+            vec![
+                MethodCount {
+                    method: "GET".to_string(),
+                    count: 1
+                },
+                MethodCount {
+                    method: "POST".to_string(),
+                    count: 1
+                },
+            ]
+        );
+        assert_eq!(stats.project_request_counts.len(), 2);
+        assert_eq!(stats.project_request_counts[0].project_id, project.id);
+        assert_eq!(stats.project_request_counts[0].count, 2);
+        assert_eq!(stats.project_request_counts[1].project_id, other.id);
+        assert_eq!(stats.project_request_counts[1].count, 0, "empty project must appear with 0");
+
+        assert_eq!(stats.recent_executions.total, 2);
+        assert_eq!(stats.recent_executions.success, 1);
+        assert_eq!(stats.recent_executions.avg_duration_ms, 300);
+        assert_eq!(stats.recent_executions.executed_at_timestamps, vec![1000, 2000]);
     }
 }

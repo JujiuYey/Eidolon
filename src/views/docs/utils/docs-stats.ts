@@ -39,3 +39,11 @@ export function computeDocsStats(rootCount: number, entries: DocsEntry[][], now 
 export function lastUpdatedHint(lastUpdatedAt: number): string {
   return lastUpdatedAt ? `最近 ${formatShortDate(lastUpdatedAt)}` : '';
 }
+
+/** 每库文档数条形榜（labels 与 entries 按库一一对应），仅统计文件 */
+export function rootDocStats(labels: string[], entries: DocsEntry[][]): Array<{ label: string; value: number }> {
+  return labels.map((label, index) => ({
+    label,
+    value: (entries[index] ?? []).filter(entry => !entry.is_dir).length,
+  }));
+}

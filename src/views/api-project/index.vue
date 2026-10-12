@@ -5,8 +5,12 @@ import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import SagBarChart from '@/components/sag/sag-bar-chart/index.vue';
+import SagDonutChart from '@/components/sag/sag-donut-chart/index.vue';
+import type { DonutSegment, DonutTone } from '@/components/sag/sag-donut-chart/index.vue';
+import SagHBarList from '@/components/sag/sag-h-bar-list/index.vue';
 import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
-import type { StatTile, StatTrend } from '@/components/sag/sag-stats-strip/index.vue';
+import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,7 +20,7 @@ import { useConfirm } from '@/composables/use-confirm';
 import { getApiClientStats } from '@/services';
 import { useApiClientStore } from '@/stores/api-client';
 import type { ApiClientOverviewStats } from '@/types/api-client';
-import { dailyCounts, dailyTooltips } from '@/utils/stats';
+import { dailyCounts, dailyLabels, dailyTooltips } from '@/utils/stats';
 
 import CodeImportDialog from './components/CodeImportDialog.vue';
 import ProjectFormDialog from './components/ProjectFormDialog.vue';
@@ -34,19 +38,68 @@ const importDialogProjectId = ref<string | null>(null);
 const sortedProjects = computed(() => store.sortedProjects);
 
 const stats = ref<ApiClientOverviewStats | null>(null);
-const statTiles = computed<StatTile[]>(() => [
-  { label: '项目', value: stats.value?.projectCount ?? sortedProjects.value.length },
-  { label: '请求', value: stats.value?.requestCount ?? 0 },
-  { label: '分组', value: stats.value?.groupCount ?? 0 },
-  { label: '环境', value: stats.value?.environmentCount ?? 0 },
-]);
-const statTrend = computed<StatTrend | null>(() => {
-  if (!stats.value) {
-    return null;
-  }
-  const values = dailyCounts(stats.value.recentRequestTimestamps, 30);
-  return { label: '近 30 天新增请求', values, tooltips: dailyTooltips(values, '个新增') };
+
+/** 方法语义色（沿用工作区 request-helpers 的方法配色惯例） */
+const METHOD_TONES: Record<string, DonutTone> = {
+  GET: 'emerald',
+  POST: 'amber',
+  PUT: 'sky',
+  PATCH: 'teal',
+  DELETE: 'red',
+  HEAD: 'violet',
+};
+
+const DAY_COUNT = 30;
+
+const statTiles = computed<StatTile[]>(() => {
+  const executions = stats.value?.recentExecutions;
+  const successRate =
+    executions && executions.total > 0 ? Math.round((executions.success / executions.total) * 100) : null;
+  return [
+    { label: '项目', value: stats.value?.projectCount ?? sortedProjects.value.length },
+    { label: '请求', value: stats.value?.requestCount ?? 0 },
+    { label: '分组', value: stats.value?.groupCount ?? 0 },
+    { label: '环境', value: stats.value?.environmentCount ?? 0 },
+    {
+      label: '近期执行成功率',
+      value: successRate === null ? '—' : `${successRate}%`,
+      hint:
+        executions && executions.total > 0
+          ? `${executions.total} 次 · 均耗 ${executions.avgDurationMs}ms`
+          : '暂无执行记录',
+      tone: successRate !== null && successRate < 90 ? 'danger' : 'default',
+    },
+  ];
 });
+
+const createdValues = computed(() => dailyCounts(stats.value?.recentRequestTimestamps ?? [], DAY_COUNT));
+const createdTooltips = computed(() => dailyTooltips(createdValues.value, '个新增'));
+const createdLabels = computed(() => dailyLabels(DAY_COUNT));
+
+const executionValues = computed(() =>
+  dailyCounts(stats.value?.recentExecutions.executedAtTimestamps ?? [], DAY_COUNT),
+);
+const executionTooltips = computed(() => dailyTooltips(executionValues.value, '次执行'));
+const executionHint = computed(() => {
+  const executions = stats.value?.recentExecutions;
+  if (!executions || executions.total === 0) {
+    return '窗口内没有执行记录';
+  }
+  const rate = Math.round((executions.success / executions.total) * 100);
+  return `成功率 ${rate}% · 平均耗时 ${executions.avgDurationMs}ms`;
+});
+
+const methodSegments = computed<DonutSegment[]>(() =>
+  (stats.value?.methodCounts ?? []).map(item => ({
+    label: item.method,
+    value: item.count,
+    tone: METHOD_TONES[item.method] ?? 'slate',
+  })),
+);
+
+const projectBarItems = computed(() =>
+  (stats.value?.projectRequestCounts ?? []).map(item => ({ label: item.projectName, value: item.count })),
+);
 
 /** 统计失败不影响主功能：静默置空，页面已有错误提示通道 */
 async function loadStats(): Promise<void> {
@@ -204,12 +257,55 @@ onBeforeUnmount(() => {
       <AlertDescription> {{ backendError }}。请确认 Rust 端 API Client commands 已注册后重启应用。 </AlertDescription>
     </Alert>
 
-    <SagStatsStrip
-      v-if="stats && !store.isLoadingProjects && sortedProjects.length > 0"
-      class="mb-4 shrink-0"
-      :tiles="statTiles"
-      :trend="statTrend"
-    />
+    <div v-if="stats && !store.isLoadingProjects && sortedProjects.length > 0" class="mb-4 shrink-0 space-y-4">
+      <SagStatsStrip :tiles="statTiles" />
+
+      <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-xl border bg-card p-4 md:col-span-2">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-sm font-medium">近 30 天新增请求</h3>
+            <span class="text-xs text-muted-foreground">按天</span>
+          </div>
+          <div class="mt-3">
+            <SagBarChart
+              :values="createdValues"
+              :labels="createdLabels"
+              :tooltips="createdTooltips"
+              aria-label="近 30 天新增请求柱状图"
+            />
+          </div>
+        </div>
+
+        <div class="rounded-xl border bg-card p-4">
+          <h3 class="text-sm font-medium">请求方法分布</h3>
+          <div class="mt-3">
+            <SagDonutChart :segments="methodSegments" center-label="个请求" aria-label="请求方法分布环形图" />
+          </div>
+        </div>
+
+        <div class="flex flex-col rounded-xl border bg-card p-4">
+          <h3 class="text-sm font-medium">各项目请求数</h3>
+          <div class="mt-3 min-h-0 flex-1">
+            <SagHBarList :items="projectBarItems" />
+          </div>
+        </div>
+
+        <div class="rounded-xl border bg-card p-4 md:col-span-2">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-sm font-medium">近 30 天执行分布</h3>
+            <span class="text-xs text-muted-foreground">{{ executionHint }}</span>
+          </div>
+          <div class="mt-3">
+            <SagBarChart
+              :values="executionValues"
+              :labels="createdLabels"
+              :tooltips="executionTooltips"
+              aria-label="近 30 天执行分布柱状图"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div v-if="store.isLoadingProjects" class="flex flex-1 items-center justify-center">
       <div class="flex items-center gap-2 text-sm text-muted-foreground">

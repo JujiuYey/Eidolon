@@ -3,9 +3,12 @@ import { CloudOff, Plus, RefreshCw, Sparkles } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import SagBarChart from '@/components/sag/sag-bar-chart/index.vue';
+import SagDonutChart from '@/components/sag/sag-donut-chart/index.vue';
+import type { DonutSegment } from '@/components/sag/sag-donut-chart/index.vue';
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
-import type { StatTile, StatTrend } from '@/components/sag/sag-stats-strip/index.vue';
+import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +16,7 @@ import { useConfirm } from '@/composables/use-confirm';
 import { useTasksStore } from '@/stores/tasks';
 import type { Task, TaskDraft } from '@/types/tasks';
 import { getErrorMessage } from '@/utils/helpers';
+import { dailyLabels } from '@/utils/stats';
 
 import TaskEditorDialog from './_components/task-editor-dialog.vue';
 import TaskList from './_components/task-list.vue';
@@ -45,12 +49,14 @@ const statTiles = computed<StatTile[]>(() => [
   { label: '30 天完成', value: taskStats.value.monthCompletedCount },
   { label: '累计完成', value: taskStats.value.totalCompletedCount },
 ]);
-const statTrend = computed<StatTrend>(() => ({
-  label: '近 30 天完成',
-  values: taskStats.value.dailyCompleted,
-  tooltips: taskStats.value.dailyTooltips,
-}));
+const completionValues = computed(() => taskStats.value.dailyCompleted);
+const completionLabels = computed(() => dailyLabels(completionValues.value.length));
 
+const statusSegments = computed<DonutSegment[]>(() => [
+  { label: '待办', value: counts.value.todo, tone: 'slate' },
+  { label: '进行中', value: counts.value.doing, tone: 'sky' },
+  { label: '已完成', value: counts.value.done, tone: 'emerald' },
+]);
 onMounted(() => {
   void store.loadTasks();
 });
@@ -175,7 +181,33 @@ function retryLoad() {
       </div>
 
       <template v-else>
-        <SagStatsStrip v-if="hasAnyTask" class="shrink-0" :tiles="statTiles" :trend="statTrend" />
+        <div v-if="hasAnyTask" class="shrink-0 space-y-4">
+          <SagStatsStrip :tiles="statTiles" />
+
+          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div class="rounded-xl border bg-card p-4 md:col-span-2">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-sm font-medium">近 30 天完成</h3>
+                <span class="text-xs text-muted-foreground">按天</span>
+              </div>
+              <div class="mt-3">
+                <SagBarChart
+                  :values="completionValues"
+                  :labels="completionLabels"
+                  :tooltips="taskStats.dailyTooltips"
+                  aria-label="近 30 天完成任务柱状图"
+                />
+              </div>
+            </div>
+
+            <div class="rounded-xl border bg-card p-4">
+              <h3 class="text-sm font-medium">任务状态分布</h3>
+              <div class="mt-3">
+                <SagDonutChart :segments="statusSegments" center-label="个任务" aria-label="任务状态分布环形图" />
+              </div>
+            </div>
+          </div>
+        </div>
 
         <TaskQuickAdd
           :draft="store.aiDraft"

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { MailTemplate, SentEmail } from '@/types/mail';
 
-import { computeMailStats, lastSentHint } from '../mail-stats';
+import { computeMailStats, accountSendCounts, lastSentHint } from '../mail-stats';
 
 const NOW = new Date(2026, 9, 14, 15).getTime(); // 周三下午
 const DAY = 24 * 60 * 60 * 1000;
@@ -73,5 +73,24 @@ describe('mail stats', () => {
 
   it('lastSentHint renders the short date', () => {
     expect(lastSentHint(NOW)).toBe('最近 10-14');
+  });
+
+  it('aggregates send counts per account email, descending', () => {
+    const counts = accountSendCounts([
+      makeSent({ account_email: 'work@ex.com' }),
+      makeSent({ account_email: 'work@ex.com' }),
+      makeSent({ account_email: 'bot@ex.com' }),
+      makeSent({ account_email: '' }),
+    ]);
+
+    expect(counts).toEqual([
+      { label: 'work@ex.com', value: 2 },
+      { label: 'bot@ex.com', value: 1 },
+      { label: '（未知账户）', value: 1 },
+    ]);
+  });
+
+  it('accountSendCounts tolerates empty history', () => {
+    expect(accountSendCounts([])).toEqual([]);
   });
 });

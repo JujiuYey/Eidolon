@@ -120,6 +120,27 @@ export interface TauriApiClientOverviewStats {
   environment_count: number;
   latest_updated_at: number;
   recent_request_timestamps: number[];
+  method_counts: TauriMethodCount[];
+  project_request_counts: TauriProjectRequestCount[];
+  recent_executions: TauriRecentExecutionStats;
+}
+
+export interface TauriMethodCount {
+  method: string;
+  count: number;
+}
+
+export interface TauriProjectRequestCount {
+  project_id: string;
+  project_name: string;
+  count: number;
+}
+
+export interface TauriRecentExecutionStats {
+  total: number;
+  success: number;
+  avg_duration_ms: number;
+  executed_at_timestamps: number[];
 }
 
 export interface TauriAiGenerateInput {

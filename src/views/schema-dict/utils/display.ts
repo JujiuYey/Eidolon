@@ -159,3 +159,11 @@ export function computeSchemaStats(
     lastSnapshotAt: snapshots.reduce((latest, snapshot) => Math.max(latest, snapshot.created_at), 0),
   };
 }
+
+/** 「字段数最多的表」条形榜（当前库），降序取前 limit 张 */
+export function topTablesByFieldCount(tables: ParsedTable[], limit = 8): Array<{ label: string; value: number }> {
+  return [...tables]
+    .map(table => ({ label: table.name, value: table.columns.length }))
+    .sort((a, b) => b.value - a.value || a.label.localeCompare(b.label))
+    .slice(0, limit);
+}

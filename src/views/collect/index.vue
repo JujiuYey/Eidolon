@@ -4,9 +4,13 @@ import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import SagBarChart from '@/components/sag/sag-bar-chart/index.vue';
+import SagDonutChart from '@/components/sag/sag-donut-chart/index.vue';
+import type { DonutSegment } from '@/components/sag/sag-donut-chart/index.vue';
+import SagHBarList from '@/components/sag/sag-h-bar-list/index.vue';
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
-import type { StatTile, StatTrend } from '@/components/sag/sag-stats-strip/index.vue';
+import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +19,7 @@ import { useConfirm } from '@/composables/use-confirm';
 import { useCollectStore } from '@/stores/collect';
 import type { CollectItem } from '@/types/collect';
 import { getErrorMessage } from '@/utils/helpers';
+import { dailyLabels } from '@/utils/stats';
 
 import CollectAiPanel from './_components/collect-ai-panel.vue';
 import CollectItemEditorDialog from './_components/collect-item-editor-dialog.vue';
@@ -45,12 +50,17 @@ const statTiles = computed<StatTile[]>(() => [
   { label: '连续收集', value: collectStats.value.streakDays, hint: '天' },
   { label: '已归档', value: collectStats.value.archivedCount },
 ]);
-const statTrend = computed<StatTrend>(() => ({
-  label: '近 30 天收藏',
-  values: collectStats.value.dailyCounts,
-  tooltips: collectStats.value.dailyTooltips,
-}));
+const trendValues = computed(() => collectStats.value.dailyCounts);
+const trendLabels = computed(() => dailyLabels(trendValues.value.length));
 
+const kindSegments = computed<DonutSegment[]>(() => [
+  { label: '链接', value: counts.value.link, tone: 'sky' },
+  { label: '记事', value: counts.value.note, tone: 'amber' },
+]);
+
+const hostBarItems = computed(() =>
+  collectStats.value.topHosts.map(entry => ({ label: entry.host, value: entry.count })),
+);
 onMounted(() => {
   void store.loadItems();
 });
@@ -180,23 +190,48 @@ function retryLoad() {
       </div>
 
       <template v-else>
-        <SagStatsStrip v-if="hasAnyItem" class="shrink-0" :tiles="statTiles" :trend="statTrend">
-          <template v-if="collectStats.topHosts.length > 0" #extra>
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-xs text-muted-foreground">常收藏</span>
-              <button
-                v-for="entry of collectStats.topHosts"
-                :key="entry.host"
-                type="button"
-                class="rounded-full border bg-muted/40 px-2.5 py-0.5 text-xs text-muted-foreground transition-colors hover:border-ring/40 hover:text-foreground"
-                :title="`搜索 ${entry.host} 的收藏`"
-                @click="handleHostClick(entry.host)"
-              >
-                {{ entry.host }} <span class="tabular-nums">{{ entry.count }}</span>
-              </button>
+        <div v-if="hasAnyItem" class="shrink-0 space-y-4">
+          <SagStatsStrip :tiles="statTiles" />
+
+          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div class="rounded-xl border bg-card p-4 md:col-span-2">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-sm font-medium">近 30 天收藏</h3>
+                <span class="text-xs text-muted-foreground">按天</span>
+              </div>
+              <div class="mt-3">
+                <SagBarChart
+                  :values="trendValues"
+                  :labels="trendLabels"
+                  :tooltips="collectStats.dailyTooltips"
+                  aria-label="近 30 天收藏柱状图"
+                />
+              </div>
             </div>
-          </template>
-        </SagStatsStrip>
+
+            <div class="rounded-xl border bg-card p-4">
+              <h3 class="text-sm font-medium">类型分布</h3>
+              <div class="mt-3">
+                <SagDonutChart :segments="kindSegments" center-label="条收藏" aria-label="收藏类型分布环形图" />
+              </div>
+            </div>
+
+            <div class="flex flex-col rounded-xl border bg-card p-4">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-sm font-medium">常收藏站点</h3>
+                <span class="text-xs text-muted-foreground">点击按站点搜索</span>
+              </div>
+              <div class="mt-3 min-h-0 flex-1">
+                <SagHBarList
+                  :items="hostBarItems"
+                  :limit="6"
+                  selectable
+                  @select="item => handleHostClick(item.label)"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
 
         <CollectQuickAdd @submit="handleQuickSubmit" />
 

@@ -20,6 +20,18 @@ export async function getApiClientStats(): Promise<ApiClientOverviewStats> {
     environmentCount: raw.environment_count,
     latestUpdatedAt: raw.latest_updated_at,
     recentRequestTimestamps: raw.recent_request_timestamps,
+    methodCounts: raw.method_counts.map(item => ({ method: item.method, count: item.count })),
+    projectRequestCounts: raw.project_request_counts.map(item => ({
+      projectId: item.project_id,
+      projectName: item.project_name,
+      count: item.count,
+    })),
+    recentExecutions: {
+      total: raw.recent_executions.total,
+      success: raw.recent_executions.success,
+      avgDurationMs: raw.recent_executions.avg_duration_ms,
+      executedAtTimestamps: raw.recent_executions.executed_at_timestamps,
+    },
   };
 }
 

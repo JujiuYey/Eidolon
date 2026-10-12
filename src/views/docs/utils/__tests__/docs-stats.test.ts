@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { DocsEntry } from '@/types/docs';
 
-import { computeDocsStats, lastUpdatedHint } from '../docs-stats';
+import { computeDocsStats, lastUpdatedHint, rootDocStats } from '../docs-stats';
 
 const NOW = new Date(2026, 9, 14, 15).getTime();
 const DAY = 24 * 60 * 60 * 1000;
@@ -53,5 +53,24 @@ describe('docs stats', () => {
 
   it('lastUpdatedHint renders the short date', () => {
     expect(lastUpdatedHint(NOW)).toBe('最近 10-14');
+  });
+
+  it('counts docs per root keeping labels aligned, files only', () => {
+    const counts = rootDocStats(
+      ['工作笔记', '资料库'],
+      [
+        [
+          makeEntry(),
+          makeEntry({ name: '旧.md', path: '旧.md' }),
+          makeEntry({ name: '子目录', path: '子目录', is_dir: true }),
+        ],
+        [makeEntry({ name: '另一库.md', path: '另一库.md' })],
+      ],
+    );
+
+    expect(counts).toEqual([
+      { label: '工作笔记', value: 2 },
+      { label: '资料库', value: 1 },
+    ]);
   });
 });

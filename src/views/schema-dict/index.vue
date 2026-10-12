@@ -3,6 +3,7 @@ import { CloudOff, Database, FolderPlus, Loader2, Plus, RefreshCw, Settings2, Tr
 import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import SagHBarList from '@/components/sag/sag-h-bar-list/index.vue';
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
 import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
@@ -23,7 +24,7 @@ import SchemaImportDialog from './_components/schema-import-dialog.vue';
 import SchemaTableDetail from './_components/schema-table-detail.vue';
 import SchemaTableList from './_components/schema-table-list.vue';
 import SchemaTimelinePanel from './_components/schema-timeline-panel.vue';
-import { computeSchemaStats } from './utils/display';
+import { computeSchemaStats, topTablesByFieldCount } from './utils/display';
 
 type PageTab = 'tables' | 'timeline' | 'ai';
 
@@ -53,6 +54,8 @@ const statTiles = computed<StatTile[]>(() => [
     value: schemaStats.value.lastSnapshotAt ? formatShortDate(schemaStats.value.lastSnapshotAt) : '—',
   },
 ]);
+
+const tableFieldBars = computed(() => topTablesByFieldCount(store.activeTables, 8));
 
 onMounted(() => {
   void store.loadDatabases();
@@ -210,6 +213,16 @@ function setSnapshotFilter(value: unknown) {
 
       <template v-else>
         <SagStatsStrip v-if="hasDatabases" class="shrink-0" :tiles="statTiles" />
+
+        <div v-if="tableFieldBars.length > 0" class="shrink-0 rounded-xl border bg-card p-4">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-sm font-medium">字段数最多的表（当前库）</h3>
+            <span class="text-xs text-muted-foreground">宽表通常是业务核心，也最容易在变更中出问题</span>
+          </div>
+          <div class="mt-3">
+            <SagHBarList :items="tableFieldBars" />
+          </div>
+        </div>
 
         <!-- 选择器行 -->
         <div class="flex flex-wrap items-center gap-2">

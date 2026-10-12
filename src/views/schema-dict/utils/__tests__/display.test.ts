@@ -12,6 +12,7 @@ import {
   schemaSummary,
   sortChanges,
   sortTables,
+  topTablesByFieldCount,
 } from '../display';
 
 function makeChange(overrides: Partial<SchemaChange> = {}): SchemaChange {
@@ -163,5 +164,22 @@ describe('schema dict display helpers', () => {
       tableCount: 0,
       lastSnapshotAt: 0,
     });
+  });
+
+  it('ranks tables by field count, descending, limited', () => {
+    const tables = [
+      makeTable({ name: 'visit_record', columns: [makeColumn(), makeColumn(), makeColumn(), makeColumn()] }),
+      makeTable({ name: 'patient', columns: [makeColumn(), makeColumn()] }),
+      makeTable({ name: 'audit', columns: [makeColumn(), makeColumn(), makeColumn()] }),
+      makeTable({ name: 'empty', columns: [] }),
+    ];
+
+    expect(topTablesByFieldCount(tables, 3)).toEqual([
+      { label: 'visit_record', value: 4 },
+      { label: 'audit', value: 3 },
+      { label: 'patient', value: 2 },
+    ]);
+
+    expect(topTablesByFieldCount([], 5)).toEqual([]);
   });
 });

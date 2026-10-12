@@ -170,6 +170,9 @@ function buildService(): ServiceState {
       environmentCount: 0,
       latestUpdatedAt: 0,
       recentRequestTimestamps: [],
+      methodCounts: [],
+      projectRequestCounts: [],
+      recentExecutions: { total: 0, success: 0, avgDurationMs: 0, executedAtTimestamps: [] },
     }),
     createApiProject: async (name: string, description: string) => {
       calls.push({ method: 'createApiProject', args: [name, description] });

@@ -5,18 +5,21 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
+import SagBarChart from '@/components/sag/sag-bar-chart/index.vue';
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
+import SagHBarList from '@/components/sag/sag-h-bar-list/index.vue';
 import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
-import type { StatTile, StatTrend } from '@/components/sag/sag-stats-strip/index.vue';
+import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { listDocsEntries } from '@/services/docs';
 import { useDocsStore } from '@/stores/docs';
-import type { DocsRoot } from '@/types/docs';
+import type { DocsEntry, DocsRoot } from '@/types/docs';
 import { getErrorMessage } from '@/utils/helpers';
+import { dailyLabels } from '@/utils/stats';
 
 import type { DocsStats } from './utils/docs-stats';
-import { computeDocsStats, lastUpdatedHint } from './utils/docs-stats';
+import { computeDocsStats, lastUpdatedHint, rootDocStats } from './utils/docs-stats';
 import { docsRootLabels } from './utils/roots';
 
 const store = useDocsStore();
@@ -26,6 +29,7 @@ const labels = computed(() => docsRootLabels(store.roots));
 const isPicking = ref(false);
 
 const docStats = ref<DocsStats | null>(null);
+const rootEntries = ref<Array<{ label: string; entries: DocsEntry[] }>>([]);
 const statTiles = computed<StatTile[]>(() => [
   { label: '文档库', value: store.roots.length },
   {
@@ -35,19 +39,29 @@ const statTiles = computed<StatTile[]>(() => [
   },
   { label: '30 天更新', value: docStats.value?.recentUpdatedCount ?? 0 },
 ]);
-const statTrend = computed<StatTrend | null>(() => {
-  const stats = docStats.value;
-  if (!stats) {
-    return null;
-  }
-  return { label: '近 30 天文档更新', values: stats.dailyUpdated, tooltips: stats.dailyTooltips };
-});
+
+const trendValues = computed(() => docStats.value?.dailyUpdated ?? []);
+const trendLabels = computed(() => dailyLabels(trendValues.value.length));
+const rootBarItems = computed(() =>
+  rootDocStats(
+    rootEntries.value.map(item => item.label),
+    rootEntries.value.map(item => item.entries),
+  ),
+);
 
 /** 逐库清点 .md 文件；个别库读取失败只跳过，不挡统计 */
 async function loadStats() {
-  const results = await Promise.allSettled(store.roots.map(root => listDocsEntries(root.id)));
-  const entries = results.flatMap(result => (result.status === 'fulfilled' ? [result.value] : []));
-  docStats.value = computeDocsStats(store.roots.length, entries);
+  const results = await Promise.allSettled(
+    store.roots.map(root =>
+      listDocsEntries(root.id).then(entries => ({ label: labels.value.get(root.id) ?? root.id, entries })),
+    ),
+  );
+  const fulfilled = results.flatMap(result => (result.status === 'fulfilled' ? [result.value] : []));
+  rootEntries.value = fulfilled;
+  docStats.value = computeDocsStats(
+    store.roots.length,
+    fulfilled.map(item => item.entries),
+  );
 }
 
 onMounted(() => {
@@ -148,7 +162,33 @@ async function confirmRemove() {
       </Button>
     </div>
 
-    <SagStatsStrip v-if="store.roots.length > 0" class="mb-4 shrink-0" :tiles="statTiles" :trend="statTrend" />
+    <div v-if="store.roots.length > 0" class="mb-4 shrink-0 space-y-4">
+      <SagStatsStrip :tiles="statTiles" />
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="rounded-xl border bg-card p-4">
+          <div class="flex items-center justify-between gap-2">
+            <h3 class="text-sm font-medium">近 30 天文档更新</h3>
+            <span class="text-xs text-muted-foreground">按天</span>
+          </div>
+          <div class="mt-3">
+            <SagBarChart
+              :values="trendValues"
+              :labels="trendLabels"
+              :tooltips="docStats?.dailyTooltips ?? []"
+              aria-label="近 30 天文档更新柱状图"
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col rounded-xl border bg-card p-4">
+          <h3 class="text-sm font-medium">各库文档数</h3>
+          <div class="mt-3 min-h-0 flex-1">
+            <SagHBarList :items="rootBarItems" />
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 空态 -->
     <div
