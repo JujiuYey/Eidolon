@@ -38,13 +38,17 @@ import {
 import { Separator } from '@/components/ui/separator';
 
 import { MermaidCodeBlock } from './mermaid-code-block';
+import { collectTocItems, type RichEditorTocItem } from './toc';
 
 const props = withDefaults(
   defineProps<{
     placeholder?: string;
+    /** Notion 式全宽阅读:内容列去掉限宽,开关按钮由使用方放在 actions 插槽 */
+    fullWidth?: boolean;
   }>(),
   {
     placeholder: '开始写吧，⌘S / Ctrl+S 保存。',
+    fullWidth: false,
   },
 );
 
@@ -105,25 +109,43 @@ watch(content, value => {
 const canUndo = ref(false);
 const canRedo = ref(false);
 
-// useEditor 是一次性 shallowRef,撤销栈变化不会触发响应式,手动监听事务同步
-function syncHistoryState() {
+/** 目录数据:每次事务后重算,父组件通过模板 ref 读取并渲染目录面板 */
+const tocItems = ref<RichEditorTocItem[]>([]);
+
+// useEditor 是一次性 shallowRef,撤销栈/文档变化不会触发响应式,手动监听事务同步
+function syncEditorState() {
   canUndo.value = editor.value?.can().undo() ?? false;
   canRedo.value = editor.value?.can().redo() ?? false;
+  const current = editor.value;
+  tocItems.value = current ? collectTocItems(current.state.doc) : [];
 }
 
 onMounted(() =>
   nextTick(() => {
     const current = editor.value;
     if (current) {
-      current.on('transaction', syncHistoryState);
-      syncHistoryState();
+      current.on('transaction', syncEditorState);
+      syncEditorState();
     }
   }),
 );
 
 onBeforeUnmount(() => {
-  editor.value?.off('transaction', syncHistoryState);
+  editor.value?.off('transaction', syncEditorState);
   editor.value?.destroy();
+});
+
+/** 目录点击跳转:找到标题对应的 DOM 块,平滑滚到顶部(不移动光标) */
+function jumpToHeading(pos: number) {
+  const dom = editor.value?.view.nodeDOM(pos);
+  if (dom instanceof HTMLElement) {
+    dom.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+defineExpose({
+  tocItems,
+  jumpToHeading,
 });
 
 function chain() {
@@ -306,9 +328,9 @@ const tableActions = [
       </div>
     </div>
 
-    <!-- 编辑区 -->
+    <!-- 编辑区:默认限宽 3xl,全宽模式撑满 -->
     <div class="min-h-0 flex-1 overflow-y-auto">
-      <div class="sag-rich-editor mx-auto max-w-3xl px-6 py-5">
+      <div class="sag-rich-editor mx-auto px-6 py-5" :class="fullWidth ? 'max-w-none' : 'max-w-3xl'">
         <EditorContent :editor="editor" />
       </div>
     </div>
@@ -333,6 +355,8 @@ const tableActions = [
   font-weight: 600;
   line-height: 1.3;
   margin-top: 1.2em;
+  /* 目录跳转定位时给标题留出上边距 */
+  scroll-margin-top: 0.75rem;
 }
 
 .sag-rich-editor .ProseMirror h1 {

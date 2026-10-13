@@ -27,3 +27,11 @@ export interface DocsSearchResult {
   line_number: number;
   line_text: string;
 }
+
+/** MCP 写操作导致的文档外部变更（事件载荷，镜像后端 DocsExternalChange） */
+export interface DocsExternalChange {
+  root_id: string;
+  path: string;
+  /** write | edit | delete */
+  action: 'write' | 'edit' | 'delete';
+}

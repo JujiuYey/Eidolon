@@ -222,3 +222,142 @@ describe('docs store', () => {
     expect(store.activePath).toBe('');
   });
 });
+
+describe('docs store 外部变更（MCP agent 写入）', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('本地干净时外部修改：防抖后静默跟进磁盘内容', async () => {
+    const service = createService({
+      readDocsFile: vi
+        .fn()
+        .mockImplementation((_rootId: string, path: string) =>
+          Promise.resolve(path === 'readme.md' ? 'agent 写入的新内容' : `content of ${path}`),
+        ),
+    });
+    const store = await bindStoreAtRoot(service);
+
+    vi.useFakeTimers();
+    store.handleExternalChange({ root_id: 'root-a', path: 'readme.md', action: 'edit' });
+    await vi.advanceTimersByTimeAsync(400);
+
+    expect(store.content).toBe('agent 写入的新内容');
+    expect(store.isDirty).toBe(false);
+    expect(store.externalNotice).toBeNull();
+  });
+
+  it('本地有未保存修改时外部修改：提示且不覆盖，可选加载新版本或保留我的', async () => {
+    const service = createService();
+    const store = await bindStoreAtRoot(service);
+    store.content = '我的本地修改';
+
+    vi.useFakeTimers();
+    store.handleExternalChange({ root_id: 'root-a', path: 'readme.md', action: 'write' });
+    await vi.advanceTimersByTimeAsync(400);
+
+    expect(store.content).toBe('我的本地修改');
+    expect(store.externalNotice?.kind).toBe('modified');
+    expect(store.externalNotice?.name).toBe('readme.md');
+    vi.useRealTimers();
+
+    // 加载新版本：放弃本地修改，跟进磁盘
+    await store.acceptExternalVersion();
+    expect(store.content).toBe('content of readme.md');
+    expect(store.isDirty).toBe(false);
+    expect(store.externalNotice).toBeNull();
+
+    // 保留我的：只关提示，内容不动
+    store.content = '再改一次';
+    vi.useFakeTimers();
+    store.handleExternalChange({ root_id: 'root-a', path: 'readme.md', action: 'edit' });
+    await vi.advanceTimersByTimeAsync(400);
+    expect(store.externalNotice?.kind).toBe('modified');
+    store.dismissExternalNotice();
+    expect(store.externalNotice).toBeNull();
+    expect(store.content).toBe('再改一次');
+  });
+
+  it('防抖窗口内的连续事件合并为一次处理', async () => {
+    let disk = 'v1';
+    const service = createService({
+      readDocsFile: vi.fn().mockImplementation(() => Promise.resolve(disk)),
+    });
+    const store = await bindStoreAtRoot(service);
+    const readsAfterSetup = vi.mocked(service.readDocsFile).mock.calls.length;
+
+    vi.useFakeTimers();
+    store.handleExternalChange({ root_id: 'root-a', path: 'readme.md', action: 'write' });
+    disk = 'v2';
+    store.handleExternalChange({ root_id: 'root-a', path: 'readme.md', action: 'edit' });
+    await vi.advanceTimersByTimeAsync(400);
+
+    expect(store.content).toBe('v2');
+    expect(service.readDocsFile).toHaveBeenCalledTimes(readsAfterSetup + 1);
+  });
+
+  it('其他文档库的事件被忽略', async () => {
+    const service = createService();
+    const store = await bindStoreAtRoot(service);
+    const loadsAfterSetup = vi.mocked(service.listDocsEntries).mock.calls.length;
+
+    vi.useFakeTimers();
+    store.handleExternalChange({ root_id: 'root-b', path: 'readme.md', action: 'delete' });
+    await vi.advanceTimersByTimeAsync(400);
+
+    expect(service.listDocsEntries).toHaveBeenCalledTimes(loadsAfterSetup);
+  });
+
+  it('打开中的文档被外部删除：干净时回退第一篇，脏时提示删除', async () => {
+    const service = createService({
+      listDocsEntries: vi
+        .fn()
+        .mockResolvedValue([
+          makeEntry({ name: 'a.md', path: 'a.md', is_dir: false }),
+          makeEntry({ name: 'readme.md', path: 'readme.md', is_dir: false }),
+        ]),
+    });
+    const store = await bindStoreAtRoot(service);
+    expect(store.activePath).toBe('a.md');
+
+    // 干净：回退到第一篇
+    await store.openFile('readme.md');
+    vi.useFakeTimers();
+    store.handleExternalChange({ root_id: 'root-a', path: 'readme.md', action: 'delete' });
+    await vi.advanceTimersByTimeAsync(400);
+    expect(store.activePath).toBe('a.md');
+    expect(store.externalNotice).toBeNull();
+    vi.useRealTimers();
+
+    // 脏：内容保留，提示已删除（保存时会重新创建）
+    await store.openFile('readme.md');
+    store.content = '我的修改';
+    vi.useFakeTimers();
+    store.handleExternalChange({ root_id: 'root-a', path: 'readme.md', action: 'delete' });
+    await vi.advanceTimersByTimeAsync(400);
+    expect(store.activePath).toBe('readme.md');
+    expect(store.externalNotice?.kind).toBe('deleted');
+    expect(store.externalNotice?.name).toBe('readme.md');
+  });
+
+  it('保存后外部修改提示失效（以本地版本为准）', async () => {
+    const service = createService();
+    const store = await bindStoreAtRoot(service);
+    store.content = '我的本地修改';
+
+    vi.useFakeTimers();
+    store.handleExternalChange({ root_id: 'root-a', path: 'readme.md', action: 'edit' });
+    await vi.advanceTimersByTimeAsync(400);
+    expect(store.externalNotice?.kind).toBe('modified');
+    vi.useRealTimers();
+
+    await store.save();
+
+    expect(store.externalNotice).toBeNull();
+  });
+});

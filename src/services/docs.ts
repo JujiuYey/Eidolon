@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import type { UnlistenFn } from '@tauri-apps/api/event';
 
-import type { DocsEntry, DocsSearchResult, DocsSettings } from '@/types/docs';
+import type { DocsEntry, DocsExternalChange, DocsSearchResult, DocsSettings } from '@/types/docs';
 
 export async function getDocsSettings(): Promise<DocsSettings> {
   return invoke<DocsSettings>('get_docs_settings');
@@ -40,6 +42,14 @@ export async function deleteDocsEntry(rootId: string, path: string): Promise<str
 
 export async function searchDocs(rootId: string, keyword: string): Promise<DocsSearchResult[]> {
   return invoke<DocsSearchResult[]>('search_docs', { rootId, keyword });
+}
+
+/** 后端广播的文档外部变更事件（MCP agent 写入文档库时发出） */
+export const DOCS_EXTERNAL_CHANGE_EVENT = 'docs-external-change';
+
+/** 监听文档外部变更，返回取消监听的函数（工作区卸载时调用） */
+export function onDocsExternalChange(handler: (change: DocsExternalChange) => void): Promise<UnlistenFn> {
+  return listen<DocsExternalChange>(DOCS_EXTERNAL_CHANGE_EVENT, event => handler(event.payload));
 }
 
 export interface DocsAiChatMessage {

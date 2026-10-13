@@ -204,6 +204,14 @@ pub fn run() {
             log::info!("接口请求数据库位置: {}", api_database.path().display());
             app.manage(api_database);
 
+            // 对外 MCP 服务的专用数据库连接（同一 SQLite 文件，WAL + busy_timeout
+            // 保证与命令层并发安全；独立 Arc 便于随 MCP 服务任务共享）
+            let mcp_database = std::sync::Arc::new(
+                ApiClientDatabase::open(&app_data_dir)
+                    .map_err(|error| std::io::Error::other(error))?,
+            );
+            app.manage(mcp_database.clone());
+
             let http_client = ApiHttpClient::new().map_err(|error| std::io::Error::other(error))?;
             app.manage(http_client);
 
@@ -226,7 +234,9 @@ pub fn run() {
                         tauri::async_runtime::spawn(async move {
                             let handle =
                                 app_handle.state::<services::mcp_server::McpServerHandle>();
-                            match handle.start(&settings, mcp_store).await {
+                            let emitter =
+                                services::mcp_server::docs_change_emitter(app_handle.clone());
+                            match handle.start(&settings, mcp_store, mcp_database, emitter).await {
                                 Ok(port) => log::info!("MCP 服务随应用启动: {port}"),
                                 Err(error) => log::error!("MCP 服务启动失败: {error}"),
                             }

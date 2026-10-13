@@ -139,8 +139,8 @@ onMounted(() => {
             对外 MCP 服务
           </h2>
           <p class="text-xs leading-5 text-muted-foreground">
-            把文档库以 MCP 工具的形式提供给本机其他程序（Claude Code、Cursor 等），AI
-            可以直接读写你的文档。服务只监听本机，文档保存在原有磁盘目录。
+            把文档库和个人任务以 MCP 工具的形式提供给本机其他程序（Claude Code、Cursor 等），AI
+            可以直接读写你的文档、记录和跟进任务（任务不提供删除）。服务只监听本机，文档保存在原有磁盘目录，任务存入应用数据库。
           </p>
         </div>
         <div class="flex shrink-0 items-center gap-2">

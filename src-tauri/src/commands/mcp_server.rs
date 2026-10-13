@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use tauri::State;
 
-use crate::db::LocalJsonStore;
+use crate::db::{ApiClientDatabase, LocalJsonStore};
 use crate::models::mcp_server::McpServerInfo;
 use crate::services::mcp_server::{self, McpServerHandle};
 
@@ -29,7 +29,9 @@ pub async fn get_mcp_server_info(
 /// 更新设置（enabled/port）。服务运行中或启用状态变化时自动重启。
 #[tauri::command]
 pub async fn update_mcp_server_settings(
+    app: tauri::AppHandle,
     store: State<'_, LocalJsonStore>,
+    database: State<'_, Arc<ApiClientDatabase>>,
     handle: State<'_, McpServerHandle>,
     enabled: Option<bool>,
     port: Option<u16>,
@@ -46,7 +48,14 @@ pub async fn update_mcp_server_settings(
     // 启用：确保在运行（start 内部会先停旧实例，端口变更随之生效）；关闭：停止
     if settings.enabled {
         let dedicated = dedicated_store(&store)?;
-        handle.start(&settings, dedicated).await?;
+        handle
+            .start(
+                &settings,
+                dedicated,
+                database.inner().clone(),
+                mcp_server::docs_change_emitter(app),
+            )
+            .await?;
     } else {
         handle.stop().await;
     }
@@ -57,7 +66,9 @@ pub async fn update_mcp_server_settings(
 /// 重新生成访问令牌（服务运行中会重启以应用）
 #[tauri::command]
 pub async fn regenerate_mcp_server_token(
+    app: tauri::AppHandle,
     store: State<'_, LocalJsonStore>,
+    database: State<'_, Arc<ApiClientDatabase>>,
     handle: State<'_, McpServerHandle>,
 ) -> Result<McpServerInfo, String> {
     let mut settings = mcp_server::load_or_init(&store)?;
@@ -66,7 +77,14 @@ pub async fn regenerate_mcp_server_token(
 
     if handle.is_running().await {
         let dedicated = dedicated_store(&store)?;
-        handle.start(&settings, dedicated).await?;
+        handle
+            .start(
+                &settings,
+                dedicated,
+                database.inner().clone(),
+                mcp_server::docs_change_emitter(app),
+            )
+            .await?;
     }
 
     get_info(&store, &handle).await

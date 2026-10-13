@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { FolderOpen, Save, Sparkles } from 'lucide-vue-next';
+import { FolderOpen, ListTree, Save, Sparkles, StretchHorizontal } from 'lucide-vue-next';
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
@@ -7,16 +7,20 @@ import { toast } from 'vue-sonner';
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
+import type { RichEditorTocItem } from '@/components/sag/sag-rich-editor/toc';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import { Spinner } from '@/components/ui/spinner';
 import { useConfirm } from '@/composables/use-confirm';
+import { onDocsExternalChange } from '@/services/docs';
 import { useDocsStore } from '@/stores/docs';
 import type { DocsEntry } from '@/types/docs';
 import { getErrorMessage } from '@/utils/helpers';
 
 import DocsAiPanel from './_components/docs-ai-panel.vue';
 import DocsSearchResults from './_components/docs-search-results.vue';
+import DocsTocPanel from './_components/docs-toc-panel.vue';
 import DocsTree from './_components/docs-tree.vue';
 import EntryNameDialog from './_components/entry-name-dialog.vue';
 import { docsRootBasename } from './utils/roots';
@@ -245,15 +249,39 @@ function handleAiRestore(content: string) {
   toast.success('已恢复应用前的版本');
 }
 
+// ===== 阅读辅助:全宽模式（本地记忆） + 目录面板（标题由编辑器抽出） =====
+const editorRef = ref<InstanceType<typeof SagRichEditor> | null>(null);
+const tocItems = computed<RichEditorTocItem[]>(() => editorRef.value?.tocItems ?? []);
+const tocOpen = ref(false);
+
+const FULL_WIDTH_STORAGE_KEY = 'eidolon-docs-full-width';
+const fullWidth = ref(localStorage.getItem(FULL_WIDTH_STORAGE_KEY) === '1');
+
+watch(fullWidth, value => {
+  localStorage.setItem(FULL_WIDTH_STORAGE_KEY, value ? '1' : '0');
+});
+
+function handleTocJump(pos: number) {
+  editorRef.value?.jumpToHeading(pos);
+}
+
 // ===== 派生展示 =====
 const isSearching = computed(() => searchKeyword.value.trim().length > 0);
 
+// ===== 外部变更（MCP agent 写入）：事件 → store 防抖处理 =====
+let unlistenExternalChange: (() => void) | null = null;
+
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
+  void onDocsExternalChange(change => store.handleExternalChange(change)).then(unlisten => {
+    unlistenExternalChange = unlisten;
+  });
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown);
+  unlistenExternalChange?.();
+  unlistenExternalChange = null;
   if (searchTimer) {
     clearTimeout(searchTimer);
   }
@@ -262,107 +290,221 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="flex h-full flex-col overflow-hidden">
-    <div class="flex min-h-0 flex-1 gap-4 px-6 py-4">
-      <aside class="flex w-72 shrink-0 flex-col gap-3">
-        <Input v-model="searchKeyword" aria-label="搜索文档" class="h-9 shrink-0" placeholder="搜索文档内容" />
-        <div class="min-h-0 flex-1">
-          <DocsSearchResults
-            v-if="isSearching"
-            :is-searching="store.searching"
-            :keyword="searchKeyword.trim()"
-            :results="store.searchResults"
-            @select="handleSelectFile"
-          />
-          <DocsTree
-            v-else
-            :active-path="store.activePath"
-            :entries="store.entries"
-            :is-loading="store.loading || !ready"
-            :title="rootLabel"
-            @create-dir="askCreateDir"
-            @create-file="askCreateFile"
-            @manage="router.push('/docs')"
-            @remove="askRemove"
-            @rename="askRename"
-            @select="handleSelectFile"
-          />
-        </div>
-      </aside>
-
-      <!-- 加载中 -->
-      <div v-if="!ready" class="flex min-w-0 flex-1 items-center justify-center rounded-xl border bg-card">
-        <Spinner class="size-6 text-muted-foreground" />
-      </div>
-
-      <!-- 文档库不存在（被移除或链接失效） -->
-      <div
-        v-else-if="!store.activeRoot"
-        class="flex min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border bg-card text-center"
+    <!-- 四栏全部可拖宽（reka Splitter）；autoSaveId 按面板 id 记住每栏宽度 -->
+    <div class="flex min-h-0 flex-1 px-6 py-4">
+      <ResizablePanelGroup
+        id="docs-workspace-group"
+        auto-save-id="docs-workspace-layout"
+        class="min-h-0 flex-1"
+        direction="horizontal"
       >
-        <div class="flex h-11 w-11 items-center justify-center rounded-full border">
-          <FolderOpen class="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <p class="text-sm font-semibold">找不到这个文档库</p>
-          <p class="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
-            它可能已经被移除，或者路径在磁盘上失效了。
-          </p>
-        </div>
-        <Button @click="router.push('/docs')">去管理目录</Button>
-      </div>
+        <!-- 文档树 -->
+        <ResizablePanel
+          id="docs-tree-panel"
+          class="min-h-0"
+          :default-size="18"
+          :max-size="30"
+          :min-size="14"
+          :order="0"
+        >
+          <aside class="flex h-full min-w-0 flex-col gap-3">
+            <Input v-model="searchKeyword" aria-label="搜索文档" class="h-9 shrink-0" placeholder="搜索文档内容" />
+            <div class="min-h-0 flex-1">
+              <DocsSearchResults
+                v-if="isSearching"
+                :is-searching="store.searching"
+                :keyword="searchKeyword.trim()"
+                :results="store.searchResults"
+                @select="handleSelectFile"
+              />
+              <DocsTree
+                v-else
+                :active-path="store.activePath"
+                :entries="store.entries"
+                :is-loading="store.loading || !ready"
+                :title="rootLabel"
+                @create-dir="askCreateDir"
+                @create-file="askCreateFile"
+                @manage="router.push('/docs')"
+                @remove="askRemove"
+                @rename="askRename"
+                @select="handleSelectFile"
+              />
+            </div>
+          </aside>
+        </ResizablePanel>
 
-      <!-- 已打开库但没打开文档 -->
-      <div
-        v-else-if="!store.activePath"
-        class="flex min-w-0 flex-1 items-center justify-center rounded-xl border bg-card"
-      >
-        <p class="text-sm text-muted-foreground">从左侧选择一篇文档，或点「新建」开始写。</p>
-      </div>
+        <!-- 拖柄即栏间空隙:平时就是页面底色,悬停/拖动时浮出圆角高亮 -->
+        <ResizableHandle
+          id="docs-tree-handle"
+          class="w-4 cursor-col-resize rounded-md bg-transparent transition-colors duration-150 data-[state=drag]:bg-accent data-[state=hover]:bg-muted"
+        />
 
-      <!-- 编辑区 -->
-      <div v-else class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
-        <p v-if="store.fileError" class="shrink-0 border-b px-4 py-2 text-sm text-destructive">
-          {{ store.fileError }}
-        </p>
-        <SagRichEditor v-model="store.content">
-          <template #actions>
-            <Button
-              :aria-label="aiOpen ? '关闭 AI 助手' : '打开 AI 助手'"
-              class="h-8 w-8"
-              :class="[aiOpen ? 'text-primary' : '']"
-              :title="aiOpen ? '关闭 AI 助手' : '打开 AI 助手'"
-              :variant="aiOpen ? 'secondary' : 'ghost'"
-              size="icon"
-              @click="aiOpen = !aiOpen"
+        <!-- 主区：加载 / 库失效 / 未开文档 / 编辑器 四态 -->
+        <ResizablePanel id="docs-editor-panel" class="min-h-0" :min-size="25" :order="1">
+          <!-- 加载中 -->
+          <div v-if="!ready" class="flex h-full items-center justify-center rounded-xl border bg-card">
+            <Spinner class="size-6 text-muted-foreground" />
+          </div>
+
+          <!-- 文档库不存在（被移除或链接失效） -->
+          <div
+            v-else-if="!store.activeRoot"
+            class="flex h-full flex-col items-center justify-center gap-4 rounded-xl border bg-card text-center"
+          >
+            <div class="flex h-11 w-11 items-center justify-center rounded-full border">
+              <FolderOpen class="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p class="text-sm font-semibold">找不到这个文档库</p>
+              <p class="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
+                它可能已经被移除，或者路径在磁盘上失效了。
+              </p>
+            </div>
+            <Button @click="router.push('/docs')">去管理目录</Button>
+          </div>
+
+          <!-- 已打开库但没打开文档 -->
+          <div v-else-if="!store.activePath" class="flex h-full items-center justify-center rounded-xl border bg-card">
+            <p class="text-sm text-muted-foreground">从左侧选择一篇文档，或点「新建」开始写。</p>
+          </div>
+
+          <!-- 编辑区 -->
+          <div v-else class="flex h-full min-w-0 flex-col overflow-hidden rounded-xl border bg-card">
+            <!-- 外部（MCP agent）改动提示：只在本地有未保存修改时出现 -->
+            <div
+              v-if="store.externalNotice"
+              class="flex shrink-0 items-center justify-between gap-3 border-b bg-amber-500/10 px-4 py-2"
             >
-              <Sparkles class="h-4 w-4" />
-            </Button>
-            <span
-              v-if="store.isDirty"
-              class="flex shrink-0 items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400"
-            >
-              <span class="h-1.5 w-1.5 rounded-full bg-current" />
-              未保存
-            </span>
-            <Button class="h-8 shrink-0" :disabled="!store.isDirty || store.saving" size="sm" @click="handleSave">
-              <Spinner v-if="store.saving" class="h-4 w-4" />
-              <Save v-else class="h-4 w-4" />
-              保存
-            </Button>
-          </template>
-        </SagRichEditor>
-      </div>
+              <p
+                v-if="store.externalNotice.kind === 'modified'"
+                class="text-sm leading-5 text-amber-700 dark:text-amber-400"
+              >
+                「{{ store.externalNotice.name }}」刚被外部修改（可能来自 MCP agent）。加载新版本会放弃未保存的修改。
+              </p>
+              <p v-else class="text-sm leading-5 text-amber-700 dark:text-amber-400">
+                「{{ store.externalNotice.name }}」已被外部删除。你的修改还在编辑器里，保存时会重新创建文件。
+              </p>
+              <div class="flex shrink-0 items-center gap-2">
+                <template v-if="store.externalNotice.kind === 'modified'">
+                  <Button class="h-7 px-2.5 text-xs" size="sm" variant="outline" @click="store.acceptExternalVersion()">
+                    加载新版本
+                  </Button>
+                  <Button class="h-7 px-2.5 text-xs" size="sm" variant="ghost" @click="store.dismissExternalNotice()">
+                    保留我的
+                  </Button>
+                </template>
+                <Button
+                  v-else
+                  class="h-7 px-2.5 text-xs"
+                  size="sm"
+                  variant="outline"
+                  @click="store.dismissExternalNotice()"
+                >
+                  知道了
+                </Button>
+              </div>
+            </div>
+            <p v-if="store.fileError" class="shrink-0 border-b px-4 py-2 text-sm text-destructive">
+              {{ store.fileError }}
+            </p>
+            <SagRichEditor ref="editorRef" v-model="store.content" :full-width="fullWidth">
+              <template #actions>
+                <Button
+                  :aria-label="fullWidth ? '退出全宽模式' : '进入全宽模式'"
+                  :aria-pressed="fullWidth"
+                  class="h-8 w-8"
+                  :class="[fullWidth ? 'text-primary' : '']"
+                  :title="fullWidth ? '退出全宽模式' : '全宽模式'"
+                  :variant="fullWidth ? 'secondary' : 'ghost'"
+                  size="icon"
+                  @click="fullWidth = !fullWidth"
+                >
+                  <StretchHorizontal class="h-4 w-4" />
+                </Button>
+                <Button
+                  :aria-label="tocOpen ? '关闭目录' : '打开目录'"
+                  :aria-pressed="tocOpen"
+                  class="h-8 w-8"
+                  :class="[tocOpen ? 'text-primary' : '']"
+                  :title="tocOpen ? '关闭目录' : '目录'"
+                  :variant="tocOpen ? 'secondary' : 'ghost'"
+                  size="icon"
+                  @click="tocOpen = !tocOpen"
+                >
+                  <ListTree class="h-4 w-4" />
+                </Button>
+                <Button
+                  :aria-label="aiOpen ? '关闭 AI 助手' : '打开 AI 助手'"
+                  class="h-8 w-8"
+                  :class="[aiOpen ? 'text-primary' : '']"
+                  :title="aiOpen ? '关闭 AI 助手' : '打开 AI 助手'"
+                  :variant="aiOpen ? 'secondary' : 'ghost'"
+                  size="icon"
+                  @click="aiOpen = !aiOpen"
+                >
+                  <Sparkles class="h-4 w-4" />
+                </Button>
+                <span
+                  v-if="store.isDirty"
+                  class="flex shrink-0 items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400"
+                >
+                  <span class="h-1.5 w-1.5 rounded-full bg-current" />
+                  未保存
+                </span>
+                <Button class="h-8 shrink-0" :disabled="!store.isDirty || store.saving" size="sm" @click="handleSave">
+                  <Spinner v-if="store.saving" class="h-4 w-4" />
+                  <Save v-else class="h-4 w-4" />
+                  保存
+                </Button>
+              </template>
+            </SagRichEditor>
+          </div>
+        </ResizablePanel>
 
-      <!-- AI 助手面板：编辑区右侧，切换文档时随 :key 重建（每篇文档独立会话） -->
-      <DocsAiPanel
-        v-if="aiOpen"
-        :key="store.activePath"
-        :active-path="store.activePath"
-        :document="store.content"
-        @apply="handleAiApply"
-        @close="aiOpen = false"
-        @restore="handleAiRestore"
-      />
+        <!-- 目录面板:点击标题平滑跳到对应位置 -->
+        <template v-if="tocOpen && store.activePath">
+          <ResizableHandle
+            id="docs-toc-handle"
+            class="w-4 cursor-col-resize rounded-md bg-transparent transition-colors duration-150 data-[state=drag]:bg-accent data-[state=hover]:bg-muted"
+          />
+          <ResizablePanel
+            id="docs-toc-panel"
+            class="min-h-0"
+            :default-size="16"
+            :max-size="30"
+            :min-size="12"
+            :order="2"
+          >
+            <DocsTocPanel :items="tocItems" @jump="handleTocJump" />
+          </ResizablePanel>
+        </template>
+
+        <!-- AI 助手面板：切换文档时随 :key 重建（每篇文档独立会话） -->
+        <template v-if="aiOpen">
+          <ResizableHandle
+            id="docs-ai-handle"
+            class="w-4 cursor-col-resize rounded-md bg-transparent transition-colors duration-150 data-[state=drag]:bg-accent data-[state=hover]:bg-muted"
+          />
+          <ResizablePanel
+            id="docs-ai-panel"
+            class="min-h-0"
+            :default-size="21"
+            :max-size="35"
+            :min-size="15"
+            :order="3"
+          >
+            <DocsAiPanel
+              :key="store.activePath"
+              :active-path="store.activePath"
+              :document="store.content"
+              @apply="handleAiApply"
+              @close="aiOpen = false"
+              @restore="handleAiRestore"
+            />
+          </ResizablePanel>
+        </template>
+      </ResizablePanelGroup>
     </div>
 
     <!-- 未保存守卫（库内切换文档） -->
