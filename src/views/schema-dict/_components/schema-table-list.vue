@@ -22,7 +22,7 @@ const visibleTables = computed(() => sortTables(filterTables(props.tables, keywo
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-col gap-2">
+  <div class="flex h-full min-h-0 flex-col gap-2">
     <div class="relative">
       <Search class="absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
       <Input v-model="keyword" class="h-9 rounded-lg pl-8" placeholder="搜索表名或注释" aria-label="搜索表" />

@@ -10,6 +10,8 @@ import {
   hostOf,
   isLinkText,
   remainingDays,
+  sourceOf,
+  sourceOptions,
   TRASH_RETENTION_DAYS,
 } from '../display';
 
@@ -88,6 +90,49 @@ describe('collect display helpers', () => {
     expect(formatCreatedAt(new Date(2026, 9, 12, 8, 30).getTime())).toBe('2026-10-12');
   });
 
+  it('sourceOf normalizes hosts: lowercase, strips www, http(s) only', () => {
+    expect(sourceOf('https://www.GitHub.com/a/b')).toBe('github.com');
+    expect(sourceOf('http://GitHub.com')).toBe('github.com');
+    expect(sourceOf('https://192.168.1.2:8080/x')).toBe('192.168.1.2:8080');
+    expect(sourceOf('ftp://files.com/x')).toBe('');
+    expect(sourceOf('not a url')).toBe('');
+    expect(sourceOf(null)).toBe('');
+  });
+
+  it('sourceOptions counts non-archived links only, sorted by count desc', () => {
+    const items = [
+      makeItem({ id: 'a', kind: 'link', url: 'https://www.github.com/1' }),
+      makeItem({ id: 'b', kind: 'link', url: 'https://github.com/2' }),
+      makeItem({ id: 'c', kind: 'link', url: 'https://example.com/3' }),
+      makeItem({ id: 'd', kind: 'note', content: '正文提到 github.com 也不算' }),
+      makeItem({ id: 'e', kind: 'link', url: 'https://archived.com/4', archived: true }),
+    ];
+
+    expect(sourceOptions(items)).toEqual([
+      { host: 'github.com', count: 2 },
+      { host: 'example.com', count: 1 },
+    ]);
+  });
+
+  it('filters by exact source on top of kind/keyword, and in archived view', () => {
+    const items = [
+      makeItem({ id: 'a', kind: 'link', url: 'https://www.github.com/1', title: '仓库' }),
+      makeItem({ id: 'b', kind: 'link', url: 'https://github.com/2', title: '文档' }),
+      makeItem({ id: 'c', kind: 'link', url: 'https://example.com/3' }),
+      makeItem({ id: 'd', kind: 'note', content: '记事没有来源' }),
+      makeItem({ id: 'e', kind: 'link', url: 'https://github.com/old', archived: true }),
+    ];
+
+    // www 与裸域名归一到同一来源
+    expect(filterItems(items, 'all', '', 'github.com').map(item => item.id)).toEqual(['a', 'b']);
+    // 来源与关键字叠加
+    expect(filterItems(items, 'all', '文档', 'github.com').map(item => item.id)).toEqual(['b']);
+    // 归档视图里来源同样生效
+    expect(filterItems(items, 'archived', '', 'github.com').map(item => item.id)).toEqual(['e']);
+    // 记事不匹配任何来源
+    expect(filterItems(items, 'note', '', 'github.com')).toEqual([]);
+  });
+
   it('computes collect stats: week/month counts, streak, archive, trend and top hosts', () => {
     const items = [
       makeItem({ id: 'a', kind: 'link', url: 'https://rust-lang.org/a', created_at: NOW }),
@@ -103,9 +148,9 @@ describe('collect display helpers', () => {
     expect(stats.monthCount).toBe(4); // 30 天窗口内的 4 条（40 天前那条在外）
     expect(stats.streakDays).toBe(4); // 今天到 3 天前连续
     expect(stats.archivedCount).toBe(1);
-    expect(stats.dailyCounts).toHaveLength(30);
-    expect(stats.dailyCounts[29]).toBe(1);
-    expect(stats.dailyTooltips[29]).toContain('1 条收藏');
+    expect(stats.dailyCounts).toHaveLength(7);
+    expect(stats.dailyCounts[6]).toBe(1);
+    expect(stats.dailyTooltips[6]).toContain('1 条收藏');
     // 归档条目也参与域名统计（收藏过就算）
     expect(stats.topHosts).toEqual([
       { host: 'rust-lang.org', count: 2 },

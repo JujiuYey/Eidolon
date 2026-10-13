@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ArchiveX, Bookmark, CloudOff, RefreshCw, Search, Sparkles, Trash2 } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
@@ -13,9 +14,11 @@ import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
 import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useConfirm } from '@/composables/use-confirm';
+import { listDefaultModelSettings } from '@/services';
 import { useCollectStore } from '@/stores/collect';
 import type { CollectItem } from '@/types/collect';
 import { getErrorMessage } from '@/utils/helpers';
@@ -27,22 +30,40 @@ import CollectItemList from './_components/collect-item-list.vue';
 import CollectQuickAdd from './_components/collect-quick-add.vue';
 import CollectTrashPanel from './_components/collect-trash-panel.vue';
 import type { CollectFilter } from './utils/display';
-import { computeCollectStats, filterCounts, filterItems } from './utils/display';
+import { computeCollectStats, filterCounts, filterItems, sourceOptions } from './utils/display';
 
 const store = useCollectStore();
 const confirm = useConfirm();
+const router = useRouter();
 
 const filter = ref<CollectFilter>('all');
 const query = ref('');
+/** 来源筛选（归一化域名）；空串表示不过滤 */
+const source = ref('');
 
 const editorOpen = ref(false);
 const editingItem = ref<CollectItem | null>(null);
 const aiPanelOpen = ref(false);
 
 const counts = computed(() => filterCounts(store.items));
-const visibleItems = computed(() => filterItems(store.items, filter.value, query.value));
+const visibleItems = computed(() => filterItems(store.items, filter.value, query.value, source.value));
 const hasAnyItem = computed(() => store.items.length > 0);
 const showLoadingSkeleton = computed(() => store.itemsLoading && !store.itemsLoaded);
+
+/** 来源下拉选项（未归档链接，按条数倒序）；没有链接时隐藏下拉 */
+const sourceItems = computed(() => sourceOptions(store.items));
+/** Select 不允许空字符串值，用哨兵值表示「全部来源」 */
+const ALL_SOURCES = '__all__';
+const selectedSource = computed({
+  get: () => source.value || ALL_SOURCES,
+  set: (value: string) => {
+    source.value = value === ALL_SOURCES ? '' : value;
+    // 来源只对链接有意义，选中来源时切到「链接」页签
+    if (source.value) {
+      filter.value = 'link';
+    }
+  },
+});
 
 const collectStats = computed(() => computeCollectStats(store.items));
 const statTiles = computed<StatTile[]>(() => [
@@ -64,7 +85,35 @@ const hostBarItems = computed(() =>
 );
 onMounted(() => {
   void store.loadItems();
+  void loadModelConfigured();
 });
+
+/** 收藏夹助手模型是否已配置；与 PM 页一致，未配置时提问/摘要走 toast 引导去设置 */
+const collectModelConfigured = ref(true);
+
+async function loadModelConfigured() {
+  try {
+    const settings = await listDefaultModelSettings();
+    collectModelConfigured.value = settings.some(setting => setting.key === 'collect_assistant');
+  } catch {
+    collectModelConfigured.value = true; // 查询失败不拦截，交给后端报错兜底
+  }
+}
+
+/** 未配置模型时给出统一 toast；返回 true 表示已提示、调用方应中断 */
+function notifyModelMissing(): boolean {
+  if (collectModelConfigured.value) {
+    return false;
+  }
+  toast.error('请先配置收藏夹助手模型', {
+    description: '在「应用设置 → 默认模型 → 收藏夹助手」中选择一个模型。',
+    action: {
+      label: '去设置',
+      onClick: () => router.push('/app-setting'),
+    },
+  });
+  return true;
+}
 
 async function handleQuickSubmit(text: string) {
   try {
@@ -75,9 +124,10 @@ async function handleQuickSubmit(text: string) {
   }
 }
 
-function handleHostClick(host: string) {
-  query.value = host;
-  filter.value = 'all';
+/** 按来源（归一化域名）精确筛选，并切到链接页签 */
+function handleFilterBySource(host: string) {
+  source.value = host;
+  filter.value = 'link';
 }
 
 function openEdit(item: CollectItem) {
@@ -125,10 +175,16 @@ function handleRefresh(item: CollectItem) {
 }
 
 function handleSummarize(item: CollectItem) {
+  if (notifyModelMissing()) {
+    return;
+  }
   void store.summarizeLink(item);
 }
 
 function handleAsk(question: string) {
+  if (notifyModelMissing()) {
+    return;
+  }
   void store.askCollection(question);
 }
 
@@ -250,161 +306,186 @@ function retryLoad() {
         >
           <Trash2 class="size-4" />
         </Button>
-        <Button type="button" variant="outline" @click="aiPanelOpen = !aiPanelOpen">
+        <Button
+          type="button"
+          :variant="aiPanelOpen && !trashMode ? 'secondary' : 'outline'"
+          :aria-expanded="aiPanelOpen && !trashMode"
+          @click="aiPanelOpen = !aiPanelOpen"
+        >
           <Sparkles class="size-4" />
           问收藏
         </Button>
       </template>
     </SagPageHeader>
 
-    <div class="flex min-h-0 flex-1 flex-col gap-4 px-6 pb-6 pt-4">
-      <!-- 回收站视图 -->
-      <template v-if="trashMode">
-        <CollectTrashPanel
-          class="min-h-0 flex-1"
-          :items="store.trashItems"
-          :loading="store.trashLoading"
-          @restore="handleRestore"
-          @purge="handlePurge"
-          @empty="handleEmptyTrash"
-        />
-      </template>
-
-      <template v-else>
-        <!-- 加载失败 -->
-        <div
-          v-if="store.itemsError"
-          class="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-10 text-center"
-        >
-          <CloudOff class="size-8 text-destructive" />
-          <p class="max-w-md text-sm text-muted-foreground">
-            {{ store.itemsError }}
-          </p>
-          <Button type="button" variant="outline" size="sm" @click="retryLoad">
-            <RefreshCw class="size-3.5" />
-            重试
-          </Button>
-        </div>
+    <div class="flex min-h-0 flex-1 gap-4 px-6 pb-6 pt-4">
+      <div class="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+        <!-- 回收站视图 -->
+        <template v-if="trashMode">
+          <CollectTrashPanel
+            class="min-h-0 flex-1"
+            :items="store.trashItems"
+            :loading="store.trashLoading"
+            @restore="handleRestore"
+            @purge="handlePurge"
+            @empty="handleEmptyTrash"
+          />
+        </template>
 
         <template v-else>
-          <div v-if="hasAnyItem" class="shrink-0 space-y-4">
-            <SagStatsStrip :tiles="statTiles" />
+          <!-- 加载失败 -->
+          <div
+            v-if="store.itemsError"
+            class="flex flex-col items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-6 py-10 text-center"
+          >
+            <CloudOff class="size-8 text-destructive" />
+            <p class="max-w-md text-sm text-muted-foreground">
+              {{ store.itemsError }}
+            </p>
+            <Button type="button" variant="outline" size="sm" @click="retryLoad">
+              <RefreshCw class="size-3.5" />
+              重试
+            </Button>
+          </div>
 
-            <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div class="rounded-xl border bg-card p-4 md:col-span-2">
-                <div class="flex items-center justify-between gap-2">
-                  <h3 class="text-sm font-medium">近 30 天收藏</h3>
-                  <span class="text-xs text-muted-foreground">按天</span>
-                </div>
-                <div class="mt-3">
-                  <SagBarChart
-                    :values="trendValues"
-                    :labels="trendLabels"
-                    :tooltips="collectStats.dailyTooltips"
-                    aria-label="近 30 天收藏柱状图"
-                  />
-                </div>
-              </div>
+          <template v-else>
+            <div v-if="hasAnyItem" class="shrink-0 space-y-4">
+              <SagStatsStrip :tiles="statTiles" />
 
-              <div class="rounded-xl border bg-card p-4">
-                <h3 class="text-sm font-medium">类型分布</h3>
-                <div class="mt-3">
-                  <SagDonutChart :segments="kindSegments" center-label="条收藏" aria-label="收藏类型分布环形图" />
+              <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-xl border bg-card p-4 md:col-span-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <h3 class="text-sm font-medium">近 7 天收藏</h3>
+                    <span class="text-xs text-muted-foreground">按天</span>
+                  </div>
+                  <div class="mt-3">
+                    <SagBarChart
+                      :values="trendValues"
+                      :labels="trendLabels"
+                      :tooltips="collectStats.dailyTooltips"
+                      aria-label="近 7 天收藏柱状图"
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div class="flex flex-col rounded-xl border bg-card p-4">
-                <div class="flex items-center justify-between gap-2">
-                  <h3 class="text-sm font-medium">常收藏站点</h3>
-                  <span class="text-xs text-muted-foreground">点击按站点搜索</span>
+                <div class="rounded-xl border bg-card p-4">
+                  <h3 class="text-sm font-medium">类型分布</h3>
+                  <div class="mt-3">
+                    <SagDonutChart :segments="kindSegments" center-label="条收藏" aria-label="收藏类型分布环形图" />
+                  </div>
                 </div>
-                <div class="mt-3 min-h-0 flex-1">
-                  <SagHBarList
-                    :items="hostBarItems"
-                    :limit="6"
-                    selectable
-                    @select="item => handleHostClick(item.label)"
-                  />
+
+                <div class="flex flex-col rounded-xl border bg-card p-4">
+                  <div class="flex items-center justify-between gap-2">
+                    <h3 class="text-sm font-medium">常收藏站点</h3>
+                    <span class="text-xs text-muted-foreground">点击筛选来源</span>
+                  </div>
+                  <div class="mt-3 min-h-0 flex-1">
+                    <SagHBarList
+                      :items="hostBarItems"
+                      :limit="6"
+                      selectable
+                      @select="item => handleFilterBySource(item.label)"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <CollectQuickAdd class="shrink-0" @submit="handleQuickSubmit" />
+            <CollectQuickAdd class="shrink-0" @submit="handleQuickSubmit" />
 
-          <CollectAiPanel
-            v-if="aiPanelOpen"
-            class="shrink-0"
-            :answer="store.aiAnswer"
-            :disabled="!hasAnyItem"
-            @ask="handleAsk"
-            @clear="store.dismissAnswer()"
-            @close="aiPanelOpen = false"
-          />
+            <!-- 过滤 + 搜索 -->
+            <div class="flex shrink-0 flex-wrap items-center gap-3">
+              <Tabs :model-value="filter" @update:model-value="value => (filter = value as CollectFilter)">
+                <TabsList>
+                  <TabsTrigger value="all">全部 {{ counts.all }}</TabsTrigger>
+                  <TabsTrigger value="link">链接 {{ counts.link }}</TabsTrigger>
+                  <TabsTrigger value="note">记事 {{ counts.note }}</TabsTrigger>
+                  <TabsTrigger value="archived">归档 {{ counts.archived }}</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <Select v-if="sourceItems.length > 0" v-model="selectedSource">
+                <!-- 直接渲染来源文本：SelectValue 会克隆选项全部内容（含条数），不适合做触发器 -->
+                <SelectTrigger class="h-9 w-44" aria-label="按来源筛选">
+                  <span class="min-w-0 truncate" :class="source ? '' : 'text-muted-foreground'">
+                    {{ source || '全部来源' }}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem :value="ALL_SOURCES">全部来源</SelectItem>
+                  <SelectItem v-for="entry of sourceItems" :key="entry.host" :value="entry.host">
+                    <span class="min-w-0 truncate">{{ entry.host }}</span>
+                    <span class="ml-auto pl-3 text-xs tabular-nums text-muted-foreground">{{ entry.count }}</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <div class="relative ml-auto w-56">
+                <Search
+                  class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <Input v-model="query" class="h-9 pl-8" placeholder="搜索收藏" aria-label="搜索收藏" />
+              </div>
+            </div>
 
-          <!-- 过滤 + 搜索 -->
-          <div class="flex shrink-0 flex-wrap items-center gap-3">
-            <Tabs :model-value="filter" @update:model-value="value => (filter = value as CollectFilter)">
-              <TabsList>
-                <TabsTrigger value="all">全部 {{ counts.all }}</TabsTrigger>
-                <TabsTrigger value="link">链接 {{ counts.link }}</TabsTrigger>
-                <TabsTrigger value="note">记事 {{ counts.note }}</TabsTrigger>
-                <TabsTrigger value="archived">归档 {{ counts.archived }}</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            <div class="relative ml-auto w-56">
-              <Search
-                class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            <!-- 列表区：唯一滚动区域 -->
+            <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+              <!-- 加载中 -->
+              <div v-if="showLoadingSkeleton" class="space-y-2" aria-busy="true">
+                <Skeleton v-for="index in 3" :key="index" class="h-16 w-full rounded-lg" />
+              </div>
+
+              <!-- 列表 -->
+              <CollectItemList
+                v-else-if="visibleItems.length > 0"
+                :items="visibleItems"
+                :summaries="store.summaries"
+                @open="handleOpen"
+                @edit="openEdit"
+                @copy="handleCopy"
+                @refresh="handleRefresh"
+                @summarize="handleSummarize"
+                @dismiss-summary="handleSummarizeDismiss"
+                @archive="handleArchive"
+                @remove="handleRemove"
+                @filter-source="handleFilterBySource"
               />
-              <Input v-model="query" class="h-9 pl-8" placeholder="搜索收藏" aria-label="搜索收藏" />
-            </div>
-          </div>
 
-          <!-- 列表区：唯一滚动区域 -->
-          <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            <!-- 加载中 -->
-            <div v-if="showLoadingSkeleton" class="space-y-2" aria-busy="true">
-              <Skeleton v-for="index in 3" :key="index" class="h-16 w-full rounded-lg" />
-            </div>
-
-            <!-- 列表 -->
-            <CollectItemList
-              v-else-if="visibleItems.length > 0"
-              :items="visibleItems"
-              :summaries="store.summaries"
-              @open="handleOpen"
-              @edit="openEdit"
-              @copy="handleCopy"
-              @refresh="handleRefresh"
-              @summarize="handleSummarize"
-              @dismiss-summary="handleSummarizeDismiss"
-              @archive="handleArchive"
-              @remove="handleRemove"
-            />
-
-            <!-- 空状态 -->
-            <div
-              v-else-if="!hasAnyItem"
-              class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center"
-            >
-              <div class="flex size-12 items-center justify-center rounded-full bg-primary/10">
-                <Bookmark class="size-6 text-primary" />
+              <!-- 空状态 -->
+              <div
+                v-else-if="!hasAnyItem"
+                class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center"
+              >
+                <div class="flex size-12 items-center justify-center rounded-full bg-primary/10">
+                  <Bookmark class="size-6 text-primary" />
+                </div>
+                <div class="space-y-1">
+                  <h2 class="text-base font-semibold">收藏夹还是空的</h2>
+                  <p class="max-w-sm text-sm text-muted-foreground">
+                    在上方粘贴一个链接或随手记点什么，回车就能收进来；不用想分类，先存下来再说。
+                  </p>
+                </div>
               </div>
-              <div class="space-y-1">
-                <h2 class="text-base font-semibold">收藏夹还是空的</h2>
-                <p class="max-w-sm text-sm text-muted-foreground">
-                  在上方粘贴一个链接或随手记点什么，回车就能收进来；不用想分类，先存下来再说。
-                </p>
+              <p v-else-if="query.trim() || source" class="py-10 text-center text-sm text-muted-foreground">
+                没有匹配的收藏
+              </p>
+              <div v-else class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
+                <ArchiveX class="size-8 text-muted-foreground/50" />
+                <p class="text-sm text-muted-foreground">该状态下没有收藏</p>
               </div>
             </div>
-            <p v-else-if="query.trim()" class="py-10 text-center text-sm text-muted-foreground">没有匹配的收藏</p>
-            <div v-else class="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-              <ArchiveX class="size-8 text-muted-foreground/50" />
-              <p class="text-sm text-muted-foreground">该状态下没有收藏</p>
-            </div>
-          </div>
+          </template>
         </template>
-      </template>
+      </div>
+
+      <!-- 问收藏：右侧内嵌面板，与文档库 AI 助手同款 -->
+      <CollectAiPanel
+        v-if="aiPanelOpen && !trashMode"
+        :answer="store.aiAnswer"
+        :disabled="!hasAnyItem"
+        @ask="handleAsk"
+        @clear="store.dismissAnswer()"
+        @close="aiPanelOpen = false"
+      />
     </div>
 
     <CollectItemEditorDialog v-model:open="editorOpen" :item="editingItem" @save="handleSave" />

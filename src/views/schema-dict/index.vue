@@ -182,8 +182,8 @@ function setSnapshotFilter(value: unknown) {
 </script>
 
 <template>
-  <div class="flex h-full flex-col overflow-y-auto">
-    <SagPageHeader class="px-6 pt-6" title="数据字典">
+  <div class="flex h-full min-h-0 flex-col overflow-hidden">
+    <SagPageHeader class="shrink-0 px-6 pt-6" title="数据字典">
       <template #meta>
         <span v-if="store.activeDatabase" class="text-sm text-muted-foreground">
           {{ store.activeDatabase.note || `${store.databases.length} 个库 · ${store.activeTables.length} 张表` }}
@@ -225,7 +225,7 @@ function setSnapshotFilter(value: unknown) {
         </div>
 
         <!-- 选择器行 -->
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
           <Select v-if="hasDatabases" :model-value="store.activeDatabaseId" @update:model-value="setDbTypeFilter">
             <SelectTrigger class="h-9 w-52" aria-label="选择库">
               <SelectValue placeholder="选择库" />
@@ -339,7 +339,7 @@ function setSnapshotFilter(value: unknown) {
             </div>
 
             <!-- 表结构 -->
-            <div v-else-if="activeTab === 'tables'" class="min-h-0 flex-1">
+            <div v-else-if="activeTab === 'tables'" class="flex min-h-0 flex-1 flex-col">
               <div
                 v-if="store.snapshotsLoading"
                 class="flex h-full items-center justify-center text-sm text-muted-foreground"
@@ -348,8 +348,13 @@ function setSnapshotFilter(value: unknown) {
                 <Loader2 class="mr-2 size-4 animate-spin" />
                 正在加载快照…
               </div>
-              <ResizablePanelGroup v-else direction="horizontal" class="min-h-0 flex-1 rounded-xl">
-                <ResizablePanel id="schema-tables-panel" :default-size="28" :min-size="18">
+              <ResizablePanelGroup v-else direction="horizontal" class="min-h-0 flex-1 overflow-hidden rounded-xl">
+                <ResizablePanel
+                  id="schema-tables-panel"
+                  class="min-h-0 overflow-hidden"
+                  :default-size="28"
+                  :min-size="18"
+                >
                   <SchemaTableList
                     :tables="store.activeTables"
                     :active-name="activeTableName"
@@ -357,7 +362,7 @@ function setSnapshotFilter(value: unknown) {
                   />
                 </ResizablePanel>
                 <ResizableHandle id="schema-detail-handle" with-handle />
-                <ResizablePanel id="schema-detail-panel" class="min-h-0">
+                <ResizablePanel id="schema-detail-panel" class="min-h-0 overflow-hidden">
                   <div class="h-full overflow-y-auto pl-4">
                     <SchemaTableDetail :table="activeTable" />
                   </div>
@@ -377,7 +382,7 @@ function setSnapshotFilter(value: unknown) {
             </div>
 
             <!-- AI 问答 -->
-            <div v-else class="flex min-h-0 flex-1 flex-col">
+            <div v-else class="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col">
               <SchemaAiPanel
                 :answer="store.aiAnswer"
                 :disabled="!hasSnapshots"

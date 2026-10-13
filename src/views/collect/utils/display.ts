@@ -35,6 +35,40 @@ export function hostOf(url: string | null): string {
 
 export type CollectFilter = 'all' | CollectKind | 'archived';
 
+/** 来源筛选用的域名提取：只认 http(s) 的合法 URL，小写并去掉前导 www.；其余返回空串 */
+export function sourceOf(url: string | null): string {
+  if (!url) {
+    return '';
+  }
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return '';
+    }
+    return parsed.host.replace(/^www\./i, '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/** 来源下拉的选项（仅未归档链接），按条数倒序、同数按域名排序 */
+export function sourceOptions(items: CollectItem[]): Array<{ host: string; count: number }> {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    if (item.archived || item.kind !== 'link') {
+      continue;
+    }
+    const host = sourceOf(item.url);
+    if (!host) {
+      continue;
+    }
+    counts.set(host, (counts.get(host) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([host, count]) => ({ host, count }))
+    .sort((a, b) => b.count - a.count || a.host.localeCompare(b.host));
+}
+
 /** 各过滤项的条目数（archived 与 all/link/note 互斥统计） */
 export function filterCounts(items: CollectItem[]): Record<CollectFilter, number> {
   const active = items.filter(item => !item.archived);
@@ -47,8 +81,9 @@ export function filterCounts(items: CollectItem[]): Record<CollectFilter, number
 }
 
 /** 按过滤项取条目；全部/链接/记事不含归档，归档只在归档页出现。
+ *  source 非空时再按来源（归一化域名）精确过滤，只对链接生效；
  *  query 非空时在标题/摘要/备注正文/URL 里做包含匹配 */
-export function filterItems(items: CollectItem[], filter: CollectFilter, query: string): CollectItem[] {
+export function filterItems(items: CollectItem[], filter: CollectFilter, query: string, source = ''): CollectItem[] {
   let result = items;
   if (filter === 'archived') {
     result = result.filter(item => item.archived);
@@ -57,6 +92,9 @@ export function filterItems(items: CollectItem[], filter: CollectFilter, query: 
     if (filter !== 'all') {
       result = result.filter(item => item.kind === filter);
     }
+  }
+  if (source) {
+    result = result.filter(item => item.kind === 'link' && sourceOf(item.url) === source);
   }
 
   const keyword = query.trim().toLowerCase();
@@ -80,16 +118,6 @@ export function formatCreatedAt(timestamp: number): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-/** 统计用的域名提取：只认 http(s) 的合法 URL，其余（含 hostOf 的原样兜底）不计数 */
-function hostForStats(url: string): string {
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.host : '';
-  } catch {
-    return '';
-  }
-}
-
 /** 收藏夹统计瓦片 + 趋势 + 常收藏站点 */ export interface CollectStats {
   weekCount: number;
   monthCount: number;
@@ -100,17 +128,17 @@ function hostForStats(url: string): string {
   topHosts: Array<{ host: string; count: number }>;
 }
 
-/** 从全量条目（含归档）计算统计：数量、连续天数、30 天分布、Top 域名 */
+/** 从全量条目（含归档）计算统计：数量、连续天数、7 天分布、Top 域名 */
 export function computeCollectStats(items: CollectItem[], now = Date.now()): CollectStats {
   const timestamps = items.map(item => item.created_at);
-  const daily = dailyCounts(timestamps, 30, now);
+  const daily = dailyCounts(timestamps, 7, now);
 
   const hostCounts = new Map<string, number>();
   for (const item of items) {
     if (item.kind !== 'link' || !item.url) {
       continue;
     }
-    const host = hostForStats(item.url);
+    const host = sourceOf(item.url);
     if (!host) {
       continue;
     }

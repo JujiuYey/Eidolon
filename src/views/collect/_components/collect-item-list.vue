@@ -24,7 +24,7 @@ import {
 import type { AiSummaryState } from '@/stores/collect';
 import type { CollectItem } from '@/types/collect';
 
-import { formatCreatedAt, hostOf } from '../utils/display';
+import { formatCreatedAt, hostOf, sourceOf } from '../utils/display';
 import CollectSummaryCard from './collect-summary-card.vue';
 
 const props = defineProps<{
@@ -42,6 +42,7 @@ const emit = defineEmits<{
   (e: 'dismiss-summary', item: CollectItem): void;
   (e: 'archive', item: CollectItem): void;
   (e: 'remove', item: CollectItem): void;
+  (e: 'filter-source', source: string): void;
 }>();
 
 /** favicon 加载失败的地址集合：回退为通用图标，避免反复请求 */
@@ -170,7 +171,18 @@ function cardTitle(item: CollectItem): string {
           </p>
         </div>
 
-        <p class="mt-2 text-xs tabular-nums text-muted-foreground">{{ formatCreatedAt(item.created_at) }}</p>
+        <div class="mt-2 flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
+          <button
+            v-if="item.kind === 'link' && sourceOf(item.url)"
+            type="button"
+            class="min-w-0 truncate rounded-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            :title="`只看来自 ${sourceOf(item.url)} 的收藏`"
+            @click.stop="emit('filter-source', sourceOf(item.url))"
+          >
+            {{ sourceOf(item.url) }}
+          </button>
+          <span class="ml-auto shrink-0">{{ formatCreatedAt(item.created_at) }}</span>
+        </div>
       </div>
 
       <CollectSummaryCard

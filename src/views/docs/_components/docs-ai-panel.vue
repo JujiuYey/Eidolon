@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Send, X } from 'lucide-vue-next';
 import MarkdownRender from 'markstream-vue';
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
+import SagAiPanel from '@/components/sag/sag-ai-panel/index.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import type { DocsAiChatMessage } from '@/services/docs';
@@ -65,12 +65,11 @@ function stripDocForHistory(content: string): string {
 }
 
 const messages = ref<PanelMessage[]>([]);
-const input = ref('');
+const panelRef = ref<InstanceType<typeof SagAiPanel> | null>(null);
 const sending = ref(false);
 const elapsedSeconds = ref(0);
 const expandedIds = ref<Set<number>>(new Set());
 
-const listRef = ref<HTMLElement | null>(null);
 let messageSeq = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -91,16 +90,10 @@ function stopTimer() {
 }
 
 function scrollToEnd() {
-  void nextTick(() => {
-    const list = listRef.value;
-    if (list) {
-      list.scrollTop = list.scrollHeight;
-    }
-  });
+  panelRef.value?.scrollToBottom();
 }
 
-async function send() {
-  const text = input.value.trim();
+async function send(text: string) {
   if (!text || sending.value) {
     return;
   }
@@ -115,7 +108,6 @@ async function send() {
     modelLabel: '',
   };
   messages.value.push(userMessage);
-  input.value = '';
   scrollToEnd();
 
   sending.value = true;
@@ -140,7 +132,7 @@ async function send() {
   } catch (error) {
     // 失败:撤回这条用户消息,内容放回输入框
     messages.value = messages.value.filter(message => message.id !== userMessage.id);
-    input.value = text;
+    panelRef.value?.setText(text);
     toast.error(getErrorMessage(error, 'AI 请求失败'));
   } finally {
     stopTimer();
@@ -187,15 +179,16 @@ onBeforeUnmount(stopTimer);
 </script>
 
 <template>
-  <aside class="flex w-[21rem] shrink-0 flex-col overflow-hidden rounded-xl border bg-card">
-    <div class="flex h-11 shrink-0 items-center justify-between border-b px-3">
-      <p class="text-sm font-semibold">AI 助手</p>
-      <Button aria-label="关闭 AI 助手" class="h-7 w-7" size="icon" variant="ghost" @click="emit('close')">
-        <X class="h-4 w-4" />
-      </Button>
-    </div>
-
-    <div ref="listRef" class="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+  <SagAiPanel
+    ref="panelRef"
+    title="AI 助手"
+    placeholder="让 AI 帮你改这篇文档…"
+    :disabled="!hasDocument"
+    :busy="sending"
+    @send="send"
+    @close="emit('close')"
+  >
+    <div class="space-y-4">
       <!-- 未打开文档 -->
       <div
         v-if="!hasDocument"
@@ -277,30 +270,7 @@ onBeforeUnmount(stopTimer);
         </div>
       </template>
     </div>
-
-    <div class="shrink-0 space-y-2 border-t p-3">
-      <textarea
-        v-model="input"
-        aria-label="和 AI 对话"
-        class="border-input placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex max-h-32 min-h-[2.75rem] w-full resize-none rounded-md border bg-transparent px-2.5 py-2 text-sm leading-6 shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
-        :disabled="!hasDocument || sending"
-        placeholder="让 AI 帮你改这篇文档…"
-        rows="2"
-        @keydown.enter.exact.prevent="send"
-      />
-      <div class="flex justify-end">
-        <Button
-          aria-label="发送"
-          class="h-8 w-8"
-          :disabled="!input.trim() || sending || !hasDocument"
-          size="icon"
-          @click="send"
-        >
-          <Send class="h-4 w-4" />
-        </Button>
-      </div>
-    </div>
-  </aside>
+  </SagAiPanel>
 </template>
 
 <style>
