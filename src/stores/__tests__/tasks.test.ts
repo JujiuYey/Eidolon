@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createTasksStore } from '@/stores/tasks';
 import type { TasksService } from '@/stores/tasks';
-import type { Task, TaskDraft } from '@/types/tasks';
+import type { Task, TaskDraft, TaskPlan } from '@/types/tasks';
 
 function makeTask(overrides: Partial<Task> = {}): Task {
   return {
@@ -13,6 +13,9 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     status: 'todo',
     priority: 'none',
     due_date: '',
+    start_at: '',
+    end_at: '',
+    estimate_minutes: 0,
     source: 'manual',
     sort: 0,
     completed_at: null,
@@ -26,6 +29,22 @@ function makeDraft(overrides: Partial<TaskDraft> = {}): TaskDraft {
   return { title: '整理周报数据', priority: 'high', due_date: '2026-10-16', ...overrides };
 }
 
+function makePlan(overrides: Partial<TaskPlan> = {}): TaskPlan {
+  return {
+    blocks: [
+      {
+        task_id: 'task_1',
+        title: '写周报',
+        priority: 'high',
+        start_at: '2026-10-14T09:00',
+        end_at: '2026-10-14T10:30',
+      },
+    ],
+    note: '先清周报',
+    ...overrides,
+  };
+}
+
 function bindStore(service: TasksService) {
   const useBound = defineStore('tasks-test', () => createTasksStore({ service }));
   return useBound();
@@ -37,7 +56,7 @@ function createService(overrides: Partial<TasksService> = {}): TasksService {
     upsertTask: vi.fn().mockImplementation(async (task: Task) => ({ ...task, id: task.id || 'task_new' })),
     deleteTask: vi.fn().mockResolvedValue('task_1'),
     parseTaskText: vi.fn().mockResolvedValue(makeDraft()),
-    suggestTaskPlan: vi.fn().mockResolvedValue('- 先做 A'),
+    suggestTaskPlan: vi.fn().mockResolvedValue(makePlan()),
     ...overrides,
   };
 }
@@ -170,17 +189,19 @@ describe('tasks store', () => {
     expect(store.tasks).toHaveLength(1);
   });
 
-  it('loadPlan stores the ready text and dismissPlan clears it', async () => {
+  it('loadPlan stores the structured plan and dismissPlan clears it', async () => {
     const service = createService({
       listTasks: vi.fn().mockResolvedValue([makeTask()]),
-      suggestTaskPlan: vi.fn().mockResolvedValue('- 先写周报'),
+      suggestTaskPlan: vi.fn().mockResolvedValue(makePlan({ note: '先清逾期' })),
     });
     const store = bindStore(service);
     await store.loadTasks();
 
     await store.loadPlan();
     expect(store.aiPlan?.status).toBe('ready');
-    expect(store.aiPlan?.text).toBe('- 先写周报');
+    expect(store.aiPlan?.note).toBe('先清逾期');
+    expect(store.aiPlan?.blocks).toHaveLength(1);
+    expect(store.aiPlan?.blocks[0]).toMatchObject({ task_id: 'task_1', start_at: '2026-10-14T09:00' });
 
     store.dismissPlan();
     expect(store.aiPlan).toBeNull();
@@ -189,7 +210,7 @@ describe('tasks store', () => {
   it('loadPlan records errors without throwing', async () => {
     const service = createService({
       listTasks: vi.fn().mockResolvedValue([makeTask()]),
-      suggestTaskPlan: vi.fn().mockRejectedValue('当前没有未完成的任务'),
+      suggestTaskPlan: vi.fn().mockRejectedValue('当前没有需要排期的任务'),
     });
     const store = bindStore(service);
     await store.loadTasks();
@@ -197,6 +218,59 @@ describe('tasks store', () => {
     await store.loadPlan();
 
     expect(store.aiPlan?.status).toBe('error');
-    expect(store.aiPlan?.errorMessage).toBe('当前没有未完成的任务');
+    expect(store.aiPlan?.errorMessage).toBe('当前没有需要排期的任务');
+  });
+
+  it('applyPlan writes blocks back to tasks and clears the candidate', async () => {
+    const service = createService({
+      listTasks: vi.fn().mockResolvedValue([makeTask(), makeTask({ id: 'task_2', title: '回复评审' })]),
+      suggestTaskPlan: vi.fn().mockResolvedValue(
+        makePlan({
+          blocks: [
+            {
+              task_id: 'task_1',
+              title: '写周报',
+              priority: 'high',
+              start_at: '2026-10-14T09:00',
+              end_at: '2026-10-14T10:30',
+            },
+            {
+              task_id: 'task_missing',
+              title: '幽灵任务',
+              priority: 'none',
+              start_at: '2026-10-15T09:00',
+              end_at: '2026-10-15T10:00',
+            },
+          ],
+        }),
+      ),
+    });
+    const store = bindStore(service);
+    await store.loadTasks();
+    await store.loadPlan();
+
+    const applied = await store.applyPlan();
+
+    expect(applied).toBe(1); // 只有存在的任务被应用
+    expect(service.upsertTask).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'task_1', start_at: '2026-10-14T09:00', end_at: '2026-10-14T10:30' }),
+    );
+    expect(store.tasks.find(task => task.id === 'task_1')?.start_at).toBe('2026-10-14T09:00');
+    expect(store.aiPlan).toBeNull();
+  });
+
+  it('applyPlan keeps the candidate when every block fails', async () => {
+    const service = createService({
+      listTasks: vi.fn().mockResolvedValue([makeTask()]),
+      upsertTask: vi.fn().mockRejectedValue('数据库不可写'),
+    });
+    const store = bindStore(service);
+    await store.loadTasks();
+    await store.loadPlan();
+
+    const applied = await store.applyPlan();
+
+    expect(applied).toBe(0);
+    expect(store.aiPlan?.status).toBe('ready'); // 失败时建议保留，用户可重试
   });
 });

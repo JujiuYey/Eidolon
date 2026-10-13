@@ -9,15 +9,16 @@ use rusqlite::{params, Row};
 use crate::db::api_client::ApiClientDatabase;
 use crate::db::repositories::api_client_repo_common::{begin, require_name, sql_error};
 use crate::models::task::{
-    normalize_due_date, normalize_priority, normalize_status, Task, TASK_STATUS_DONE,
+    normalize_due_date, normalize_estimate_minutes, normalize_priority, normalize_schedule,
+    normalize_status, Task, TASK_STATUS_DONE,
 };
 
 pub struct TaskRepository<'a> {
     database: &'a ApiClientDatabase,
 }
 
-const SELECT_COLUMNS: &str = "SELECT id, title, notes, status, priority, due_date, source,
-        sort, completed_at, created_at, updated_at
+const SELECT_COLUMNS: &str = "SELECT id, title, notes, status, priority, due_date, start_at, end_at,
+        estimate_minutes, source, sort, completed_at, created_at, updated_at
      FROM tasks";
 
 impl<'a> TaskRepository<'a> {
@@ -46,6 +47,8 @@ impl<'a> TaskRepository<'a> {
         let status = normalize_status(&task.status);
         let priority = normalize_priority(&task.priority);
         let due_date = normalize_due_date(&task.due_date);
+        let (start_at, end_at) = normalize_schedule(&task.start_at, &task.end_at);
+        let estimate_minutes = normalize_estimate_minutes(task.estimate_minutes);
         let source = if task.source.trim().is_empty() {
             "manual".to_string()
         } else {
@@ -72,15 +75,18 @@ impl<'a> TaskRepository<'a> {
             transaction
                 .execute(
                     "INSERT INTO tasks
-                        (id, title, notes, status, priority, due_date, source, sort,
-                         completed_at, created_at, updated_at)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+                        (id, title, notes, status, priority, due_date, start_at, end_at,
+                         estimate_minutes, source, sort, completed_at, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
                      ON CONFLICT (id) DO UPDATE SET
                         title = excluded.title,
                         notes = excluded.notes,
                         status = excluded.status,
                         priority = excluded.priority,
                         due_date = excluded.due_date,
+                        start_at = excluded.start_at,
+                        end_at = excluded.end_at,
+                        estimate_minutes = excluded.estimate_minutes,
                         source = excluded.source,
                         sort = excluded.sort,
                         completed_at = excluded.completed_at,
@@ -92,6 +98,9 @@ impl<'a> TaskRepository<'a> {
                         status,
                         priority,
                         due_date,
+                        start_at,
+                        end_at,
+                        estimate_minutes,
                         source,
                         task.sort,
                         completed_at,
@@ -138,7 +147,7 @@ impl<'a> TaskRepository<'a> {
 
 fn map_task(row: &Row<'_>) -> rusqlite::Result<Task> {
     let due_date: Option<String> = row.get(5)?;
-    let completed_at: Option<i64> = row.get(8)?;
+    let completed_at: Option<i64> = row.get(11)?;
 
     Ok(Task {
         id: row.get(0)?,
@@ -147,11 +156,14 @@ fn map_task(row: &Row<'_>) -> rusqlite::Result<Task> {
         status: row.get(3)?,
         priority: row.get(4)?,
         due_date: due_date.unwrap_or_default(),
-        source: row.get(6)?,
-        sort: row.get(7)?,
+        start_at: row.get(6)?,
+        end_at: row.get(7)?,
+        estimate_minutes: row.get(8)?,
+        source: row.get(9)?,
+        sort: row.get(10)?,
         completed_at,
-        created_at: row.get(9)?,
-        updated_at: row.get(10)?,
+        created_at: row.get(12)?,
+        updated_at: row.get(13)?,
     })
 }
 
@@ -273,6 +285,48 @@ mod tests {
             ..sample_task("x")
         };
         assert!(repo.upsert(&blank).is_err());
+    }
+
+    #[test]
+    fn upsert_task_persists_and_normalizes_schedule() {
+        let database = ApiClientDatabase::open_in_memory().expect("in-memory database");
+        let repo = TaskRepository::new(&database);
+
+        let saved = repo
+            .upsert(&Task {
+                title: "写周报".to_string(),
+                start_at: "2026-10-14T09:00".to_string(),
+                end_at: "2026-10-14T10:30".to_string(),
+                estimate_minutes: 90,
+                ..sample_task("x")
+            })
+            .expect("schedule roundtrip");
+        assert_eq!(saved.start_at, "2026-10-14T09:00");
+        assert_eq!(saved.end_at, "2026-10-14T10:30");
+        assert_eq!(saved.estimate_minutes, 90);
+
+        // 拖离日程：双双清空即回到未排期
+        let unscheduled = repo
+            .upsert(&Task {
+                start_at: String::new(),
+                end_at: String::new(),
+                ..saved.clone()
+            })
+            .expect("clear schedule");
+        assert_eq!(unscheduled.start_at, "");
+        assert_eq!(unscheduled.end_at, "");
+
+        // 坏对子：时序颠倒时整对清空
+        let broken = repo
+            .upsert(&Task {
+                title: "坏排期".to_string(),
+                start_at: "2026-10-14T11:00".to_string(),
+                end_at: "2026-10-14T10:00".to_string(),
+                ..sample_task("y")
+            })
+            .expect("broken pair should not reject");
+        assert_eq!(broken.start_at, "");
+        assert_eq!(broken.end_at, "");
     }
 
     #[test]

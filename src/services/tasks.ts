@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 
-import type { Task, TaskDraft } from '@/types/tasks';
+import type { Task, TaskDraft, TaskPlan } from '@/types/tasks';
 
 export async function listTasks(): Promise<Task[]> {
   return invoke<Task[]>('list_tasks');
@@ -19,7 +19,7 @@ export async function parseTaskText(input: string): Promise<TaskDraft> {
   return invoke<TaskDraft>('parse_task_text', { input });
 }
 
-/** AI：根据未完成任务给出今日建议 */
-export async function suggestTaskPlan(tasks: Task[]): Promise<string> {
-  return invoke<string>('suggest_task_plan', { tasks });
+/** AI：把未排期任务排成结构化时间块（前端过目后应用） */
+export async function suggestTaskPlan(tasks: Task[]): Promise<TaskPlan> {
+  return invoke<TaskPlan>('suggest_task_plan', { tasks });
 }

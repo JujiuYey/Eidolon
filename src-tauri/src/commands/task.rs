@@ -1,7 +1,7 @@
 use crate::db::api_client::ApiClientDatabase;
 use crate::db::local_store::LocalJsonStore;
 use crate::db::repositories::task_repo::TaskRepository;
-use crate::models::task::{Task, TaskDraft};
+use crate::models::task::{Task, TaskDraft, TaskPlan};
 use crate::services::task_ai;
 
 #[tauri::command]
@@ -34,11 +34,11 @@ pub async fn parse_task_text(
     task_ai::parse_task_text(&store, &input).await
 }
 
-/// AI：根据未完成任务给出今日建议
+/// AI：把未排期任务排成结构化时间块（前端过目后应用）
 #[tauri::command]
 pub async fn suggest_task_plan(
     store: tauri::State<'_, LocalJsonStore>,
     tasks: Vec<Task>,
-) -> Result<String, String> {
+) -> Result<TaskPlan, String> {
     task_ai::suggest_task_plan(&store, &tasks).await
 }

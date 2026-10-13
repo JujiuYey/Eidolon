@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { CloudOff, Plus, RefreshCw, Sparkles } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
+import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import SagBarChart from '@/components/sag/sag-bar-chart/index.vue';
 import SagDonutChart from '@/components/sag/sag-donut-chart/index.vue';
 import type { DonutSegment } from '@/components/sag/sag-donut-chart/index.vue';
@@ -13,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useConfirm } from '@/composables/use-confirm';
+import { listDefaultModelSettings } from '@/services';
 import { useTasksStore } from '@/stores/tasks';
 import type { Task, TaskDraft } from '@/types/tasks';
 import { getErrorMessage } from '@/utils/helpers';
@@ -22,13 +25,17 @@ import TaskEditorDialog from './_components/task-editor-dialog.vue';
 import TaskList from './_components/task-list.vue';
 import TaskPlanPanel from './_components/task-plan-panel.vue';
 import TaskQuickAdd from './_components/task-quick-add.vue';
+import TaskScheduleView from './_components/task-schedule-view.vue';
 import type { TaskFilter } from './utils/display';
 import { computeTaskStats, filterCounts, filterTasks, sortTasks } from './utils/display';
 
 const store = useTasksStore();
 const confirm = useConfirm();
+const router = useRouter();
 
 const filter = ref<TaskFilter>('all');
+/** 清单 / 日程 双视图；日程视图独占剩余高度（统计区让位） */
+const view = ref<'list' | 'schedule'>('list');
 
 const editorOpen = ref(false);
 const editingTask = ref<Task | null>(null);
@@ -59,7 +66,35 @@ const statusSegments = computed<DonutSegment[]>(() => [
 ]);
 onMounted(() => {
   void store.loadTasks();
+  void loadModelConfigured();
 });
+
+/** 任务助手模型是否已配置；与收藏夹页一致，未配置时 AI 入口走 toast 引导去设置 */
+const taskModelConfigured = ref(true);
+
+async function loadModelConfigured() {
+  try {
+    const settings = await listDefaultModelSettings();
+    taskModelConfigured.value = settings.some(setting => setting.key === 'task_assistant');
+  } catch {
+    taskModelConfigured.value = true; // 查询失败不拦截，交给后端报错兜底
+  }
+}
+
+/** 未配置模型时给出统一 toast；返回 true 表示已提示、调用方应中断 */
+function notifyModelMissing(): boolean {
+  if (taskModelConfigured.value) {
+    return false;
+  }
+  toast.error('请先配置任务助手模型', {
+    description: '在「应用设置 → 默认模型 → 任务助手模型」中选择一个模型。',
+    action: {
+      label: '去设置',
+      onClick: () => router.push('/app-setting'),
+    },
+  });
+  return true;
+}
 
 async function handleQuickSubmit(text: string) {
   try {
@@ -71,6 +106,9 @@ async function handleQuickSubmit(text: string) {
 }
 
 function handleParse(text: string) {
+  if (notifyModelMissing()) {
+    return;
+  }
   void store.parseQuickAdd(text);
 }
 
@@ -131,7 +169,21 @@ async function handleRemove(task: Task) {
 }
 
 function handlePlan() {
+  if (notifyModelMissing()) {
+    return;
+  }
   void store.loadPlan();
+}
+
+async function handleApplyPlan() {
+  try {
+    const applied = await store.applyPlan();
+    if (applied > 0) {
+      toast.success(`已应用 ${applied} 个时间块到日程`);
+    }
+  } catch (error) {
+    toast.error(getErrorMessage(error, '应用排期失败'));
+  }
 }
 
 function retryLoad() {
@@ -181,7 +233,7 @@ function retryLoad() {
       </div>
 
       <template v-else>
-        <div v-if="hasAnyTask" class="shrink-0 space-y-4">
+        <div v-if="hasAnyTask && view === 'list'" class="shrink-0 space-y-4">
           <SagStatsStrip :tiles="statTiles" />
 
           <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -210,6 +262,7 @@ function retryLoad() {
         </div>
 
         <TaskQuickAdd
+          v-if="view === 'list'"
           class="shrink-0"
           :draft="store.aiDraft"
           @submit="handleQuickSubmit"
@@ -224,20 +277,45 @@ function retryLoad() {
           :plan="store.aiPlan"
           @dismiss="store.dismissPlan()"
           @retry="handlePlan"
+          @apply="handleApplyPlan"
         />
 
-        <!-- 过滤 -->
-        <Tabs class="shrink-0" :model-value="filter" @update:model-value="value => (filter = value as TaskFilter)">
-          <TabsList>
-            <TabsTrigger value="all">全部 {{ counts.all }}</TabsTrigger>
-            <TabsTrigger value="todo">待办 {{ counts.todo }}</TabsTrigger>
-            <TabsTrigger value="doing">进行中 {{ counts.doing }}</TabsTrigger>
-            <TabsTrigger value="done">已完成 {{ counts.done }}</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <!-- 视图切换 + 过滤 -->
+        <div class="flex shrink-0 items-center justify-between gap-2">
+          <div class="flex items-center rounded-lg border p-0.5">
+            <Button
+              v-for="mode of ['list', 'schedule'] as const"
+              :key="mode"
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="h-6 px-2.5 text-xs"
+              :class="view === mode ? 'bg-muted font-medium' : 'text-muted-foreground'"
+              @click="view = mode"
+            >
+              {{ mode === 'list' ? '清单' : '日程' }}
+            </Button>
+          </div>
+
+          <Tabs
+            v-if="view === 'list'"
+            :model-value="filter"
+            @update:model-value="value => (filter = value as TaskFilter)"
+          >
+            <TabsList>
+              <TabsTrigger value="all">全部 {{ counts.all }}</TabsTrigger>
+              <TabsTrigger value="todo">待办 {{ counts.todo }}</TabsTrigger>
+              <TabsTrigger value="doing">进行中 {{ counts.doing }}</TabsTrigger>
+              <TabsTrigger value="done">已完成 {{ counts.done }}</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        <!-- 日程视图：两栏独占剩余高度 -->
+        <TaskScheduleView v-if="view === 'schedule'" @edit-task="openEdit" />
 
         <!-- 列表区：唯一滚动区域 -->
-        <div class="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div v-else class="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <!-- 加载中 -->
           <div v-if="showLoadingSkeleton" class="space-y-2" aria-busy="true">
             <Skeleton v-for="index in 3" :key="index" class="h-14 w-full rounded-lg" />
@@ -274,5 +352,12 @@ function retryLoad() {
     </div>
 
     <TaskEditorDialog v-model:open="editorOpen" :task="editingTask" @save="handleSave" @delete="handleRemove" />
+
+    <ConfirmDialog
+      :open="confirm.state.open"
+      @update:open="confirm.onOpenChange"
+      @confirm="confirm.onConfirm"
+      @cancel="confirm.onCancel"
+    />
   </div>
 </template>

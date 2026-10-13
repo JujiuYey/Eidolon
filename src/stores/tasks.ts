@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 import * as tasksServiceApi from '@/services/tasks';
-import type { Task, TaskDraft } from '@/types/tasks';
+import type { Task, TaskDraft, TaskPlan, TaskPlanBlock } from '@/types/tasks';
 
 /** store 依赖的服务接口，测试时可注入 fake 实现 */
 export interface TasksService {
@@ -10,7 +10,7 @@ export interface TasksService {
   upsertTask: (task: Task) => Promise<Task>;
   deleteTask: (taskId: string) => Promise<string>;
   parseTaskText: (input: string) => Promise<TaskDraft>;
-  suggestTaskPlan: (tasks: Task[]) => Promise<string>;
+  suggestTaskPlan: (tasks: Task[]) => Promise<TaskPlan>;
 }
 
 const defaultService: TasksService = tasksServiceApi;
@@ -24,9 +24,11 @@ export interface AiDraftCandidate {
   errorMessage: string;
 }
 
+/** AI 排期建议候选：应用前只是建议，落库由 applyPlan 完成 */
 export interface AiPlanState {
   status: 'loading' | 'ready' | 'error';
-  text: string;
+  blocks: TaskPlanBlock[];
+  note: string;
   errorMessage: string;
 }
 
@@ -42,6 +44,9 @@ function emptyTask(): Task {
     status: 'todo',
     priority: 'none',
     due_date: '',
+    start_at: '',
+    end_at: '',
+    estimate_minutes: 0,
     source: 'manual',
     sort: 0,
     completed_at: null,
@@ -166,20 +171,21 @@ export function createTasksStore(options: { service?: TasksService } = {}) {
     return created;
   }
 
-  // ===== AI：今日建议 =====
+  // ===== AI：排期建议 =====
 
   async function loadPlan() {
     if (aiPlan.value?.status === 'loading') {
       return;
     }
-    aiPlan.value = { status: 'loading', text: '', errorMessage: '' };
+    aiPlan.value = { status: 'loading', blocks: [], note: '', errorMessage: '' };
     try {
-      const text = await service.suggestTaskPlan(tasks.value);
-      aiPlan.value = { status: 'ready', text, errorMessage: '' };
+      const plan = await service.suggestTaskPlan(tasks.value);
+      aiPlan.value = { status: 'ready', blocks: plan.blocks, note: plan.note, errorMessage: '' };
     } catch (error) {
       aiPlan.value = {
         status: 'error',
-        text: '',
+        blocks: [],
+        note: '',
         errorMessage: error instanceof Error ? error.message : String(error),
       };
     }
@@ -187,6 +193,33 @@ export function createTasksStore(options: { service?: TasksService } = {}) {
 
   function dismissPlan() {
     aiPlan.value = null;
+  }
+
+  /** 把排期建议写回任务（其余字段保持原样），返回成功应用的块数 */
+  async function applyPlan(): Promise<number> {
+    const plan = aiPlan.value;
+    if (!plan || plan.status !== 'ready') {
+      return 0;
+    }
+
+    let applied = 0;
+    for (const block of plan.blocks) {
+      const task = tasks.value.find(item => item.id === block.task_id);
+      if (!task) {
+        continue;
+      }
+      try {
+        await saveTask({ ...task, start_at: block.start_at, end_at: block.end_at });
+        applied += 1;
+      } catch {
+        // 单块失败不中断整体应用，失败的块留在建议里
+      }
+    }
+
+    if (applied > 0) {
+      aiPlan.value = null;
+    }
+    return applied;
   }
 
   return {
@@ -209,6 +242,7 @@ export function createTasksStore(options: { service?: TasksService } = {}) {
     discardDraft,
     applyDraft,
     loadPlan,
+    applyPlan,
     dismissPlan,
   };
 }
