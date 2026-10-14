@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import type { CollectItem } from '@/types/collect';
 
 import {
-  computeCollectStats,
   filterCounts,
   filterItems,
   formatCreatedAt,
@@ -12,6 +11,7 @@ import {
   remainingDays,
   sourceOf,
   sourceOptions,
+  topCollectHosts,
   TRASH_RETENTION_DAYS,
 } from '../display';
 
@@ -133,7 +133,7 @@ describe('collect display helpers', () => {
     expect(filterItems(items, 'note', '', 'github.com')).toEqual([]);
   });
 
-  it('computes collect stats: week/month counts, streak, archive, trend and top hosts', () => {
+  it('topCollectHosts ranks link hosts by count and keeps archived items', () => {
     const items = [
       makeItem({ id: 'a', kind: 'link', url: 'https://rust-lang.org/a', created_at: NOW }),
       makeItem({ id: 'b', kind: 'link', url: 'https://rust-lang.org/b', created_at: NOW - 1 * DAY }),
@@ -142,35 +142,28 @@ describe('collect display helpers', () => {
       makeItem({ id: 'e', kind: 'link', url: 'https://old.com/e', created_at: NOW - 40 * DAY, archived: true }),
     ];
 
-    const stats = computeCollectStats(items, NOW);
-
-    expect(stats.weekCount).toBe(3); // 周一以后：今天、昨天、前天（周一起）
-    expect(stats.monthCount).toBe(4); // 30 天窗口内的 4 条（40 天前那条在外）
-    expect(stats.streakDays).toBe(4); // 今天到 3 天前连续
-    expect(stats.archivedCount).toBe(1);
-    expect(stats.dailyCounts).toHaveLength(7);
-    expect(stats.dailyCounts[6]).toBe(1);
-    expect(stats.dailyTooltips[6]).toContain('1 条收藏');
-    // 归档条目也参与域名统计（收藏过就算）
-    expect(stats.topHosts).toEqual([
+    // 归档条目也参与（收藏过就算）；同数按域名排序
+    expect(topCollectHosts(items)).toEqual([
       { host: 'rust-lang.org', count: 2 },
       { host: 'example.com', count: 1 },
       { host: 'old.com', count: 1 },
     ]);
   });
 
-  it('computeCollectStats breaks streak when a day is missing and tolerates bad urls', () => {
+  it('topCollectHosts applies limit and skips non-link or unparsable urls', () => {
     const items = [
-      makeItem({ id: 'a', created_at: NOW }),
-      makeItem({ id: 'b', created_at: NOW - 3 * DAY }),
-      makeItem({ id: 'c', kind: 'link', url: 'not-a-url', created_at: NOW }),
-      makeItem({ id: 'd', kind: 'link', url: 'ftp://files.com/x', created_at: NOW }),
+      makeItem({ id: 'a', kind: 'note', url: null }),
+      makeItem({ id: 'b', kind: 'link', url: 'not-a-url' }),
+      makeItem({ id: 'c', kind: 'link', url: 'ftp://files.com/x' }),
+      makeItem({ id: 'd', kind: 'link', url: 'https://a.com/1' }),
+      makeItem({ id: 'e', kind: 'link', url: 'https://b.com/1' }),
+      makeItem({ id: 'f', kind: 'link', url: 'https://c.com/1' }),
     ];
 
-    const stats = computeCollectStats(items, NOW);
-
-    expect(stats.streakDays).toBe(1); // 昨天、前天空缺
-    expect(stats.topHosts).toEqual([]); // 非法/非 http(s) URL 不参与域名统计
+    expect(topCollectHosts(items, 2)).toEqual([
+      { host: 'a.com', count: 1 },
+      { host: 'b.com', count: 1 },
+    ]);
   });
 });
 

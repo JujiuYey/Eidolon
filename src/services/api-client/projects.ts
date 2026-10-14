@@ -1,37 +1,22 @@
 import { invoke } from '@tauri-apps/api/core';
 
-import type { ApiClientOverviewStats, ApiClientProject } from '@/types/api-client';
+import type { ApiClientExecutionStats, ApiClientProject } from '@/types/api-client';
 
 import { toFrontendProject } from './mappers';
-import type { TauriApiClientOverviewStats, TauriDeletionSummary, TauriProject } from './types';
+import type { TauriApiClientExecutionStats, TauriDeletionSummary, TauriProject } from './types';
 
 export async function listApiProjects(): Promise<ApiClientProject[]> {
   const raw = await invoke<TauriProject[]>('list_api_projects');
   return raw.map(toFrontendProject);
 }
 
-/** API 管理页统计概览 */
-export async function getApiClientStats(): Promise<ApiClientOverviewStats> {
-  const raw = await invoke<TauriApiClientOverviewStats>('get_api_client_stats');
+/** API 管理页近期执行健康度 */
+export async function getApiClientExecutionStats(): Promise<ApiClientExecutionStats> {
+  const raw = await invoke<TauriApiClientExecutionStats>('get_api_client_execution_stats');
   return {
-    projectCount: raw.project_count,
-    groupCount: raw.group_count,
-    requestCount: raw.request_count,
-    environmentCount: raw.environment_count,
-    latestUpdatedAt: raw.latest_updated_at,
-    recentRequestTimestamps: raw.recent_request_timestamps,
-    methodCounts: raw.method_counts.map(item => ({ method: item.method, count: item.count })),
-    projectRequestCounts: raw.project_request_counts.map(item => ({
-      projectId: item.project_id,
-      projectName: item.project_name,
-      count: item.count,
-    })),
-    recentExecutions: {
-      total: raw.recent_executions.total,
-      success: raw.recent_executions.success,
-      avgDurationMs: raw.recent_executions.avg_duration_ms,
-      executedAtTimestamps: raw.recent_executions.executed_at_timestamps,
-    },
+    total: raw.total,
+    success: raw.success,
+    avgDurationMs: raw.avg_duration_ms,
   };
 }
 

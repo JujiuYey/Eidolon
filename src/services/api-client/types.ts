@@ -113,34 +113,10 @@ export interface TauriDeletionSummary {
   deleted_histories: number;
 }
 
-export interface TauriApiClientOverviewStats {
-  project_count: number;
-  group_count: number;
-  request_count: number;
-  environment_count: number;
-  latest_updated_at: number;
-  recent_request_timestamps: number[];
-  method_counts: TauriMethodCount[];
-  project_request_counts: TauriProjectRequestCount[];
-  recent_executions: TauriRecentExecutionStats;
-}
-
-export interface TauriMethodCount {
-  method: string;
-  count: number;
-}
-
-export interface TauriProjectRequestCount {
-  project_id: string;
-  project_name: string;
-  count: number;
-}
-
-export interface TauriRecentExecutionStats {
+export interface TauriApiClientExecutionStats {
   total: number;
   success: number;
   avg_duration_ms: number;
-  executed_at_timestamps: number[];
 }
 
 export interface TauriAiGenerateInput {

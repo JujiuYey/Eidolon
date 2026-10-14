@@ -6,7 +6,7 @@
  */
 
 import type { Task, TaskPriority, TaskStatus } from '@/types/tasks';
-import { countSince, dailyCounts, dailyTooltips, DAY_MS, dateString, startOfDay, weekStartMs } from '@/utils/stats';
+import { dateString } from '@/utils/stats';
 
 /** 任务状态 → 中文文案 */
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
@@ -112,29 +112,8 @@ export function filterTasks(tasks: Task[], filter: TaskFilter): Task[] {
   return tasks.filter(task => task.status === filter);
 }
 
-/** 任务统计瓦片 + 完成趋势 */
-export interface TaskStats {
-  overdueCount: number;
-  weekCompletedCount: number;
-  monthCompletedCount: number;
-  totalCompletedCount: number;
-  dailyCompleted: number[];
-  dailyTooltips: string[];
-}
-
-/** 从任务列表计算统计：逾期、按周/30 天/累计完成、30 天完成分布 */
-export function computeTaskStats(tasks: Task[], now = Date.now()): TaskStats {
-  const completedTimestamps = tasks
-    .filter(task => task.status === 'done' && task.completed_at)
-    .map(task => task.completed_at as number);
-  const daily = dailyCounts(completedTimestamps, 30, now);
-
-  return {
-    overdueCount: tasks.filter(task => task.status !== 'done' && isOverdue(task.due_date, dateString(now))).length,
-    weekCompletedCount: countSince(completedTimestamps, weekStartMs(now)),
-    monthCompletedCount: countSince(completedTimestamps, startOfDay(now) - 29 * DAY_MS),
-    totalCompletedCount: completedTimestamps.length,
-    dailyCompleted: daily,
-    dailyTooltips: dailyTooltips(daily, '个完成', now),
-  };
+/** 逾期任务数：未完成且截止日期早于今天（今天到期不算逾期） */
+export function countOverdueTasks(tasks: Task[], now = Date.now()): number {
+  const today = dateString(now);
+  return tasks.filter(task => task.status !== 'done' && isOverdue(task.due_date, today)).length;
 }

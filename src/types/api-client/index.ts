@@ -30,38 +30,11 @@ export interface ApiClientProject {
   updatedAt: number;
 }
 
-/** API 管理页统计概览 */
-export interface ApiClientOverviewStats {
-  projectCount: number;
-  groupCount: number;
-  requestCount: number;
-  environmentCount: number;
-  latestUpdatedAt: number;
-  recentRequestTimestamps: number[];
-  methodCounts: ApiClientMethodCount[];
-  projectRequestCounts: ApiClientProjectRequestCount[];
-  recentExecutions: ApiClientRecentExecutionStats;
-}
-
-/** 方法 → 请求数 */
-export interface ApiClientMethodCount {
-  method: string;
-  count: number;
-}
-
-/** 项目 → 请求数 */
-export interface ApiClientProjectRequestCount {
-  projectId: string;
-  projectName: string;
-  count: number;
-}
-
 /** 近期执行统计（每请求保留最近 100 条历史） */
-export interface ApiClientRecentExecutionStats {
+export interface ApiClientExecutionStats {
   total: number;
   success: number;
   avgDurationMs: number;
-  executedAtTimestamps: number[];
 }
 
 export interface ApiClientGroup {

@@ -5,21 +5,13 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
-import SagBarChart from '@/components/sag/sag-bar-chart/index.vue';
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
-import SagHBarList from '@/components/sag/sag-h-bar-list/index.vue';
-import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
-import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { listDocsEntries } from '@/services/docs';
 import { useDocsStore } from '@/stores/docs';
-import type { DocsEntry, DocsRoot } from '@/types/docs';
+import type { DocsRoot } from '@/types/docs';
 import { getErrorMessage } from '@/utils/helpers';
-import { dailyLabels } from '@/utils/stats';
 
-import type { DocsStats } from './utils/docs-stats';
-import { computeDocsStats, lastUpdatedHint, rootDocStats } from './utils/docs-stats';
 import { docsRootLabels } from './utils/roots';
 
 const store = useDocsStore();
@@ -28,47 +20,8 @@ const router = useRouter();
 const labels = computed(() => docsRootLabels(store.roots));
 const isPicking = ref(false);
 
-const docStats = ref<DocsStats | null>(null);
-const rootEntries = ref<Array<{ label: string; entries: DocsEntry[] }>>([]);
-const statTiles = computed<StatTile[]>(() => [
-  { label: '文档库', value: store.roots.length },
-  {
-    label: '文档总数',
-    value: docStats.value?.docCount ?? 0,
-    hint: lastUpdatedHint(docStats.value?.lastUpdatedAt ?? 0),
-  },
-  { label: '30 天更新', value: docStats.value?.recentUpdatedCount ?? 0 },
-]);
-
-const trendValues = computed(() => docStats.value?.dailyUpdated ?? []);
-const trendLabels = computed(() => dailyLabels(trendValues.value.length));
-const rootBarItems = computed(() =>
-  rootDocStats(
-    rootEntries.value.map(item => item.label),
-    rootEntries.value.map(item => item.entries),
-  ),
-);
-
-/** 逐库清点 .md 文件；个别库读取失败只跳过，不挡统计 */
-async function loadStats() {
-  const results = await Promise.allSettled(
-    store.roots.map(root =>
-      listDocsEntries(root.id).then(entries => ({ label: labels.value.get(root.id) ?? root.id, entries })),
-    ),
-  );
-  const fulfilled = results.flatMap(result => (result.status === 'fulfilled' ? [result.value] : []));
-  rootEntries.value = fulfilled;
-  docStats.value = computeDocsStats(
-    store.roots.length,
-    fulfilled.map(item => item.entries),
-  );
-}
-
 onMounted(() => {
-  void store
-    .initialize()
-    .then(() => loadStats())
-    .catch(error => toast.error(getErrorMessage(error, '文档库加载失败')));
+  void store.initialize().catch(error => toast.error(getErrorMessage(error, '文档库加载失败')));
 });
 
 // ===== 添加（可一次多选文件夹） =====
@@ -99,7 +52,6 @@ async function pickRoots() {
     const saved = await store.saveRoots([...store.roots, ...additions]);
     const added = saved.length - before;
     toast.success(added > 1 ? `已添加 ${added} 个文档库` : '已添加文档库');
-    void loadStats();
 
     // 从零到一：第一次添加后直接进入该库
     if (before === 0 && saved.length > 0) {
@@ -135,7 +87,6 @@ async function confirmRemove() {
   try {
     await store.saveRoots(store.roots.filter(item => item.id !== root.id));
     toast.success('已移除文档库（磁盘文件不受影响）');
-    void loadStats();
   } catch (error) {
     toast.error(getErrorMessage(error, '移除文档库失败'));
   }
@@ -160,34 +111,6 @@ async function confirmRemove() {
         <FolderPlus v-else class="size-4" />
         添加文档库
       </Button>
-    </div>
-
-    <div v-if="store.roots.length > 0" class="mb-4 shrink-0 space-y-4">
-      <SagStatsStrip :tiles="statTiles" />
-
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="rounded-xl border bg-card p-4">
-          <div class="flex items-center justify-between gap-2">
-            <h3 class="text-sm font-medium">近 30 天文档更新</h3>
-            <span class="text-xs text-muted-foreground">按天</span>
-          </div>
-          <div class="mt-3">
-            <SagBarChart
-              :values="trendValues"
-              :labels="trendLabels"
-              :tooltips="docStats?.dailyTooltips ?? []"
-              aria-label="近 30 天文档更新柱状图"
-            />
-          </div>
-        </div>
-
-        <div class="flex flex-col rounded-xl border bg-card p-4">
-          <h3 class="text-sm font-medium">各库文档数</h3>
-          <div class="mt-3 min-h-0 flex-1">
-            <SagHBarList :items="rootBarItems" />
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- 空态 -->

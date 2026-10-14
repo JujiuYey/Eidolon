@@ -1,16 +1,11 @@
 <script setup lang="ts">
-import { CloudOff, Plus, RefreshCw, Sparkles } from 'lucide-vue-next';
+import { CircleAlert, CloudOff, Plus, RefreshCw, Sparkles } from 'lucide-vue-next';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
 import ConfirmDialog from '@/components/ConfirmDialog.vue';
-import SagBarChart from '@/components/sag/sag-bar-chart/index.vue';
-import SagDonutChart from '@/components/sag/sag-donut-chart/index.vue';
-import type { DonutSegment } from '@/components/sag/sag-donut-chart/index.vue';
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
-import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
-import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -19,7 +14,6 @@ import { listDefaultModelSettings } from '@/services';
 import { useTasksStore } from '@/stores/tasks';
 import type { Task, TaskDraft } from '@/types/tasks';
 import { getErrorMessage } from '@/utils/helpers';
-import { dailyLabels } from '@/utils/stats';
 
 import TaskEditorDialog from './_components/task-editor-dialog.vue';
 import TaskList from './_components/task-list.vue';
@@ -27,7 +21,7 @@ import TaskPlanPanel from './_components/task-plan-panel.vue';
 import TaskQuickAdd from './_components/task-quick-add.vue';
 import TaskScheduleView from './_components/task-schedule-view.vue';
 import type { TaskFilter } from './utils/display';
-import { computeTaskStats, filterCounts, filterTasks, sortTasks } from './utils/display';
+import { countOverdueTasks, filterCounts, filterTasks, sortTasks } from './utils/display';
 
 const store = useTasksStore();
 const confirm = useConfirm();
@@ -45,25 +39,7 @@ const visibleTasks = computed(() => sortTasks(filterTasks(store.tasks, filter.va
 const hasAnyTask = computed(() => store.tasks.length > 0);
 const showLoadingSkeleton = computed(() => store.tasksLoading && !store.tasksLoaded);
 
-const taskStats = computed(() => computeTaskStats(store.tasks));
-const statTiles = computed<StatTile[]>(() => [
-  {
-    label: '逾期',
-    value: taskStats.value.overdueCount,
-    tone: taskStats.value.overdueCount > 0 ? 'danger' : 'default',
-  },
-  { label: '本周完成', value: taskStats.value.weekCompletedCount },
-  { label: '30 天完成', value: taskStats.value.monthCompletedCount },
-  { label: '累计完成', value: taskStats.value.totalCompletedCount },
-]);
-const completionValues = computed(() => taskStats.value.dailyCompleted);
-const completionLabels = computed(() => dailyLabels(completionValues.value.length));
-
-const statusSegments = computed<DonutSegment[]>(() => [
-  { label: '待办', value: counts.value.todo, tone: 'slate' },
-  { label: '进行中', value: counts.value.doing, tone: 'sky' },
-  { label: '已完成', value: counts.value.done, tone: 'emerald' },
-]);
+const overdueCount = computed(() => countOverdueTasks(store.tasks));
 onMounted(() => {
   void store.loadTasks();
   void loadModelConfigured();
@@ -233,33 +209,13 @@ function retryLoad() {
       </div>
 
       <template v-else>
-        <div v-if="hasAnyTask && view === 'list'" class="shrink-0 space-y-4">
-          <SagStatsStrip :tiles="statTiles" />
-
-          <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <div class="rounded-xl border bg-card p-4 md:col-span-2">
-              <div class="flex items-center justify-between gap-2">
-                <h3 class="text-sm font-medium">近 30 天完成</h3>
-                <span class="text-xs text-muted-foreground">按天</span>
-              </div>
-              <div class="mt-3">
-                <SagBarChart
-                  :values="completionValues"
-                  :labels="completionLabels"
-                  :tooltips="taskStats.dailyTooltips"
-                  aria-label="近 30 天完成任务柱状图"
-                />
-              </div>
-            </div>
-
-            <div class="rounded-xl border bg-card p-4">
-              <h3 class="text-sm font-medium">任务状态分布</h3>
-              <div class="mt-3">
-                <SagDonutChart :segments="statusSegments" center-label="个任务" aria-label="任务状态分布环形图" />
-              </div>
-            </div>
-          </div>
-        </div>
+        <p
+          v-if="overdueCount > 0 && view === 'list'"
+          class="flex shrink-0 items-center gap-1.5 text-sm text-destructive"
+        >
+          <CircleAlert class="size-4" />
+          {{ overdueCount }} 个任务已逾期
+        </p>
 
         <TaskQuickAdd
           v-if="view === 'list'"
