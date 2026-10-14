@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
 
+import { editorLowlight } from './lowlight';
 import { MermaidCodeBlock } from './mermaid-code-block';
 import { collectTocItems, type RichEditorTocItem } from './toc';
 
@@ -68,7 +69,7 @@ const editor = useEditor({
   content: content.value,
   extensions: [
     StarterKit.configure({ codeBlock: false }),
-    MermaidCodeBlock,
+    MermaidCodeBlock.configure({ lowlight: editorLowlight }),
     Placeholder.configure({ placeholder: props.placeholder }),
     Markdown.configure({
       html: false,
@@ -390,12 +391,20 @@ const tableActions = [
   color: var(--muted-foreground);
 }
 
-.sag-rich-editor .ProseMirror code {
+/* 行内代码 chip：主题色文字 + 同色淡底；:not(pre) 把代码块里的 code 排除在外 */
+.sag-rich-editor .ProseMirror :not(pre) > code {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.85em;
-  background: var(--muted);
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 10%, transparent);
   border-radius: 0.25rem;
   padding: 0.15em 0.35em;
+}
+
+/* 暗色下主题色原值偏暗，往白里提一档保证可读 */
+.dark .sag-rich-editor .ProseMirror :not(pre) > code {
+  color: color-mix(in oklab, var(--primary) 70%, white);
+  background: color-mix(in oklab, var(--primary) 16%, transparent);
 }
 
 .sag-rich-editor .ProseMirror pre {
@@ -405,10 +414,127 @@ const tableActions = [
 }
 
 .sag-rich-editor .ProseMirror pre code {
-  background: transparent;
-  padding: 0;
   font-size: 0.85em;
   line-height: 1.6;
+}
+
+/* 代码块语法高亮:lowlight 往 code 里打 hljs-* 装饰 span,配色取 GitHub Light/Dark 两套 */
+.sag-rich-editor .ProseMirror .hljs-comment,
+.sag-rich-editor .ProseMirror .hljs-quote,
+.sag-rich-editor .ProseMirror .hljs-code,
+.sag-rich-editor .ProseMirror .hljs-meta {
+  color: #6a737d;
+}
+
+.sag-rich-editor .ProseMirror .hljs-keyword,
+.sag-rich-editor .ProseMirror .hljs-doctag,
+.sag-rich-editor .ProseMirror .hljs-selector-tag {
+  color: #d73a49;
+}
+
+.sag-rich-editor .ProseMirror .hljs-name,
+.sag-rich-editor .ProseMirror .hljs-section,
+.sag-rich-editor .ProseMirror .hljs-addition {
+  color: #22863a;
+}
+
+.sag-rich-editor .ProseMirror .hljs-string,
+.sag-rich-editor .ProseMirror .hljs-regexp {
+  color: #032f62;
+}
+
+.sag-rich-editor .ProseMirror .hljs-number,
+.sag-rich-editor .ProseMirror .hljs-literal,
+.sag-rich-editor .ProseMirror .hljs-bullet,
+.sag-rich-editor .ProseMirror .hljs-link,
+.sag-rich-editor .ProseMirror .hljs-symbol,
+.sag-rich-editor .ProseMirror .hljs-operator,
+.sag-rich-editor .ProseMirror .hljs-attr,
+.sag-rich-editor .ProseMirror .hljs-attribute,
+.sag-rich-editor .ProseMirror .hljs-property {
+  color: #005cc5;
+}
+
+.sag-rich-editor .ProseMirror .hljs-variable,
+.sag-rich-editor .ProseMirror .hljs-template-variable,
+.sag-rich-editor .ProseMirror .hljs-built_in {
+  color: #e36209;
+}
+
+.sag-rich-editor .ProseMirror .hljs-title,
+.sag-rich-editor .ProseMirror .hljs-type,
+.sag-rich-editor .ProseMirror .hljs-selector-id,
+.sag-rich-editor .ProseMirror .hljs-selector-class,
+.sag-rich-editor .ProseMirror .hljs-selector-attr,
+.sag-rich-editor .ProseMirror .hljs-selector-pseudo {
+  color: #6f42c1;
+}
+
+.sag-rich-editor .ProseMirror .hljs-deletion {
+  color: #b31d28;
+}
+
+.sag-rich-editor .ProseMirror .hljs-emphasis {
+  font-style: italic;
+}
+
+.sag-rich-editor .ProseMirror .hljs-strong {
+  font-weight: 600;
+}
+
+.dark .sag-rich-editor .ProseMirror .hljs-comment,
+.dark .sag-rich-editor .ProseMirror .hljs-quote,
+.dark .sag-rich-editor .ProseMirror .hljs-code,
+.dark .sag-rich-editor .ProseMirror .hljs-meta {
+  color: #8b949e;
+}
+
+.dark .sag-rich-editor .ProseMirror .hljs-keyword,
+.dark .sag-rich-editor .ProseMirror .hljs-doctag,
+.dark .sag-rich-editor .ProseMirror .hljs-selector-tag {
+  color: #ff7b72;
+}
+
+.dark .sag-rich-editor .ProseMirror .hljs-name,
+.dark .sag-rich-editor .ProseMirror .hljs-section,
+.dark .sag-rich-editor .ProseMirror .hljs-addition {
+  color: #7ee787;
+}
+
+.dark .sag-rich-editor .ProseMirror .hljs-string,
+.dark .sag-rich-editor .ProseMirror .hljs-regexp {
+  color: #a5d6ff;
+}
+
+.dark .sag-rich-editor .ProseMirror .hljs-number,
+.dark .sag-rich-editor .ProseMirror .hljs-literal,
+.dark .sag-rich-editor .ProseMirror .hljs-bullet,
+.dark .sag-rich-editor .ProseMirror .hljs-link,
+.dark .sag-rich-editor .ProseMirror .hljs-symbol,
+.dark .sag-rich-editor .ProseMirror .hljs-operator,
+.dark .sag-rich-editor .ProseMirror .hljs-attr,
+.dark .sag-rich-editor .ProseMirror .hljs-attribute,
+.dark .sag-rich-editor .ProseMirror .hljs-property {
+  color: #79c0ff;
+}
+
+.dark .sag-rich-editor .ProseMirror .hljs-variable,
+.dark .sag-rich-editor .ProseMirror .hljs-template-variable,
+.dark .sag-rich-editor .ProseMirror .hljs-built_in {
+  color: #ffa657;
+}
+
+.dark .sag-rich-editor .ProseMirror .hljs-title,
+.dark .sag-rich-editor .ProseMirror .hljs-type,
+.dark .sag-rich-editor .ProseMirror .hljs-selector-id,
+.dark .sag-rich-editor .ProseMirror .hljs-selector-class,
+.dark .sag-rich-editor .ProseMirror .hljs-selector-attr,
+.dark .sag-rich-editor .ProseMirror .hljs-selector-pseudo {
+  color: #d2a8ff;
+}
+
+.dark .sag-rich-editor .ProseMirror .hljs-deletion {
+  color: #ffdcd7;
 }
 
 .sag-rich-editor .ProseMirror hr {
