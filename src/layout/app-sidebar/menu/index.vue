@@ -92,7 +92,7 @@ const knowledgeGroup = computed<MenuGroup>(() => {
   };
 });
 
-const menuGroups = computed<MenuGroup[]>(() => [toolsGroup, apiMenuGroup.value, knowledgeGroup.value, agentGroup]);
+const menuGroups = computed<MenuGroup[]>(() => [agentGroup, toolsGroup, apiMenuGroup.value, knowledgeGroup.value]);
 
 onMounted(() => {
   store.loadProjects().catch(() => {
