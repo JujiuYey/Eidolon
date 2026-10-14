@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { Loader2, Send, Sparkles, X } from 'lucide-vue-next';
+import { Sparkles, X } from 'lucide-vue-next';
 import type { HTMLAttributes } from 'vue';
 import { nextTick, ref } from 'vue';
 
+import { PromptInput, type PromptInputMessage } from '@/components/ai-elements/prompt-input';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+
+import PromptArea from './prompt-area.vue';
 
 /**
  * AI 助手面板壳：统一的容器 / 头部 / 滚动体 / 高亮输入区。
@@ -36,31 +38,26 @@ const emit = defineEmits<{
   (e: 'close'): void;
 }>();
 
-const question = ref('');
-
-function send() {
-  const text = question.value.trim();
-  if (!text || props.disabled || props.busy) {
+/**
+ * 提交由 PromptInput 统一抛出：Enter 发送、Shift+Enter 换行、
+ * 输入法选词保护都在它内部，这里只做禁用态拦截与空串过滤。
+ */
+function handleSubmit(payload: PromptInputMessage) {
+  if (props.disabled || props.busy) {
+    return;
+  }
+  const text = payload.text.trim();
+  if (!text) {
     return;
   }
   emit('send', text);
-  question.value = '';
 }
 
-/** Enter 发送、Shift+Enter 换行；输入法选词时的 Enter 不当发送 */
-function sendOnEnter(event: KeyboardEvent) {
-  if (event.isComposing || event.keyCode === 229) {
-    return;
-  }
-  if (!event.shiftKey) {
-    event.preventDefault();
-    send();
-  }
-}
+const promptRef = ref<InstanceType<typeof PromptArea> | null>(null);
 
 /** 供父组件回填输入框（如发送失败时把问题放回去） */
 function setText(text: string) {
-  question.value = text;
+  promptRef.value?.setText(text);
 }
 
 /** 滚动到内容底部（新消息到达时由父组件调用） */
@@ -103,34 +100,11 @@ defineExpose({ setText, scrollToBottom });
       <slot />
     </div>
 
-    <!-- 输入：高亮区块，聚焦时边框与底色加深 -->
-    <div class="shrink-0 border-t p-3">
-      <div
-        class="rounded-xl border border-primary/30 bg-primary/5 p-2 transition-colors focus-within:border-primary/60 focus-within:bg-primary/10"
-      >
-        <Textarea
-          v-model="question"
-          class="max-h-40 min-h-14 resize-none border-0 px-2 py-1.5 shadow-none focus-visible:border-0 focus-visible:ring-0 dark:bg-transparent"
-          :placeholder="placeholder"
-          aria-label="提问输入"
-          :disabled="disabled"
-          @keydown.enter="sendOnEnter"
-        />
-        <div class="flex items-center justify-between gap-2 px-1 pt-1">
-          <span class="text-xs text-muted-foreground">Enter 发送 · Shift+Enter 换行</span>
-          <Button
-            type="button"
-            size="icon"
-            class="size-8 shrink-0 rounded-lg"
-            :disabled="disabled || !question.trim() || busy"
-            aria-label="发送"
-            @click="send"
-          >
-            <Loader2 v-if="busy" class="size-4 animate-spin" />
-            <Send v-else class="size-4" />
-          </Button>
-        </div>
-      </div>
+    <!-- 输入：ai-elements 的 PromptInput，Enter/换行/输入法保护由其内部处理 -->
+    <div class="shrink-0 p-3">
+      <PromptInput @submit="handleSubmit">
+        <PromptArea ref="promptRef" :busy="busy" :disabled="disabled" :placeholder="placeholder" />
+      </PromptInput>
       <p v-if="disabled && disabledHint" class="mt-2 text-center text-xs text-muted-foreground">{{ disabledHint }}</p>
     </div>
   </aside>
