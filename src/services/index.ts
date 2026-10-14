@@ -50,6 +50,7 @@ export {
 export {
   deleteProviderModels,
   deleteProviderSetting,
+  fetchProviderModels,
   listProviderModels,
   listProviderSettings,
   replaceProviderModels,

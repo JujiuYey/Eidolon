@@ -26,3 +26,8 @@ export interface ProviderModel {
   model_id: string;
   capabilities: ProviderModelCapabilities;
 }
+
+/** 远端 /models 接口返回的原始条目，尚未写入本地配置 */
+export interface FetchedProviderModel {
+  modelId: string;
+}

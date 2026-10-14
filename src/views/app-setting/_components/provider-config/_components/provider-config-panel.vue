@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { Check, ExternalLink, Eye, EyeOff, PencilLine, Plus, RotateCcw, Trash2 } from 'lucide-vue-next';
+import {
+  Check,
+  Download,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Loader2,
+  PencilLine,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -17,8 +28,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { deleteProviderModels, deleteProviderSetting, replaceProviderModels, upsertProviderSetting } from '@/services';
-import type { ProviderModel, ProviderModelCapabilities, ProviderRegistryItem, ProviderSetting } from '@/types/provider';
+import {
+  deleteProviderModels,
+  deleteProviderSetting,
+  fetchProviderModels,
+  replaceProviderModels,
+  upsertProviderSetting,
+} from '@/services';
+import type {
+  FetchedProviderModel,
+  ProviderModel,
+  ProviderModelCapabilities,
+  ProviderRegistryItem,
+  ProviderSetting,
+} from '@/types/provider';
 import { getErrorMessage } from '@/utils/helpers';
 
 const props = defineProps<{
@@ -36,6 +59,10 @@ const showApiKey = ref(false);
 const deleteConfirmOpen = ref(false);
 const modelDialogOpen = ref(false);
 const editingModelIndex = ref<number | null>(null);
+const isFetchingModels = ref(false);
+const fetchDialogOpen = ref(false);
+const fetchedModels = ref<FetchedProviderModel[]>([]);
+const selectedModelIds = ref<string[]>([]);
 
 const capabilityOptions: Array<{
   key: keyof ProviderModelCapabilities;
@@ -101,6 +128,10 @@ watch(
     modelDialogOpen.value = false;
     editingModelIndex.value = null;
     showApiKey.value = false;
+    fetchDialogOpen.value = false;
+    fetchedModels.value = [];
+    selectedModelIds.value = [];
+    isFetchingModels.value = false;
   },
   { immediate: true },
 );
@@ -117,6 +148,17 @@ const canSaveModelDraft = computed(
   () => Boolean(modelDraft.value.model_id.trim()) && Object.values(modelDraft.value.capabilities).some(Boolean),
 );
 const providerInitials = computed(() => props.provider.name.slice(0, 2).toUpperCase());
+
+/** 已在本地配置中的模型 ID：拉取结果里已存在的默认不勾选，避免重复导入 */
+const existingModelIds = computed(() => new Set(modelItems.value.map(model => model.model_id)));
+const importableModels = computed(() =>
+  fetchedModels.value.filter(model => !existingModelIds.value.has(model.modelId)),
+);
+const isImportableEmpty = computed(() => importableModels.value.length === 0);
+const hasSelection = computed(() => selectedModelIds.value.length > 0);
+const allImportableSelected = computed(
+  () => importableModels.value.length > 0 && selectedModelIds.value.length === importableModels.value.length,
+);
 
 function restoreBaseUrl() {
   settingForm.value.base_url = defaultBaseUrl.value;
@@ -156,6 +198,55 @@ function removeModel(index: number) {
 
 function enabledCapabilityLabels(model: ProviderModel) {
   return capabilityOptions.filter(option => model.capabilities[option.key]).map(option => option.label);
+}
+
+async function fetchModelList() {
+  isFetchingModels.value = true;
+  try {
+    const models = await fetchProviderModels({
+      provider_id: props.provider.provider_id,
+      base_url: settingForm.value.base_url,
+      api_key: settingForm.value.api_key,
+    });
+
+    fetchedModels.value = models;
+    selectedModelIds.value = models.map(model => model.modelId).filter(modelId => !existingModelIds.value.has(modelId));
+    fetchDialogOpen.value = true;
+  } catch (error) {
+    toast.error(getErrorMessage(error, '获取模型列表失败'));
+  } finally {
+    isFetchingModels.value = false;
+  }
+}
+
+function toggleModelSelection(modelId: string) {
+  selectedModelIds.value = selectedModelIds.value.includes(modelId)
+    ? selectedModelIds.value.filter(id => id !== modelId)
+    : [...selectedModelIds.value, modelId];
+}
+
+function toggleSelectAll() {
+  selectedModelIds.value = allImportableSelected.value ? [] : importableModels.value.map(model => model.modelId);
+}
+
+/**
+ * 导入的模型能力全部留空：远端 /models 不返回能力信息，
+ * 由用户在模型卡片上手动标记，避免凭模型名猜测。
+ */
+function importSelectedModels() {
+  const selected = new Set(selectedModelIds.value);
+  const added = importableModels.value
+    .filter(model => selected.has(model.modelId))
+    .map<ProviderModel>(model => ({
+      provider_id: props.provider.provider_id,
+      model_id: model.modelId,
+      capabilities: createEmptyCapabilities(),
+    }));
+
+  modelItems.value.push(...added);
+  fetchDialogOpen.value = false;
+  selectedModelIds.value = [];
+  toast.success(`已导入 ${added.length} 个模型，请逐个标记能力后保存`);
 }
 
 async function saveConfig() {
@@ -288,16 +379,31 @@ async function confirmDelete() {
               </span>
             </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              class="h-9 gap-2 rounded-md"
-              @click="openCreateModelDialog"
-            >
-              <Plus class="h-4 w-4" />
-              新增模型
-            </Button>
+            <div class="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class="h-9 gap-2 rounded-md"
+                :disabled="isFetchingModels"
+                @click="fetchModelList"
+              >
+                <Loader2 v-if="isFetchingModels" class="h-4 w-4 animate-spin" />
+                <Download v-else class="h-4 w-4" />
+                获取模型列表
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class="h-9 gap-2 rounded-md"
+                @click="openCreateModelDialog"
+              >
+                <Plus class="h-4 w-4" />
+                新增模型
+              </Button>
+            </div>
           </div>
 
           <div v-if="modelItems.length > 0" class="space-y-3">
@@ -365,7 +471,7 @@ async function confirmDelete() {
           </div>
 
           <div v-else class="rounded-lg border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground">
-            还没有模型，点击“新增模型”后手动维护模型 ID 和能力。
+            还没有模型。点“获取模型列表”从接口拉取，或点“新增模型”手动填写模型 ID 与能力。
           </div>
         </section>
       </div>
@@ -397,6 +503,60 @@ async function confirmDelete() {
     type="destructive"
     @confirm="confirmDelete"
   />
+
+  <Dialog v-model:open="fetchDialogOpen">
+    <DialogContent class="flex max-h-[70vh] flex-col overflow-hidden sm:max-w-xl">
+      <DialogHeader>
+        <DialogTitle>选择要导入的模型</DialogTitle>
+        <DialogDescription>
+          共拉到 {{ fetchedModels.length }} 个模型，已在列表中的会自动跳过。导入后请逐个标记能力再保存。
+        </DialogDescription>
+      </DialogHeader>
+
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        <p v-if="isImportableEmpty" class="py-8 text-center text-sm text-muted-foreground">
+          这些模型都已经在列表中了。
+        </p>
+
+        <template v-else>
+          <button
+            type="button"
+            class="w-full rounded-md px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/60"
+            @click="toggleSelectAll"
+          >
+            {{ allImportableSelected ? '取消全选' : '全选' }}
+          </button>
+
+          <div class="mt-1 space-y-1">
+            <button
+              v-for="model of importableModels"
+              :key="model.modelId"
+              type="button"
+              class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-muted/60"
+              @click="toggleModelSelection(model.modelId)"
+            >
+              <span
+                class="flex h-4 w-4 shrink-0 items-center justify-center rounded-xs border"
+                :class="
+                  selectedModelIds.includes(model.modelId) ? 'border-primary bg-primary text-white' : 'border-border'
+                "
+              >
+                <Check v-if="selectedModelIds.includes(model.modelId)" class="h-3 w-3" />
+              </span>
+              <span class="truncate font-mono text-sm text-foreground">{{ model.modelId }}</span>
+            </button>
+          </div>
+        </template>
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" @click="fetchDialogOpen = false"> 取消 </Button>
+        <Button type="button" :disabled="!hasSelection" @click="importSelectedModels">
+          导入 {{ selectedModelIds.length }} 个
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 
   <Dialog v-model:open="modelDialogOpen">
     <DialogContent class="sm:max-w-xl">

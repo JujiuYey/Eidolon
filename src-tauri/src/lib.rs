@@ -48,6 +48,7 @@ pub fn run() {
             commands::model_config::list_provider_models,
             commands::model_config::replace_provider_models,
             commands::model_config::delete_provider_models,
+            commands::model_config::fetch_provider_models,
             // PM (产品经理分身) commands
             commands::pm::list_pm_conversations,
             commands::pm::create_pm_conversation,
