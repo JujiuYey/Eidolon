@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { PanelLeftOpen, PanelLeftClose, Settings } from 'lucide-vue-next';
+import { Settings } from 'lucide-vue-next';
 import { useRouter, useRoute } from 'vue-router';
 
-import { useSidebar } from '@/components/ui/sidebar';
-
-const { state, toggleSidebar } = useSidebar();
 const router = useRouter();
 const route = useRoute();
 
@@ -29,19 +26,6 @@ const getMenuButtonClass = computed(() => {
           <span>
             <Settings />
             <span>应用设置</span>
-          </span>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-
-      <SidebarMenuItem @click="toggleSidebar">
-        <SidebarMenuButton as-child>
-          <span v-if="state === 'collapsed'">
-            <PanelLeftOpen class="size-4 cursor-pointer" />
-            <span>展开</span>
-          </span>
-          <span v-else>
-            <PanelLeftClose class="size-4 cursor-pointer" />
-            <span>收起</span>
           </span>
         </SidebarMenuButton>
       </SidebarMenuItem>
