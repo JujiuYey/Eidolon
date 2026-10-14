@@ -9,6 +9,7 @@ pub mod docs;
 pub mod docs_ai;
 pub mod email;
 pub mod mcp_client;
+pub mod model_error;
 pub mod mcp_server;
 pub mod mcp_service;
 pub mod pm_chat;

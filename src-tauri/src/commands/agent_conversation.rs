@@ -210,7 +210,7 @@ async fn run_snapshot_agent_turn(
     let response = request
         .send()
         .await
-        .map_err(|error| format!("模型请求失败: {error}"))?;
+        .map_err(|error| crate::services::model_error::describe_completion_error(&error))?;
 
     // Extract response text
     let content = extract_text_response(response.choice)

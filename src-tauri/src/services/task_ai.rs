@@ -247,7 +247,7 @@ async fn complete(
     let response = request
         .send()
         .await
-        .map_err(|error| format!("模型请求失败: {error}"))?;
+        .map_err(|error| crate::services::model_error::describe_completion_error(&error))?;
 
     extract_text(response.choice).ok_or_else(|| "模型未返回可展示的文本内容".to_string())
 }

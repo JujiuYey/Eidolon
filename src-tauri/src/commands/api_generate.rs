@@ -108,7 +108,7 @@ pub async fn generate_api_request_body(
     let response = request
         .send()
         .await
-        .map_err(|error| format!("模型请求失败: {error}"))?;
+        .map_err(|error| crate::services::model_error::describe_completion_error(&error))?;
 
     let raw = extract_text(response.choice).ok_or_else(|| "模型未返回文本内容".to_string())?;
     let content = strip_code_fence(&raw);
