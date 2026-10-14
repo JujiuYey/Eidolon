@@ -51,7 +51,8 @@ pub async fn validate_git_repo(raw_path: &str) -> Result<std::path::PathBuf, Str
         return Err(format!("目录不存在: {}", path.display()));
     }
 
-    let output = tokio::process::Command::new("git")
+    let (mut probe, _) = crate::services::child_process::tokio_command("git");
+    let output = probe
         .args(["rev-parse", "--is-inside-work-tree"])
         .current_dir(&path)
         .output()
@@ -174,7 +175,7 @@ async fn run_git_log(
     until: &str,
     filter: &AuthorFilter,
 ) -> Result<Vec<WeeklyReportCommit>, String> {
-    let mut command = tokio::process::Command::new("git");
+    let (mut command, _) = crate::services::child_process::tokio_command("git");
     command
         .current_dir(path)
         .args([

@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use tokio::io::AsyncReadExt;
-use tokio::process::{Child, Command};
+use tokio::process::Child;
 use tokio::sync::Mutex as AsyncMutex;
 
 /// 导出超时上限。`go run` 首次编译可能耗时较长，留足余量
@@ -79,7 +79,7 @@ pub async fn export(framework: &str, repo_path: &str, export_id: &str) -> Result
         )
     })?;
 
-    let mut command = Command::new(program);
+    let (mut command, resolved) = crate::services::child_process::tokio_command(program);
     command
         .args(&args)
         .current_dir(repo)
@@ -91,9 +91,17 @@ pub async fn export(framework: &str, repo_path: &str, export_id: &str) -> Result
         command.env(key, value);
     }
 
-    let mut child = command
-        .spawn()
-        .map_err(|error| format!("启动导出命令失败（{program}）: {error}"))?;
+    let mut child = command.spawn().map_err(|error| {
+        if resolved {
+            format!("启动导出命令失败（{program}）: {error}")
+        } else {
+            format!(
+                "启动导出命令失败（{program}）: 找不到可执行文件 {program}，\
+                 请确认已安装并在 PATH 中（打包版应用启动时 PATH 很短，\
+                 Go 默认装在 /usr/local/go/bin）: {error}"
+            )
+        }
+    })?;
 
     let stdout_pipe = child.stdout.take();
     let stderr_pipe = child.stderr.take();

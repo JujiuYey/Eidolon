@@ -1,5 +1,6 @@
 pub mod api_http;
 pub mod api_request;
+pub mod child_process;
 pub mod code_export;
 pub mod code_scan_java;
 pub mod collect_ai;

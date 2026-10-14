@@ -200,9 +200,7 @@ mod tests {
                     "collect_items",
                     "git_accounts",
                     "mail_templates",
-                    "schema_databases",
                     "schema_migrations",
-                    "schema_snapshots",
                     "sent_emails",
                     "smtp_accounts",
                     "tasks",
@@ -212,6 +210,13 @@ mod tests {
                     assert!(
                         tables.iter().any(|name| name == expected),
                         "table {expected} should exist, got {tables:?}"
+                    );
+                }
+
+                for dropped in ["schema_databases", "schema_snapshots"] {
+                    assert!(
+                        !tables.iter().any(|name| name == dropped),
+                        "table {dropped} should be dropped, got {tables:?}"
                     );
                 }
 
@@ -244,7 +249,13 @@ mod tests {
         second
             .with_connection(|connection| {
                 let versions = applied_versions(connection)?;
-                assert_eq!(versions, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+                assert_eq!(
+                    versions,
+                    MIGRATIONS
+                        .iter()
+                        .map(|(version, _)| *version)
+                        .collect::<Vec<_>>()
+                );
 
                 let count: i64 = connection
                     .query_row("SELECT COUNT(*) FROM api_projects", [], |row| row.get(0))

@@ -131,4 +131,24 @@ mod tests {
 
         std::fs::remove_dir_all(&dir).ok();
     }
+
+    /// 打包版应用从 Finder 启动只有极简 PATH，go 只能靠 COMMON_TOOL_DIRS 兜底找到
+    #[test]
+    fn resolves_go_from_common_dirs_under_minimal_path() {
+        let minimal = std::env::join_paths(["/usr/bin", "/bin", "/usr/sbin", "/sbin"])
+            .expect("join minimal path");
+
+        let Some(found) = resolve_program("go", &minimal) else {
+            // 本机没装 Go 时无从断言，跳过而不是伪造通过
+            return;
+        };
+        let from_common_dir = COMMON_TOOL_DIRS
+            .iter()
+            .any(|dir| found.starts_with(Path::new(dir)));
+        assert!(
+            from_common_dir,
+            "极简 PATH 下解析到的 {} 不在常见安装目录内",
+            found.display()
+        );
+    }
 }
