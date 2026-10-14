@@ -74,7 +74,7 @@
     "vue-router": "^4.5.1",
     "vue-sonner": "^2.0.8",
     "vue-stick-to-bottom": "^1.0.0",
-    "vue-stream-markdown": "^0.6.5",
+    "vue-stream-markdown": "^2.1.0",
     "zrender": "^5.6.1"
   },
   "devDependencies": {
