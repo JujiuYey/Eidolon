@@ -1,10 +1,6 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@layer components {
-  @import 'markstream-vue/index.css';
-}
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
