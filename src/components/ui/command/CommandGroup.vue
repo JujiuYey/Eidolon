@@ -25,9 +25,7 @@ const isRender = computed(() => (!filterState.search ? true : filterState.filter
 
 provideCommandGroupContext({ id });
 onMounted(() => {
-  if (!allGroups.value.has(id)) {
-    allGroups.value.set(id, new Set());
-  }
+  if (!allGroups.value.has(id)) allGroups.value.set(id, new Set());
 });
 onUnmounted(() => {
   allGroups.value.delete(id);

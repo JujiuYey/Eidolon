@@ -18,8 +18,12 @@
   "dependencies": {
     "@iconify/vue": "^5.0.0",
     "@internationalized/date": "^3.9.0",
+    "@lucide/vue": "^1.57.0",
     "@mermaid-js/layout-elk": "^0.1.9",
     "@rive-app/webgl2": "^2.35.4",
+    "@stream-markdown/code": "^2.1.0",
+    "@stream-markdown/math": "^2.1.0",
+    "@stream-markdown/mermaid": "^2.1.0",
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@terrastruct/d2": "^0.1.33",

@@ -50,14 +50,6 @@ function onKeyDown(event: KeyboardEvent) {
     tabindex="0"
     @keydown="onKeyDown"
   >
-    <slot
-      :can-scroll-next="canScrollNext"
-      :can-scroll-prev="canScrollPrev"
-      :carousel-api="carouselApi"
-      :carousel-ref="carouselRef"
-      :orientation="orientation"
-      :scroll-next="scrollNext"
-      :scroll-prev="scrollPrev"
-    />
+    <slot :can-scroll-next :can-scroll-prev :carousel-api :carousel-ref :orientation :scroll-next :scroll-prev />
   </div>
 </template>
