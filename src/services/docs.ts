@@ -40,6 +40,11 @@ export async function deleteDocsEntry(rootId: string, path: string): Promise<str
   return invoke<string>('delete_docs_entry', { rootId, path });
 }
 
+/** 在系统文件管理器中定位该条目（访达里选中） */
+export async function revealDocsEntry(rootId: string, path: string): Promise<void> {
+  await invoke('reveal_docs_entry', { rootId, path });
+}
+
 export async function searchDocs(rootId: string, keyword: string): Promise<DocsSearchResult[]> {
   return invoke<DocsSearchResult[]>('search_docs', { rootId, keyword });
 }

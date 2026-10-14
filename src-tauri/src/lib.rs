@@ -70,6 +70,7 @@ pub fn run() {
             commands::docs::rename_docs_entry,
             commands::docs::delete_docs_entry,
             commands::docs::search_docs,
+            commands::docs::reveal_docs_entry,
             commands::docs_ai::chat_docs_ai,
             // Test connection command
             commands::test_connection::test_ai_connection,

@@ -34,6 +34,7 @@ function createService(overrides: Partial<DocsService> = {}): DocsService {
     renameDocsEntry: vi.fn().mockResolvedValue(makeEntry({ name: '改名.md', path: '改名.md', is_dir: false })),
     deleteDocsEntry: vi.fn().mockResolvedValue('removed'),
     searchDocs: vi.fn().mockResolvedValue([] as DocsSearchResult[]),
+    revealDocsEntry: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

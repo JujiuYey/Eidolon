@@ -16,7 +16,7 @@ import { useConfirm } from '@/composables/use-confirm';
 import { onDocsExternalChange } from '@/services/docs';
 import { useDocsStore } from '@/stores/docs';
 import type { DocsEntry } from '@/types/docs';
-import { getErrorMessage } from '@/utils/helpers';
+import { copyToClipboard, getErrorMessage } from '@/utils/helpers';
 
 import DocsAiPanel from './_components/docs-ai-panel.vue';
 import DocsSearchResults from './_components/docs-search-results.vue';
@@ -212,6 +212,28 @@ async function confirmNameDialog(name: string) {
   }
 }
 
+// ===== 在访达中显示 / 复制路径 =====
+
+async function handleReveal(entry: DocsEntry) {
+  try {
+    await store.reveal(entry.path);
+  } catch (error) {
+    toast.error(getErrorMessage(error, '在访达中显示失败'));
+  }
+}
+
+/** 复制磁盘绝对路径——贴到终端/编辑器里能直接用 */
+async function handleCopyPath(entry: DocsEntry) {
+  const root = store.activeRoot;
+  if (!root) {
+    return;
+  }
+  const absolute = `${root.path.replace(/\/+$/, '')}/${entry.path}`;
+  if (await copyToClipboard(absolute)) {
+    toast.success('已复制路径');
+  }
+}
+
 // ===== 删除 =====
 const removeOpen = ref(false);
 const pendingRemove = ref<DocsEntry | null>(null);
@@ -329,6 +351,8 @@ onBeforeUnmount(() => {
                 @manage="router.push('/docs')"
                 @remove="askRemove"
                 @rename="askRename"
+                @reveal="handleReveal"
+                @copy-path="handleCopyPath"
                 @select="handleSelectFile"
               />
             </div>

@@ -188,6 +188,66 @@ pub fn save_file(store: &LocalJsonStore, root_id: &str, relative: &str, content:
     build_entry(&root, &path, false).ok_or_else(|| "保存后读取文件信息失败".to_string())
 }
 
+/// 在系统文件管理器中定位该条目（macOS 访达里选中它，Windows 资源管理器同理）。
+/// 路径经沙箱解析，不能借此访问文档库之外的任意路径。
+pub fn reveal_entry(store: &LocalJsonStore, root_id: &str, relative: &str) -> Result<(), String> {
+    let root = resolve_root(store, root_id)?;
+    let path = sandboxed_path_with_root(&root, relative)?;
+    if !path.exists() {
+        return Err(format!("路径不存在: {relative}"));
+    }
+
+    // 目录直接打开；文件要「定位并选中」，否则 open 会用默认应用把它打开
+    if path.is_dir() {
+        return open_in_file_manager(&path, false);
+    }
+    open_in_file_manager(&path, true)
+}
+
+fn open_in_file_manager(path: &Path, select: bool) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut command = std::process::Command::new("open");
+        if select {
+            command.arg("-R");
+        }
+        command
+            .arg(path)
+            .spawn()
+            .map_err(|error| format!("打开访达失败: {error}"))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let mut command = std::process::Command::new("explorer");
+        if select {
+            // 资源管理器只认 /select, 必须和路径拼成一个参数
+            command.arg(format!("/select,{}", path.to_string_lossy()));
+        } else {
+            command.arg(path);
+        }
+        command
+            .spawn()
+            .map_err(|error| format!("打开资源管理器失败: {error}"))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Linux 的文件管理器没有统一的「选中」约定，退化为打开所在目录
+        let target = if select {
+            path.parent().unwrap_or(path).to_path_buf()
+        } else {
+            path.to_path_buf()
+        };
+        std::process::Command::new("xdg-open")
+            .arg(&target)
+            .spawn()
+            .map_err(|error| format!("打开文件管理器失败: {error}"))?;
+    }
+
+    Ok(())
+}
+
 /// 清理用户输入的名称：去首尾空白、拒绝路径分隔符和点开头的隐藏名；
 /// 文件自动补 .md 后缀
 fn sanitize_name(name: &str, is_dir: bool) -> Result<String, String> {

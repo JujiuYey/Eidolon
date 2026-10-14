@@ -17,6 +17,7 @@ export interface DocsService {
   renameDocsEntry: (rootId: string, path: string, newName: string) => Promise<DocsEntry>;
   deleteDocsEntry: (rootId: string, path: string) => Promise<string>;
   searchDocs: (rootId: string, keyword: string) => Promise<DocsSearchResult[]>;
+  revealDocsEntry: (rootId: string, path: string) => Promise<void>;
 }
 
 const defaultService: DocsService = docsServiceApi;
@@ -209,6 +210,11 @@ export function createDocsStore(options: { service?: DocsService } = {}) {
     }
   }
 
+  /** 在系统文件管理器中定位（访达里选中） */
+  async function reveal(path: string) {
+    await service.revealDocsEntry(activeRootId.value, path);
+  }
+
   async function runSearch(keyword: string) {
     const trimmed = keyword.trim();
     if (!trimmed) {
@@ -369,6 +375,7 @@ export function createDocsStore(options: { service?: DocsService } = {}) {
     discardChanges,
     createFile,
     createDirectory,
+    reveal,
     renameEntry,
     removeEntry,
     runSearch,

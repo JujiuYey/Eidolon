@@ -89,3 +89,13 @@ pub fn search_docs(
 ) -> Result<Vec<DocsSearchResult>, String> {
     docs::search(&store, &root_id, &keyword)
 }
+
+/// 在系统文件管理器中定位该条目（访达里选中）
+#[tauri::command]
+pub fn reveal_docs_entry(
+    store: tauri::State<'_, LocalJsonStore>,
+    root_id: String,
+    path: String,
+) -> Result<(), String> {
+    docs::reveal_entry(&store, &root_id, &path)
+}
