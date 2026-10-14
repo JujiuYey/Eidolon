@@ -10,7 +10,6 @@ pub mod mcp_server;
 pub mod mcp_service;
 pub mod model_config;
 pub mod pm;
-pub mod schema_dict;
 pub mod task;
 pub mod weekly_report;
 pub mod zentao;

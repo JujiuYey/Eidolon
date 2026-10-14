@@ -146,18 +146,6 @@ pub fn run() {
             commands::task::delete_task,
             commands::task::parse_task_text,
             commands::task::suggest_task_plan,
-            // Schema dict (数据字典) commands
-            commands::schema_dict::list_schema_databases,
-            commands::schema_dict::upsert_schema_database,
-            commands::schema_dict::delete_schema_database,
-            commands::schema_dict::list_schema_snapshots,
-            commands::schema_dict::delete_schema_snapshot,
-            commands::schema_dict::parse_schema_input,
-            commands::schema_dict::import_schema_snapshot,
-            commands::schema_dict::get_schema_timeline,
-            commands::schema_dict::interpret_schema_changes,
-            commands::schema_dict::ask_schema_dict,
-            commands::schema_dict::call_mcp_tool,
             // Collect (收藏夹) commands
             commands::collect::list_collect_items,
             commands::collect::list_deleted_collect_items,

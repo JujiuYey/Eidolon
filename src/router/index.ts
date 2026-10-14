@@ -32,10 +32,6 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/tasks/index.vue'),
       },
       {
-        path: '/schema-dict',
-        component: () => import('@/views/schema-dict/index.vue'),
-      },
-      {
         path: '/collect',
         component: () => import('@/views/collect/index.vue'),
       },

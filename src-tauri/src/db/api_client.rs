@@ -19,6 +19,7 @@ const MIGRATIONS: &[(i64, &str)] = &[
     (9, include_str!("migrations/0009_collect.sql")),
     (10, include_str!("migrations/0010_collect_soft_delete.sql")),
     (11, include_str!("migrations/0011_task_schedule.sql")),
+    (12, include_str!("migrations/0012_drop_schema_dict.sql")),
 ];
 
 /// API Client 专用数据库，与 `LocalJsonStore` 相互独立

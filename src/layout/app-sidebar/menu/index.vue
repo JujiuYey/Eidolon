@@ -2,7 +2,6 @@
 import {
   Bookmark,
   Bot,
-  Database,
   FolderClosed,
   Mail,
   NotebookPen,
@@ -49,7 +48,6 @@ const toolsGroup: MenuGroup = {
     { title: '周报', key: 'weekly-report', icon: NotebookPen, path: '/weekly-report' },
     { title: '禅道', key: 'zentao', icon: ListTodo, path: '/zentao' },
     { title: '任务', key: 'tasks', icon: SquareCheckBig, path: '/tasks' },
-    { title: '数据字典', key: 'schema-dict', icon: Database, path: '/schema-dict' },
     { title: '收藏夹', key: 'collect', icon: Bookmark, path: '/collect' },
   ],
 };

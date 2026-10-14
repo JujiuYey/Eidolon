@@ -74,7 +74,6 @@ Routing (frontend):
 | `/weekly-report`           | `views/weekly-report/index.vue`                                    |
 | `/zentao`                  | `views/zentao/index.vue`                                           |
 | `/tasks`                   | `views/tasks/index.vue` (个人任务管理器)                           |
-| `/schema-dict`             | `views/schema-dict/index.vue` (数据字典)                           |
 | `/collect`                 | `views/collect/index.vue` (收藏夹：链接+记事收集盒)                |
 | `/api-client`              | `views/api-project/index.vue`                                      |
 | `/api-client/projects/:id` | `views/api-client-workspace/index.vue` (name `api-client-project`) |
