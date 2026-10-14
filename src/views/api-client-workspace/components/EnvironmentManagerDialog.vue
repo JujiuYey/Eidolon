@@ -2,7 +2,7 @@
 import { AlertCircle, Layers, Loader2, Plus, Trash2 } from 'lucide-vue-next';
 import { computed, ref, watch } from 'vue';
 
-import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -317,13 +317,13 @@ watch(
     </DialogContent>
   </Dialog>
 
-  <ConfirmDialog
+  <SagConfirm
     :open="confirm.state.open"
     :title="confirm.state.title"
     :description="confirm.state.description"
     :confirm-label="confirm.state.confirmLabel"
     :cancel-label="confirm.state.cancelLabel"
-    :destructive="confirm.state.destructive"
+    :type="confirm.state.destructive ? 'destructive' : 'default'"
     @update:open="confirm.onOpenChange"
     @confirm="confirm.onConfirm"
     @cancel="confirm.onCancel"

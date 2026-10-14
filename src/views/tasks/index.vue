@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
-import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -309,8 +309,13 @@ function retryLoad() {
 
     <TaskEditorDialog v-model:open="editorOpen" :task="editingTask" @save="handleSave" @delete="handleRemove" />
 
-    <ConfirmDialog
+    <SagConfirm
       :open="confirm.state.open"
+      :title="confirm.state.title"
+      :description="confirm.state.description"
+      :confirm-label="confirm.state.confirmLabel"
+      :cancel-label="confirm.state.cancelLabel"
+      :type="confirm.state.destructive ? 'destructive' : 'default'"
       @update:open="confirm.onOpenChange"
       @confirm="confirm.onConfirm"
       @cancel="confirm.onCancel"

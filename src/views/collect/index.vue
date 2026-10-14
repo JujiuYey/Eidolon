@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
-import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import SagHBarList from '@/components/sag/sag-h-bar-list/index.vue';
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import { Button } from '@/components/ui/button';
@@ -441,11 +441,16 @@ function retryLoad() {
 
     <CollectItemEditorDialog v-model:open="editorOpen" :item="editingItem" @save="handleSave" />
 
-    <ConfirmDialog
+    <SagConfirm
       :open="confirm.state.open"
-      @cancel="confirm.onCancel"
-      @confirm="confirm.onConfirm"
+      :title="confirm.state.title"
+      :description="confirm.state.description"
+      :confirm-label="confirm.state.confirmLabel"
+      :cancel-label="confirm.state.cancelLabel"
+      :type="confirm.state.destructive ? 'destructive' : 'default'"
       @update:open="confirm.onOpenChange"
+      @confirm="confirm.onConfirm"
+      @cancel="confirm.onCancel"
     />
   </div>
 </template>

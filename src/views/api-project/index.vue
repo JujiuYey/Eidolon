@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
-import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -287,13 +287,13 @@ onBeforeUnmount(() => {
 
     <Spinner v-if="store.isLoadingProjects" class="pointer-events-none fixed right-6 top-6" />
 
-    <ConfirmDialog
+    <SagConfirm
       :open="confirm.state.open"
       :title="confirm.state.title"
       :description="confirm.state.description"
       :confirm-label="confirm.state.confirmLabel"
       :cancel-label="confirm.state.cancelLabel"
-      :destructive="confirm.state.destructive"
+      :type="confirm.state.destructive ? 'destructive' : 'default'"
       @update:open="confirm.onOpenChange"
       @confirm="confirm.onConfirm"
       @cancel="confirm.onCancel"

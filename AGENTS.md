@@ -52,7 +52,7 @@ Key modules (frontend ↔ backend):
 | `src/stores/`                         | Pinia setup stores. `api-client.ts` is the largest; `mail.ts`, `weekly-report.ts`, `zentao.ts`, `app.ts`. |
 | `src/services/`                       | ONLY place that calls `invoke()`. Sub-folders per feature (`api-client/`, …).                             |
 | `src/composables/`                    | Auto-imported hooks (`useConfirm`, `useTheme`, `useAppPaths`).                                            |
-| `src/components/`                     | `ui/*` (shadcn-vue), `sag/*` (in-house), `ConfirmDialog.vue`.                                             |
+| `src/components/`                     | `ui/*` (shadcn-vue), `sag/*` (in-house).                                                                  |
 | `src/types/`                          | Hand-written DTOs + generated `auto-import.d.ts`, `auto-import-components.d.ts`.                          |
 | `src/enum/`                           | Enums auto-imported by `unplugin-auto-import`.                                                            |
 | `src/utils/`, `src/lib/`              | Pure helpers (`theme`, `crypto`, `helpers`, `cn()` in `lib/utils.ts`).                                    |
@@ -140,7 +140,7 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 
 **Composables**
 
-- `useConfirm()` is a **module-scoped reactive singleton** (no `provide`/`inject`). Mount `<ConfirmDialog :open="confirm.state.open" @update:open="confirm.onOpenChange" @confirm="confirm.onConfirm" @cancel="confirm.onCancel" />` once in the app shell.
+- `useConfirm()` is a **module-scoped reactive singleton** (no `provide`/`inject`). Mount `<SagConfirm :open="confirm.state.open" :title="confirm.state.title" :description="confirm.state.description" :confirm-label="confirm.state.confirmLabel" :cancel-label="confirm.state.cancelLabel" :type="confirm.state.destructive ? 'destructive' : 'default'" @update:open="confirm.onOpenChange" @confirm="confirm.onConfirm" @cancel="confirm.onCancel" />` in the view that triggers it.
 - `useTheme()` is a thin pass-through over `useAppStore`.
 
 **Error handling**
@@ -178,7 +178,7 @@ There is **no coverage tool installed**. Add `@vitest/coverage-v8` or `@vitest/c
 | Vue entry                  | `src/main.ts`, `src/App.vue`                                                                                  |
 | Router                     | `src/router/index.ts`                                                                                         |
 | App shell                  | `src/layout/index.vue`, `src/layout/app-sidebar/index.vue`                                                    |
-| Global confirm             | `src/composables/use-confirm.ts`, `src/components/ConfirmDialog.vue`                                          |
+| Global confirm             | `src/composables/use-confirm.ts`, `src/components/sag/sag-confirm/index.vue`                                  |
 | Settings store (persisted) | `src/stores/app.ts`                                                                                           |
 | API client store (factory) | `src/stores/api-client.ts`                                                                                    |
 | API client services        | `src/services/api-client/{projects,groups,requests,environments,history,execution,ai,types,mappers,index}.ts` |

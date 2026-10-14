@@ -4,7 +4,6 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
-import ConfirmDialog from '@/components/ConfirmDialog.vue';
 import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
 import type { RichEditorTocItem } from '@/components/sag/sag-rich-editor/toc';
@@ -575,11 +574,16 @@ onBeforeUnmount(() => {
     />
 
     <!-- 路由切换的未保存守卫 -->
-    <ConfirmDialog
+    <SagConfirm
       :open="confirm.state.open"
-      @cancel="confirm.onCancel"
-      @confirm="confirm.onConfirm"
+      :title="confirm.state.title"
+      :description="confirm.state.description"
+      :confirm-label="confirm.state.confirmLabel"
+      :cancel-label="confirm.state.cancelLabel"
+      :type="confirm.state.destructive ? 'destructive' : 'default'"
       @update:open="confirm.onOpenChange"
+      @confirm="confirm.onConfirm"
+      @cancel="confirm.onCancel"
     />
   </div>
 </template>

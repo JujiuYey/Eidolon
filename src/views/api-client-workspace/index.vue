@@ -4,7 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch as vueWatch } from 'vu
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRouter } from 'vue-router';
 import { toast } from 'vue-sonner';
 
-import ConfirmDialog from '@/components/ConfirmDialog.vue';
+import SagConfirm from '@/components/sag/sag-confirm/index.vue';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
@@ -575,13 +575,13 @@ const activeProject = computed(() => store.activeProject);
 
     <Spinner v-if="store.isLoadingGroups || store.isLoadingRequests" class="pointer-events-none fixed right-6 top-6" />
 
-    <ConfirmDialog
+    <SagConfirm
       :open="confirm.state.open"
       :title="confirm.state.title"
       :description="confirm.state.description"
       :confirm-label="confirm.state.confirmLabel"
       :cancel-label="confirm.state.cancelLabel"
-      :destructive="confirm.state.destructive"
+      :type="confirm.state.destructive ? 'destructive' : 'default'"
       @update:open="confirm.onOpenChange"
       @confirm="confirm.onConfirm"
       @cancel="confirm.onCancel"
