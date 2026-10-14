@@ -32,6 +32,18 @@ const emit = defineEmits<{
   (e: 'drag-end'): void;
 }>();
 
+/**
+ * WebKit（Tauri 在 macOS 上的运行时）要求拖拽必须携带数据才会真正启动，
+ * 只靠 draggable="true" 会静默失败——拖过去什么反应都没有。
+ */
+function onDragStart(event: DragEvent, taskId: string) {
+  if (event.dataTransfer) {
+    event.dataTransfer.setData('text/plain', taskId);
+    event.dataTransfer.effectAllowed = 'copy';
+  }
+  emit('drag-start', taskId);
+}
+
 function submit(event: Event) {
   const target = event.target as HTMLInputElement;
   const text = target.value.trim();
@@ -84,7 +96,7 @@ function statusIcon(task: Task): typeof Circle {
           class="flex cursor-grab items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors hover:bg-muted/50 active:cursor-grabbing"
           draggable="true"
           :aria-label="`拖动 ${task.title} 到时间格安排日程`"
-          @dragstart="emit('drag-start', task.id)"
+          @dragstart="onDragStart($event, task.id)"
           @dragend="emit('drag-end')"
           @click="emit('click', task)"
         >
