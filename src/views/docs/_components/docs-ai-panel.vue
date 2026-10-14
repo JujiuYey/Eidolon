@@ -14,7 +14,8 @@ import { getErrorMessage } from '@/utils/helpers';
  * 文档页左侧 AI 助手面板:带整篇文档上下文对话。
  * 模型按约定把"修改后的完整文档"放进 ````eidolon-doc 围栏,
  * 面板解析出围栏后提供 应用到文档 / 撤销 操作,实际写入由父组件完成。
- * 会话是内存态,切换文档时整个组件被 :key 重建。
+ * 会话按文档分别保存在内存里：组件不再随文档切换重建，
+ * 切走再切回来，之前那篇的对话还在（早先靠 :key 重建，切回即清空）。
  */
 const props = defineProps<{
   activePath: string;
@@ -64,7 +65,14 @@ function stripDocForHistory(content: string): string {
   return content.replace(/(`{3,})eidolon-doc[^\n]*\n[\s\S]*?\n[ \t]*\1/g, '（本轮已生成文档新版本，全文略）');
 }
 
-const messages = ref<PanelMessage[]>([]);
+/** 每篇文档一份会话；数组放在 reactive Map 里，push 就地改也能触发更新 */
+const sessions = ref(new Map<string, PanelMessage[]>());
+const messages = computed<PanelMessage[]>({
+  get: () => sessions.value.get(props.activePath) ?? [],
+  set: value => {
+    sessions.value.set(props.activePath, value);
+  },
+});
 const panelRef = ref<InstanceType<typeof SagAiPanel> | null>(null);
 const sending = ref(false);
 const elapsedSeconds = ref(0);

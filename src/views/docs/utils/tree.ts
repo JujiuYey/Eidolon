@@ -44,6 +44,22 @@ export function buildDocsTree(entries: DocsEntry[]): DocsTreeNode[] {
   return roots;
 }
 
+/**
+ * 条目排序：目录在前，同层按名称（忽略大小写），再按路径兜底。
+ *
+ * 与后端 list_entries 的比较器一致，但放在前端是为了让"新建/重命名/删除"
+ * 能就地改列表而不必重新递归扫描整个磁盘——那样每次操作都要付 O(节点数) 的 I/O，
+ * 与操作本身无关。排序规则因此需要在前端有一份权威实现，并有用例钉住。
+ */
+export function sortEntries(entries: DocsEntry[]): DocsEntry[] {
+  return [...entries].sort(
+    (left, right) =>
+      Number(right.is_dir) - Number(left.is_dir) ||
+      left.name.toLowerCase().localeCompare(right.name.toLowerCase()) ||
+      left.path.localeCompare(right.path),
+  );
+}
+
 /** 根层目录路径，用于初始化默认展开集合 */
 export function firstLevelDirPaths(entries: DocsEntry[]): string[] {
   return entries.filter(entry => entry.is_dir && !entry.path.includes('/')).map(entry => entry.path);

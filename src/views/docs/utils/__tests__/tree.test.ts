@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { DocsEntry } from '@/types/docs';
 
-import { buildDocsTree, firstLevelDirPaths, flattenTree } from '../tree';
+import { buildDocsTree, firstLevelDirPaths, flattenTree, sortEntries } from '../tree';
 
 function makeEntry(overrides: Partial<DocsEntry> & Pick<DocsEntry, 'name' | 'path' | 'is_dir'>): DocsEntry {
   return { size: 10, updated_at: 1, ...overrides };
@@ -62,5 +62,42 @@ describe('flattenTree', () => {
       'readme.md',
     ]);
     expect(expanded.find(row => row.entry.path === '周报/子目录/deep.md')?.depth).toBe(2);
+  });
+});
+
+describe('sortEntries', () => {
+  it('目录在前，其余按名称忽略大小写排序', () => {
+    const sorted = sortEntries([
+      makeEntry({ name: 'b.md', path: 'b.md', is_dir: false }),
+      makeEntry({ name: 'Zeta', path: 'Zeta', is_dir: true }),
+      makeEntry({ name: 'a.md', path: 'a.md', is_dir: false }),
+      makeEntry({ name: 'alpha', path: 'alpha', is_dir: true }),
+    ]);
+
+    expect(sorted.map(entry => entry.name)).toEqual(['alpha', 'Zeta', 'a.md', 'b.md']);
+  });
+
+  it('就地插入的新条目与后端返回的顺序一致', () => {
+    // 新建/重命名是往现有列表里插一条，排序必须与重新扫描整棵树的结果相同
+    const before = [
+      makeEntry({ name: '周报', path: '周报', is_dir: true }),
+      makeEntry({ name: '笔记', path: '笔记', is_dir: true }),
+      makeEntry({ name: '2026-10.md', path: '周报/2026-10.md', is_dir: false }),
+    ];
+
+    expect(
+      sortEntries([...before, makeEntry({ name: '2026-09.md', path: '周报/2026-09.md', is_dir: false })]).map(
+        e => e.name,
+      ),
+    ).toEqual(['周报', '笔记', '2026-09.md', '2026-10.md']);
+  });
+
+  it('不修改传入的数组', () => {
+    const input = [
+      makeEntry({ name: 'b.md', path: 'b.md', is_dir: false }),
+      makeEntry({ name: 'a.md', path: 'a.md', is_dir: false }),
+    ];
+    sortEntries(input);
+    expect(input.map(entry => entry.name)).toEqual(['b.md', 'a.md']);
   });
 });

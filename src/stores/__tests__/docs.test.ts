@@ -141,6 +141,57 @@ describe('docs store', () => {
     expect(store.activePath).toBe('新.md');
   });
 
+  it('新建/重命名/删除不再触发全量重扫（后端会递归遍历磁盘上每个文件）', async () => {
+    const service = createService();
+    const store = await bindStoreAtRoot(service);
+    // 进入文档库时已经扫过一次；之后的增删改都只应就地改这一个条目
+    vi.mocked(service.listDocsEntries).mockClear();
+
+    await store.createFile('周报', '新文档');
+    await store.createDirectory('周报', '子目录');
+    await store.renameEntry('新.md', '改名');
+    await store.removeEntry('改名.md');
+
+    expect(service.listDocsEntries).not.toHaveBeenCalled();
+    // 新建的「新.md」已改名再删除，只剩初始两项 + 新建的根层目录
+    expect(store.entries.map(entry => entry.path)).toEqual(['周报', '新目录', 'readme.md']);
+  });
+
+  it('重命名目录会同步其子树的路径前缀', async () => {
+    const service = createService({
+      listDocsEntries: vi
+        .fn()
+        .mockResolvedValue([
+          makeEntry({ name: '周报', path: '周报', is_dir: true }),
+          makeEntry({ name: '10.md', path: '周报/10.md', is_dir: false }),
+        ]),
+      renameDocsEntry: vi.fn().mockResolvedValue(makeEntry({ name: '月报', path: '月报', is_dir: true })),
+    });
+    const store = await bindStoreAtRoot(service);
+
+    await store.renameEntry('周报', '月报');
+
+    expect(store.entries.map(entry => entry.path)).toEqual(['月报', '月报/10.md']);
+    expect(store.tree[0]?.children.map(node => node.entry.path)).toEqual(['月报/10.md']);
+  });
+
+  it('在空文档上新建文档：内容不变但 activePath 必须切过去', async () => {
+    // 新建的文档是空文件，若当前文档同样为空，content 这个 ref 拿到的是同一个值，
+    // Vue 的 ref setter 会短路、不触发响应式——编辑器因此无法靠 watch(content) 感知切换，
+    // 必须依赖 activePath（视图里用 :key 挂载编辑器）。这条用例守住 activePath 一定更新。
+    const service = createService({
+      listDocsEntries: vi.fn().mockResolvedValue([]),
+      readDocsFile: vi.fn().mockResolvedValue(''),
+    });
+    const store = await bindStoreAtRoot(service);
+    await store.openFile('空.md');
+
+    await store.createFile('', '新文档');
+
+    expect(store.activePath).toBe('新.md');
+    expect(store.content).toBe('');
+  });
+
   it('重命名当前文档时同步活动路径', async () => {
     const service = createService();
     const store = await bindStoreAtRoot(service);

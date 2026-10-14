@@ -321,6 +321,7 @@ onBeforeUnmount(() => {
                 v-else
                 :active-path="store.activePath"
                 :entries="store.entries"
+                :root-id="store.activeRootId"
                 :is-loading="store.loading || !ready"
                 :title="rootLabel"
                 @create-dir="askCreateDir"
@@ -408,7 +409,7 @@ onBeforeUnmount(() => {
             <p v-if="store.fileError" class="shrink-0 border-b px-4 py-2 text-sm text-destructive">
               {{ store.fileError }}
             </p>
-            <SagRichEditor ref="editorRef" v-model="store.content" :full-width="fullWidth">
+            <SagRichEditor :key="store.activePath" ref="editorRef" v-model="store.content" :full-width="fullWidth">
               <template #actions>
                 <Button
                   :aria-label="fullWidth ? '退出全宽模式' : '进入全宽模式'"
@@ -480,7 +481,7 @@ onBeforeUnmount(() => {
           </ResizablePanel>
         </template>
 
-        <!-- AI 助手面板：切换文档时随 :key 重建（每篇文档独立会话） -->
+        <!-- AI 助手面板：会话按文档保存在组件内部，无需随切换重建 -->
         <template v-if="aiOpen">
           <ResizableHandle
             id="docs-ai-handle"
@@ -495,7 +496,6 @@ onBeforeUnmount(() => {
             :order="3"
           >
             <DocsAiPanel
-              :key="store.activePath"
               :active-path="store.activePath"
               :document="store.content"
               @apply="handleAiApply"

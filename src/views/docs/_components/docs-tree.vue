@@ -25,11 +25,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DocsEntry } from '@/types/docs';
 
-import { buildDocsTree, flattenTree } from '../utils/tree';
+import { buildDocsTree, firstLevelDirPaths, flattenTree } from '../utils/tree';
 
 interface Props {
   entries: DocsEntry[];
   activePath: string;
+  /** 文档库 id：切换它才重置展开状态 */
+  rootId: string;
   isLoading: boolean;
   /** 树头部标题：当前文档库的名字 */
   title: string;
@@ -49,15 +51,25 @@ const emit = defineEmits<Emits>();
 
 const expanded = ref(new Set<string>());
 
-// 换根目录 / 重载后重置为默认展开（根层目录）
+/**
+ * 只有换文档库才重置展开状态。
+ * 之前监听 entries，而 entries 每次重载都是新数组引用，结果新建/重命名/删除
+ * 都会把用户展开的层级折回根层——新建在子目录里的文件因此"看不见"。
+ */
 watch(
-  () => props.entries,
+  () => props.rootId,
   () => {
-    expanded.value = new Set(
-      props.entries.filter(entry => entry.is_dir && !entry.path.includes('/')).map(entry => entry.path),
-    );
+    expanded.value = new Set(firstLevelDirPaths(props.entries));
   },
   { immediate: true },
+);
+
+// 条目刷新时保留已有展开，并让新建的根层目录自动可见
+watch(
+  () => props.entries,
+  entries => {
+    expanded.value = new Set([...expanded.value, ...firstLevelDirPaths(entries)]);
+  },
 );
 
 const rows = computed(() => flattenTree(buildDocsTree(props.entries), expanded.value));

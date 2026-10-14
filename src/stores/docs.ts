@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 
 import * as docsServiceApi from '@/services/docs';
 import type { DocsEntry, DocsExternalChange, DocsRoot, DocsSearchResult, DocsSettings } from '@/types/docs';
-import { buildDocsTree, firstLevelDirPaths } from '@/views/docs/utils/tree';
+import { buildDocsTree, firstLevelDirPaths, sortEntries } from '@/views/docs/utils/tree';
 
 /** store 依赖的服务接口，测试时可注入 fake 实现 */
 export interface DocsService {
@@ -79,7 +79,7 @@ export function createDocsStore(options: { service?: DocsService } = {}) {
     }
     loading.value = true;
     try {
-      entries.value = await service.listDocsEntries(activeRootId.value);
+      entries.value = sortEntries(await service.listDocsEntries(activeRootId.value));
     } finally {
       loading.value = false;
     }
@@ -161,22 +161,35 @@ export function createDocsStore(options: { service?: DocsService } = {}) {
     content.value = savedContent.value;
   }
 
+  // 新建/重命名/删除只就地改这一个已知的条目，不再重新递归扫描整个文档库：
+  // 那条路径要遍历磁盘上每个文件，与「新建一个空文件」本身无关。
   async function createFile(dirPath: string, name: string) {
     const entry = await service.createDocsFile(activeRootId.value, dirPath, name);
-    await loadEntries();
+    entries.value = sortEntries([...entries.value, entry]);
     await openFile(entry.path);
     return entry;
   }
 
   async function createDirectory(parentPath: string, name: string) {
     const entry = await service.createDocsDirectory(activeRootId.value, parentPath, name);
-    await loadEntries();
+    entries.value = sortEntries([...entries.value, entry]);
     return entry;
   }
 
   async function renameEntry(path: string, newName: string) {
     const renamed = await service.renameDocsEntry(activeRootId.value, path, newName);
-    await loadEntries();
+    // 目录改名会带走整棵子树，路径前缀相同的条目一并改名
+    entries.value = sortEntries(
+      entries.value.map(entry => {
+        if (entry.path === path) {
+          return renamed;
+        }
+        if (entry.path.startsWith(`${path}/`)) {
+          return { ...entry, path: renamed.path + entry.path.slice(path.length), name: renamed.name };
+        }
+        return entry;
+      }),
+    );
     // 重命名的是当前打开的文档时，同步活动路径（内容不变）
     if (activePath.value === path) {
       activePath.value = renamed.path;
@@ -186,7 +199,7 @@ export function createDocsStore(options: { service?: DocsService } = {}) {
 
   async function removeEntry(path: string) {
     await service.deleteDocsEntry(activeRootId.value, path);
-    await loadEntries();
+    entries.value = entries.value.filter(entry => entry.path !== path && !entry.path.startsWith(`${path}/`));
     if (activePath.value === path) {
       resetActive();
       const firstFile = entries.value.find(entry => !entry.is_dir);
