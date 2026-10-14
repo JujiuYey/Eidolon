@@ -199,7 +199,7 @@ function schemaSummary(tool: McpDiscoveredTool) {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
     <div class="flex flex-wrap items-center gap-2 px-4 py-3">
       <Button variant="ghost" size="icon" class="h-8 w-8 shrink-0" aria-label="返回 MCP 服务列表" @click="emit('back')">
         <ArrowLeft class="size-4" />
@@ -252,7 +252,7 @@ function schemaSummary(tool: McpDiscoveredTool) {
         <p v-if="lastTestedLabel" class="mb-4 text-xs text-muted-foreground">最近测试：{{ lastTestedLabel }}</p>
 
         <!-- 服务说明（discovery 带回） -->
-        <section v-if="form.discovery?.instructions" class="mb-6 rounded-xl border bg-muted/20 p-4">
+        <section v-if="form.discovery?.instructions" class="mb-6 rounded-lg border bg-muted/20 p-4">
           <p class="text-sm font-medium text-foreground">服务说明</p>
           <p class="mt-2 text-sm leading-6 text-muted-foreground">
             {{ form.discovery.instructions }}
@@ -352,13 +352,13 @@ function schemaSummary(tool: McpDiscoveredTool) {
 
           <div
             v-if="toolItems.length === 0"
-            class="rounded-xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground"
+            class="rounded-lg border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground"
           >
             这个 MCP server 没有暴露工具。
           </div>
 
           <div v-else class="space-y-3">
-            <article v-for="tool of toolItems" :key="tool.name" class="rounded-xl border px-4 py-4">
+            <article v-for="tool of toolItems" :key="tool.name" class="rounded-lg border px-4 py-4">
               <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0 flex-1 space-y-2">
                   <div class="flex flex-wrap items-center gap-2">

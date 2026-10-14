@@ -105,7 +105,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
     <div class="flex items-center gap-2 px-4 py-3">
       <Brain class="h-4 w-4 text-primary" />
       <h2 class="text-sm font-semibold">Skills</h2>
@@ -189,7 +189,7 @@ onMounted(() => {
                 v-for="skill of filteredSkills"
                 :key="skill.slug"
                 type="button"
-                class="block w-full rounded-xl border bg-background/40 px-4 py-3 text-left transition-colors hover:bg-muted/60"
+                class="block w-full rounded-lg border bg-background/40 px-4 py-3 text-left transition-colors hover:bg-muted/60"
                 @click="openPreview(skill)"
               >
                 <div class="flex items-center gap-2">
@@ -216,7 +216,7 @@ onMounted(() => {
 
   <!-- 框架全文预览 -->
   <Dialog :open="previewOpen" @update:open="value => (previewOpen = value)">
-    <DialogContent class="flex max-h-[80vh] flex-col sm:max-w-2xl">
+    <DialogContent class="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-3xl">
       <DialogHeader>
         <DialogTitle class="font-mono">
           {{ previewSkill?.slug }}
@@ -226,16 +226,16 @@ onMounted(() => {
         </DialogDescription>
       </DialogHeader>
 
-      <ScrollArea class="min-h-0 flex-1">
-        <div class="pr-3 text-sm">
+      <div class="min-h-0 flex-1 overflow-y-auto">
+        <div class="px-1 py-4 text-sm">
           <div v-if="previewLoading">
             <Skeleton class="h-64 w-full" />
           </div>
-          <div v-else class="pm-markdown">
+          <div v-else>
             <MessageResponse :content="previewContent" />
           </div>
         </div>
-      </ScrollArea>
+      </div>
     </DialogContent>
   </Dialog>
 </template>

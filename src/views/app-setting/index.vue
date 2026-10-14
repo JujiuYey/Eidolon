@@ -91,7 +91,7 @@ const menus: SettingMenu[] = [
   },
 ];
 
-const activeKey = ref('provider-config');
+const activeKey = ref('app-config');
 
 function handleClick(key: string) {
   activeKey.value = key;
@@ -102,7 +102,7 @@ function handleClick(key: string) {
   <div class="flex h-full flex-col overflow-hidden">
     <div class="flex min-h-0 flex-1 gap-4 px-6 py-4">
       <!-- 设置导航：与文档页文档树卡片同款 -->
-      <aside class="flex w-60 shrink-0 flex-col overflow-hidden rounded-xl border bg-card">
+      <aside class="flex w-60 shrink-0 flex-col overflow-hidden rounded-lg border bg-card">
         <div class="flex items-center gap-2 px-4 py-3">
           <Settings class="h-4 w-4 text-primary" />
           <h2 class="text-sm font-semibold">设置</h2>
@@ -114,7 +114,7 @@ function handleClick(key: string) {
               class="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left text-sm transition-colors"
               :class="
                 activeKey === item.key
-                  ? 'bg-muted text-foreground'
+                  ? 'bg-primary text-white'
                   : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
               "
               @click="handleClick(item.key)"

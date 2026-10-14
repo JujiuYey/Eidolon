@@ -130,7 +130,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-0 flex-1 overflow-y-auto rounded-xl border bg-card">
+  <div class="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-card">
     <div class="mx-auto flex max-w-2xl flex-col gap-6 p-6">
       <div class="flex items-start justify-between gap-4">
         <div class="flex flex-col gap-1">

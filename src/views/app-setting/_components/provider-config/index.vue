@@ -59,7 +59,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 overflow-hidden rounded-xl border bg-card">
+  <div class="flex min-h-0 flex-1 overflow-hidden rounded-lg border bg-card">
     <ProviderList
       v-model:selected-provider-id="selectedProviderId"
       :providers="PROVIDER_REGISTRY"

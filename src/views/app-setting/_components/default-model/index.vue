@@ -340,7 +340,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
     <div class="flex items-center gap-2 px-4 py-3">
       <Sparkles class="h-4 w-4 text-primary" />
       <h2 class="text-sm font-semibold">默认模型</h2>
@@ -362,7 +362,7 @@ onMounted(() => {
                 :disabled="isLoading || modelOptions.length === 0"
                 @update:model-value="value => handleModelSelectionChange(card.key, String(value ?? ''))"
               >
-                <SelectTrigger class="h-12 flex-1 rounded-xl">
+                <SelectTrigger class="h-12 flex-1 rounded-md">
                   <SelectValue placeholder="暂无可用模型">
                     <span v-if="getSelectedOption(card.key)" class="flex min-w-0 items-center gap-3">
                       <span

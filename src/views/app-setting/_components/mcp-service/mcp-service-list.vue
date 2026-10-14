@@ -71,7 +71,7 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
     <div class="flex items-center justify-between gap-2 px-4 py-3">
       <h2 class="flex items-center gap-2 text-sm font-semibold">
         <Server class="h-4 w-4 text-primary" />
@@ -92,13 +92,13 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
 
     <ScrollArea class="min-h-0 flex-1">
       <div class="px-5 py-4">
-        <div v-if="isLoading" class="flex items-center justify-center rounded-xl border border-dashed py-16">
+        <div v-if="isLoading" class="flex items-center justify-center rounded-lg border border-dashed py-16">
           <Loader2 class="size-6 animate-spin text-muted-foreground" />
         </div>
 
         <div
           v-else-if="services.length === 0"
-          class="rounded-xl border border-dashed bg-muted/10 px-6 py-12 text-center"
+          class="rounded-lg border border-dashed bg-muted/10 px-6 py-12 text-center"
         >
           <h2 class="text-lg font-semibold text-foreground">还没有 MCP 服务</h2>
           <p class="mt-2 text-sm text-muted-foreground">先添加一个服务，然后在详情页里测试连接并发现工具。</p>
@@ -113,7 +113,7 @@ function updateEnabled(serviceId: string, value: boolean | string | number) {
             <article
               v-for="service of services"
               :key="service.id"
-              class="rounded-xl border border-border/70 px-5 py-5 transition-colors hover:border-primary/20"
+              class="rounded-lg border border-border/70 px-5 py-5 transition-colors hover:border-primary/20"
             >
               <div class="flex min-h-[132px] flex-col justify-between gap-6">
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

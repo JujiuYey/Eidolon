@@ -196,7 +196,7 @@ async function confirmDelete() {
       <div class="min-w-0 space-y-3">
         <div class="flex items-center gap-3">
           <div
-            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white shadow-xs ring-1 ring-black/5"
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-white shadow-xs ring-1 ring-black/5"
           >
             <img v-if="provider.icon" :src="provider.icon" :alt="provider.name" class="h-7 w-7 object-contain" />
             <span v-else class="text-sm font-semibold">
@@ -241,12 +241,12 @@ async function confirmDelete() {
               v-model="settingForm.base_url"
               type="text"
               placeholder="例如: https://api.openai.com/v1"
-              class="h-11 rounded-xl"
+              class="h-11 rounded-md"
             />
             <Button
               type="button"
               variant="outline"
-              class="h-11 rounded-xl px-4 text-red-500 hover:text-red-500"
+              class="h-11 rounded-md px-4 text-red-500 hover:text-red-500"
               :disabled="!canRestoreBaseUrl"
               @click="restoreBaseUrl"
             >
@@ -264,7 +264,7 @@ async function confirmDelete() {
               v-model="settingForm.api_key"
               :type="showApiKey ? 'text' : 'password'"
               placeholder="请输入 API 密钥"
-              class="h-11 rounded-xl pr-11"
+              class="h-11 rounded-md pr-11"
             />
             <button
               type="button"
@@ -292,7 +292,7 @@ async function confirmDelete() {
               type="button"
               variant="outline"
               size="sm"
-              class="h-9 gap-2 rounded-xl"
+              class="h-9 gap-2 rounded-md"
               @click="openCreateModelDialog"
             >
               <Plus class="h-4 w-4" />
@@ -304,7 +304,7 @@ async function confirmDelete() {
             <div
               v-for="(model, index) of modelItems"
               :key="`${model.model_id}-${index}`"
-              class="space-y-3 rounded-2xl border bg-background px-5 py-4"
+              class="space-y-3 rounded-lg border bg-background px-5 py-4"
             >
               <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0 flex-1 space-y-3">
@@ -346,7 +346,7 @@ async function confirmDelete() {
                   <Button
                     type="button"
                     variant="ghost"
-                    class="h-10 rounded-xl px-3"
+                    class="h-10 rounded-md px-3"
                     @click="openEditModelDialog(index)"
                   >
                     <PencilLine class="h-4 w-4" />
@@ -354,7 +354,7 @@ async function confirmDelete() {
                   <Button
                     type="button"
                     variant="ghost"
-                    class="h-10 rounded-xl px-3 text-destructive hover:text-destructive"
+                    class="h-10 rounded-md px-3 text-destructive hover:text-destructive"
                     @click="removeModel(index)"
                   >
                     <Trash2 class="h-4 w-4" />
@@ -364,7 +364,7 @@ async function confirmDelete() {
             </div>
           </div>
 
-          <div v-else class="rounded-2xl border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground">
+          <div v-else class="rounded-lg border border-dashed bg-muted/10 p-6 text-sm text-muted-foreground">
             还没有模型，点击“新增模型”后手动维护模型 ID 和能力。
           </div>
         </section>
@@ -375,7 +375,7 @@ async function confirmDelete() {
       <Button
         type="button"
         variant="destructive"
-        class="h-10 rounded-xl"
+        class="h-10 rounded-md"
         :disabled="!isConfigured"
         @click="openDeleteConfirm"
       >
@@ -383,7 +383,7 @@ async function confirmDelete() {
         删除配置
       </Button>
 
-      <Button type="button" class="h-10 rounded-xl px-5" :disabled="!isFormValid" @click="saveConfig">
+      <Button type="button" class="h-10 rounded-md px-5" :disabled="!isFormValid" @click="saveConfig">
         <Check class="mr-2 h-4 w-4" />
         保存配置
       </Button>
@@ -410,13 +410,13 @@ async function confirmDelete() {
       <div class="space-y-5">
         <div class="space-y-2">
           <Label class="text-sm font-medium text-foreground">模型 ID</Label>
-          <Input v-model="modelDraft.model_id" type="text" placeholder="例如: deepseek-chat" class="h-11 rounded-xl" />
+          <Input v-model="modelDraft.model_id" type="text" placeholder="例如: deepseek-chat" class="h-11 rounded-md" />
         </div>
 
         <div class="space-y-3">
           <Label class="text-sm font-medium text-foreground">能力</Label>
 
-          <div class="space-y-3 rounded-2xl border bg-muted/10 p-4">
+          <div class="space-y-3 rounded-lg border bg-muted/10 p-4">
             <div
               v-for="capability of capabilityOptions"
               :key="capability.key"

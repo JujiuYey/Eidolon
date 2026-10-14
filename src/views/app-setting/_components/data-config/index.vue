@@ -142,7 +142,7 @@ function handleOpenDirectory(path: string) {
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card">
     <div class="flex items-center gap-2 px-4 py-3">
       <Database class="h-4 w-4 text-primary" />
       <h2 class="text-sm font-semibold">数据设置</h2>
