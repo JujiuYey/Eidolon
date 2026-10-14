@@ -344,10 +344,20 @@ const tableActions = [
   outline: none;
   font-size: 0.9375rem;
   line-height: 1.75;
+  /* 光标与选区跟随主题色：默认的系统蓝在深色主题和自定义主题色下都很突兀 */
+  caret-color: var(--primary);
+}
+
+/* 选区高亮按行盒绘制，比字形高一截是 line-height 决定的、无法用 CSS 收窄，
+   只能用低透明度的主题色压低存在感（系统默认蓝会把这 26px 的空带整条点亮） */
+.sag-rich-editor .ProseMirror::selection,
+.sag-rich-editor .ProseMirror *::selection {
+  background: color-mix(in oklab, var(--primary) 22%, transparent);
 }
 
 .sag-rich-editor .ProseMirror > * + * {
   margin-top: 0.6em;
+  margin-bottom: 0.6em;
 }
 
 .sag-rich-editor .ProseMirror h1,
