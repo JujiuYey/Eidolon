@@ -338,7 +338,7 @@ onBeforeUnmount(() => {
         <!-- 拖柄即栏间空隙:平时就是页面底色,悬停/拖动时浮出圆角高亮 -->
         <ResizableHandle
           id="docs-tree-handle"
-          class="w-4 cursor-col-resize rounded-md bg-transparent transition-colors duration-150 data-[state=drag]:bg-accent data-[state=hover]:bg-muted"
+          class="w-2 cursor-col-resize rounded-md bg-transparent transition-colors duration-150 data-[state=drag]:bg-primary/20 data-[state=hover]:bg-primary/10"
         />
 
         <!-- 主区：加载 / 库失效 / 未开文档 / 编辑器 四态 -->
@@ -467,7 +467,7 @@ onBeforeUnmount(() => {
         <template v-if="tocOpen && store.activePath">
           <ResizableHandle
             id="docs-toc-handle"
-            class="w-4 cursor-col-resize rounded-md bg-transparent transition-colors duration-150 data-[state=drag]:bg-accent data-[state=hover]:bg-muted"
+            class="w-2 cursor-col-resize rounded-md bg-transparent transition-colors duration-150 data-[state=drag]:bg-primary/20 data-[state=hover]:bg-primary/10"
           />
           <ResizablePanel
             id="docs-toc-panel"
@@ -485,7 +485,7 @@ onBeforeUnmount(() => {
         <template v-if="aiOpen">
           <ResizableHandle
             id="docs-ai-handle"
-            class="w-4 cursor-col-resize rounded-md bg-transparent transition-colors duration-150 data-[state=drag]:bg-accent data-[state=hover]:bg-muted"
+            class="w-2 cursor-col-resize rounded-md bg-transparent transition-colors duration-150 data-[state=drag]:bg-primary/20 data-[state=hover]:bg-primary/10"
           />
           <ResizablePanel
             id="docs-ai-panel"
