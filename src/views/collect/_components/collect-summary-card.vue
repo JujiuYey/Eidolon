@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { Loader2, Sparkles, X } from 'lucide-vue-next';
-import MarkdownRender from 'markstream-vue';
 
+import { MessageResponse } from '@/components/ai-elements/message';
 import { Button } from '@/components/ui/button';
 import type { AiSummaryState } from '@/stores/collect';
 
 defineProps<{
   summary: AiSummaryState;
-  /** markstream-vue 渲染缓存 id，同页多张摘要卡不能撞车 */
-  customId: string;
 }>();
 
 const emit = defineEmits<{
@@ -39,7 +37,7 @@ const emit = defineEmits<{
     </div>
     <p v-else-if="summary.status === 'error'" class="mt-2 text-sm text-destructive">{{ summary.errorMessage }}</p>
     <div v-else class="collect-summary-markdown mt-2 min-w-0 text-sm leading-6">
-      <MarkdownRender :content="summary.text" :custom-id="customId" />
+      <MessageResponse :content="summary.text" />
     </div>
   </div>
 </template>

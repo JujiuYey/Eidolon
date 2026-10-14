@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Loader2, RotateCcw, X } from 'lucide-vue-next';
-import MarkdownRender from 'markstream-vue';
 
+import { MessageResponse } from '@/components/ai-elements/message';
 import SagAiPanel from '@/components/sag/sag-ai-panel/index.vue';
 import { Button } from '@/components/ui/button';
 import type { AiAnswerState } from '@/stores/collect';
@@ -88,7 +88,7 @@ function retry() {
         </Button>
       </template>
       <div v-else class="collect-ai-answer mt-2 min-w-0 text-sm leading-6">
-        <MarkdownRender :content="answer.text" custom-id="collect-ai-answer" />
+        <MessageResponse :content="answer.text" />
       </div>
     </div>
   </SagAiPanel>

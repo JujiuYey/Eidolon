@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { open } from '@tauri-apps/plugin-dialog';
 import { Brain, FolderOpen, Search, Trash2 } from 'lucide-vue-next';
-import MarkdownRender from 'markstream-vue';
 import { computed, onMounted, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
+import { MessageResponse } from '@/components/ai-elements/message';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -232,7 +232,7 @@ onMounted(() => {
             <Skeleton class="h-64 w-full" />
           </div>
           <div v-else class="pm-markdown">
-            <MarkdownRender :content="previewContent" custom-id="pm-skill-preview" />
+            <MessageResponse :content="previewContent" />
           </div>
         </div>
       </ScrollArea>

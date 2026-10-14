@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Bot } from 'lucide-vue-next';
-import MarkdownRender from 'markstream-vue';
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
 
+import { MessageResponse } from '@/components/ai-elements/message';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '@/components/ui/spinner';
@@ -125,7 +125,7 @@ const showEmptyState = () => !props.isLoading && props.messages.length === 0;
           </div>
           <div class="min-w-0 flex-1">
             <div class="pm-markdown text-sm leading-relaxed">
-              <MarkdownRender :content="message.content" custom-id="pm-message-list" />
+              <MessageResponse :content="message.content" />
             </div>
             <div v-if="message.skills_used.length > 0" class="mt-2 flex flex-wrap items-center gap-1.5">
               <span class="text-xs text-muted-foreground">参考框架</span>

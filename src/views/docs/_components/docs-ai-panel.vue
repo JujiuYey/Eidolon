@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import MarkdownRender from 'markstream-vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
+import { MessageResponse } from '@/components/ai-elements/message';
 import SagAiPanel from '@/components/sag/sag-ai-panel/index.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -232,7 +232,7 @@ onBeforeUnmount(stopTimer);
 
           <template v-else>
             <div class="docs-ai-markdown w-full min-w-0 text-sm leading-relaxed">
-              <MarkdownRender :content="message.text" custom-id="docs-ai-panel" />
+              <MessageResponse :content="message.text" />
             </div>
             <p v-if="message.modelLabel" class="font-mono text-[11px] text-muted-foreground">
               {{ message.modelLabel }}

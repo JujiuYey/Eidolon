@@ -188,7 +188,6 @@ function cardTitle(item: CollectItem): string {
       <CollectSummaryCard
         v-if="item.kind === 'link' && summaryFor(item)"
         :summary="summaryFor(item)!"
-        :custom-id="`collect-summary-${item.id}`"
         @dismiss="emit('dismiss-summary', item)"
       />
     </li>

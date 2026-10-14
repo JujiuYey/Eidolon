@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import MarkdownRender from 'markstream-vue';
 import { computed, nextTick, ref } from 'vue';
 
+import { MessageResponse } from '@/components/ai-elements/message';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -64,7 +64,6 @@ const content = defineModel<string>({ required: true });
 const previewMode = ref<'edit' | 'preview' | 'split'>('split');
 const editorRef = ref<HTMLTextAreaElement | null>(null);
 
-const PREVIEW_CUSTOM_ID = 'sag-markdown-editor-preview';
 const resolvedDescription = computed(() => {
   return props.guide?.description || props.description;
 });
@@ -190,7 +189,7 @@ async function insertSnippet(snippet: string) {
           </p>
         </div>
         <div class="overflow-auto" :class="editorHeightClass">
-          <MarkdownRender :content="previewContent" :custom-id="PREVIEW_CUSTOM_ID" />
+          <MessageResponse :content="previewContent" />
         </div>
       </div>
     </div>
