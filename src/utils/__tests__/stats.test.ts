@@ -8,9 +8,6 @@ import {
   dailyTooltips,
   dateString,
   formatShortDate,
-  monthlyCounts,
-  monthlyLabels,
-  monthlyTooltips,
   startOfDay,
   weekStartMs,
 } from '../stats';
@@ -100,36 +97,5 @@ describe('stats date helpers', () => {
     expect(formatShortDate(at(8, 5))).toBe('10-14');
     expect(formatShortDate(new Date(2026, 0, 3).getTime())).toBe('01-03');
     expect(formatShortDate(0)).toBe('—');
-  });
-
-  it('monthlyCounts buckets into the last N months including current', () => {
-    const now = at(15);
-    const timestamps = [
-      now, // 本月
-      new Date(2026, 8, 20).getTime(), // 9 月（上个月）
-      new Date(2026, 8, 2).getTime(), // 9 月另一条
-      new Date(2026, 4, 10).getTime(), // 5 月，6 个月窗口（含本月=10）之外
-      new Date(2026, 10, 1).getTime(), // 未来，忽略
-    ];
-
-    const counts = monthlyCounts(timestamps, 6, now);
-    // 6 个月窗口含本月：5月 1 条、9月 2 条、10月 1 条
-    expect(counts).toEqual([1, 0, 0, 0, 2, 1]);
-  });
-
-  it('monthlyCounts counts year-old timestamps in a 13-month window', () => {
-    const now = at(15);
-    // 13 个月窗口覆盖 2025-10 .. 2026-10；2025-11 是窗口内第 2 个月
-    const counts = monthlyCounts([new Date(2025, 10, 15).getTime()], 13, now);
-    expect(counts[1]).toBe(1);
-    expect(counts[0]).toBe(0);
-  });
-
-  it('monthlyLabels and monthlyTooltips align with buckets', () => {
-    const labels = monthlyLabels(3, at(15));
-    expect(labels).toEqual(['8月', '9月', '10月']);
-
-    const tooltips = monthlyTooltips([1, 2, 3], '篇周报', at(15));
-    expect(tooltips).toEqual(['2026年8月 · 1 篇周报', '2026年9月 · 2 篇周报', '2026年10月 · 3 篇周报']);
   });
 });

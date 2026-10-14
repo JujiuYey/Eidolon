@@ -66,43 +66,6 @@ export function dailyTooltips(counts: number[], unit: string, now = Date.now()):
 }
 
 /**
- * 最近 months 个月（含本月）的逐月数量。
- * 返回数组 index 0 = 最旧的月份；未来时间戳忽略。
- */
-export function monthlyCounts(timestamps: number[], months: number, now = Date.now()): number[] {
-  const nowDate = new Date(now);
-  const monthIndex = (date: Date) => date.getFullYear() * 12 + date.getMonth();
-  const current = monthIndex(nowDate);
-  const buckets = Array.from<number>({ length: months }).fill(0);
-  for (const timestamp of timestamps) {
-    const offset = current - monthIndex(new Date(timestamp));
-    if (offset < 0 || offset >= months) {
-      continue;
-    }
-    buckets[months - 1 - offset] = (buckets[months - 1 - offset] ?? 0) + 1;
-  }
-  return buckets;
-}
-
-/** 与 monthlyCounts 对齐的「M月」标签 */
-export function monthlyLabels(months: number, now = Date.now()): string[] {
-  const nowDate = new Date(now);
-  return Array.from({ length: months }, (_, index) => {
-    const date = new Date(nowDate.getFullYear(), nowDate.getMonth() - (months - 1 - index), 1);
-    return `${date.getMonth() + 1}月`;
-  });
-}
-
-/** 与 monthlyCounts 对齐的悬浮文案「YYYY年M月 · N 单位」 */
-export function monthlyTooltips(counts: number[], unit: string, now = Date.now()): string[] {
-  const nowDate = new Date(now);
-  return counts.map((_, index) => {
-    const date = new Date(nowDate.getFullYear(), nowDate.getMonth() - (counts.length - 1 - index), 1);
-    return `${date.getFullYear()}年${date.getMonth() + 1}月 · ${counts[index] ?? 0} ${unit}`;
-  });
-}
-
-/**
  * 连续记录天数：从今天往回逐日数有记录的天数；
  * 今天还没有记录时从昨天起算（连续状态保住，不因当天还没动手清零）。
  */

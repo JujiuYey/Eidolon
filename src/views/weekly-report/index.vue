@@ -6,11 +6,8 @@ import type { DateRange as CalendarDateRange } from 'reka-ui';
 import { computed, onMounted, shallowRef } from 'vue';
 import { toast } from 'vue-sonner';
 
-import SagBarChart from '@/components/sag/sag-bar-chart/index.vue';
 import SagPageHeader from '@/components/sag/sag-page-header/index.vue';
 import SagRichEditor from '@/components/sag/sag-rich-editor/index.vue';
-import SagStatsStrip from '@/components/sag/sag-stats-strip/index.vue';
-import type { StatTile } from '@/components/sag/sag-stats-strip/index.vue';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -36,7 +33,6 @@ import {
 import { useWeeklyReportStore } from '@/stores/weekly-report';
 import type { WeeklyReportAuthorMode, WeeklyReportEntry, WeeklyReportRepo } from '@/types/weekly-report';
 import { copyToClipboard, getErrorMessage } from '@/utils/helpers';
-import { monthlyCounts, monthlyLabels, monthlyTooltips } from '@/utils/stats';
 
 import RepoManager from './_components/repo-manager.vue';
 import ReportHistory from './_components/report-history.vue';
@@ -48,7 +44,6 @@ import {
   getPresetRange,
 } from './utils/report-helpers';
 import type { DateRange, RangePreset, ReportGroupBy } from './utils/report-helpers';
-import { computeWeeklyReportStats, lastReportHint } from './utils/report-stats';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -60,28 +55,6 @@ const repos = ref<WeeklyReportRepo[]>([]);
 const isLoadingRepos = ref(false);
 const reports = ref<WeeklyReportEntry[]>([]);
 const isLoadingReports = ref(false);
-
-const weeklyStats = computed(() => computeWeeklyReportStats(reports.value, repos.value));
-const statTiles = computed<StatTile[]>(() => [
-  { label: '仓库', value: weeklyStats.value.repoCount },
-  {
-    label: '累计周报',
-    value: weeklyStats.value.reportCount,
-    hint: lastReportHint(weeklyStats.value.lastReportAt),
-  },
-  { label: '累计提交', value: weeklyStats.value.totalCommitCount },
-  { label: '本月新增', value: weeklyStats.value.monthReportCount },
-]);
-
-const MONTH_WINDOW = 6;
-const monthValues = computed(() =>
-  monthlyCounts(
-    reports.value.map(report => report.created_at),
-    MONTH_WINDOW,
-  ),
-);
-const monthLabels = computed(() => monthlyLabels(MONTH_WINDOW));
-const monthTooltips = computed(() => monthlyTooltips(monthValues.value, '篇周报'));
 
 // ===== 统计区间与选项 =====
 
@@ -395,25 +368,6 @@ onMounted(() => {
     </SagPageHeader>
 
     <Separator class="mt-4 shrink-0" />
-
-    <div v-if="reports.length > 0 || repos.length > 0" class="mx-6 mt-4 shrink-0 space-y-4">
-      <SagStatsStrip :tiles="statTiles" />
-
-      <div class="rounded-xl border bg-card p-4">
-        <div class="flex items-center justify-between gap-2">
-          <h3 class="text-sm font-medium">近 6 个月周报</h3>
-          <span class="text-xs text-muted-foreground">按月</span>
-        </div>
-        <div class="mt-3">
-          <SagBarChart
-            :values="monthValues"
-            :labels="monthLabels"
-            :tooltips="monthTooltips"
-            aria-label="近 6 个月周报柱状图"
-          />
-        </div>
-      </div>
-    </div>
 
     <div class="flex min-h-0 flex-1 gap-4 px-6 py-4">
       <!-- 左栏：仓库 + 历史 -->
